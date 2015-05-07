@@ -4,6 +4,7 @@
 # v1.1 added option to remove weak blast hits, fixed integer bug 2014-10-28
 # v2.0 major revision, for finding gene models with genewise 2015-04-09
 # v2.1 added option to output genewise commands to run in parallel 2015-04-13
+# v2.2 changes gff output to modern format 2015-05-04
 #
 # blast2gff.py convert blast output to gff format for genome annotation
 # translated from blast2gff.pl and parseblast.pl
@@ -11,13 +12,19 @@
 # and using information from:
 # https://www.sanger.ac.uk/resources/software/gff/spec.html
 # http://www.sequenceontology.org/gff3.shtml
+#
+# usage manual for genewise
+# http://dendrome.ucdavis.edu/resources/tooldocs/wise2/doc_wise2.html
 
 '''
-BLAST2GFF.PY v2.1 2015-04-13
+BLAST2GFF.PY v2.2 2015-05-04
 
   ## GENERAL OPERATION
 
 blast2gff.py -b tblastn_output.tab -q refprots.fa -d target_genome.fa
+
+  add -g option to give a specific tag to the gff output, such as
+  -g Avic01_ref_genewise
 
   for each blast hit (probably an exon), direction (+/- strand) is determined
   groups of exons are clumped into a single first/last pair, which is used
@@ -90,15 +97,23 @@ class ProteinMatch:
 	def __init__(self, number):
 		# initialize with a unique number
 		self.num = number
-		self.start_position = 0
-		self.end_position = 0
+		self.gstart_position = 0
+		self.gend_position = 0
+		self.pstart_position = 0
+		self.pend_position = 0
 		self.covered_length = 0
-	def set_start(self, sstart):
+	def set_start(self, position):
 		# start position is the integer start value on the target genome
-		self.start_position = sstart
-	def set_end(self, send):
+		self.gstart_position = position
+	def set_end(self, position):
 		# end position is the integer end value on the target genome
-		self.end_position = send
+		self.gend_position = position
+	def prot_start(self, position):
+		# start position is the integer start value on the target genome
+		self.pstart_position = position
+	def prot_end(self, position):
+		# end position is the integer end value on the target genome
+		self.pend_position = position
 	def set_covlen(self, length):
 		self.covered_length = length
 	# calculate the coverage as number of amino acids that align at least once divided by query length
@@ -145,13 +160,15 @@ def get_position(hittuples, direction):
 	else:
 		return min([x[0] for x in hittuples])
 
-def get_fl_positions(sortedhits, querylen, covcutoff):
+def get_pm_positions(sortedhits, querylen, covcutoff, tandemcutoff):
+	tandemcounter = 0
 	# if no hits are found, perhaps in one direction, then return an empty list
 	if not sortedhits:
 		return []
 	# meaning get first/last positions for each full protein
 	# hits should be sorted so that query end positions increase
 	lastqend = 50000 # this number must be very big so the first protein is always shorter
+	geneEnd = 1000000000
 	# empty list to store the ProteinMatch objects
 	protMatches = []
 	# empty list for the numeric positions that are covered by the query
@@ -170,6 +187,8 @@ def get_fl_positions(sortedhits, querylen, covcutoff):
 			if prevhit:
 				# also add the previous value to the match, assuming there is a prevhit
 				proteinmatch.set_end(prevhit[3])
+				proteinmatch.prot_end(prevhit[1])
+				geneEnd = prevhit[3]
 				# the protein length that is covered is thus the length of the set, not the sum
 				proteinmatch.set_covlen(len(set(protlen)) )
 				protMatches.append(proteinmatch)
@@ -178,6 +197,10 @@ def get_fl_positions(sortedhits, querylen, covcutoff):
 			# if yes, assume that it is the start of a new protein match
 			proteinmatch = ProteinMatch(i)
 			proteinmatch.set_start(hit[2])
+			proteinmatch.prot_start(hit[0])
+			# also check here if genes are tandem duplicates
+			if hit[2] + tandemcutoff > geneEnd:
+				tandemcounter += 1
 		elif iqend == lastqend:
 			# this probably occurs due to repeated domains and the query being too short
 			### TODO figure out how to deal with this
@@ -189,16 +212,17 @@ def get_fl_positions(sortedhits, querylen, covcutoff):
 	else:
 		# need to add the final hit
 		proteinmatch.set_end(hit[3])
+		proteinmatch.prot_end(hit[1])
 		proteinmatch.set_covlen(len(set(protlen)) )
 		protMatches.append(proteinmatch)
 	# for each match, check if it is long enough and return the start and end values
-	flpairs = []
+	matches = []
 	# determine if proteins are long enough to search
 	for pm in protMatches:
 		if pm.check_cov(querylen, covcutoff):
-			flset = (pm.start_position, pm.end_position)
-			flpairs.append(flset)
-	return flpairs
+			#flset = (pm.gstart_position, pm.gend_position)
+			matches.append(pm)
+	return matches, tandemcounter
 
 def get_strand(isstart, isend):
 	# assume forward is 1 and reverse is 0
@@ -214,24 +238,32 @@ def strand_to_command(strand):
 	else:
 		return "-trev"
 
-def calc_5p_boundary(startval, d2s):
+def calc_boundaries(startval, endval, interval, contiglen):
 	### TODO determine if d2s is the optimal distance, possibly variable by genome or queries
-	# this generates the 5 prime boundary to search for genes, which is the 5' end minus the defined distance
-	uvalue = startval - d2s
+	# this generates the 5' boundary to search for genes, which is the 5' blast hit minus the defined distance
+	uvalue = startval - interval
+	# this generates the 3' boundary to search for genes, which is the 3' hit plus the defined distance
+	vvalue = endval + interval
 	# if that is less than zero, use zero
 	if uvalue < 1:
-		return 1
-	else:
-		return uvalue
-
-def calc_3p_boundary(endval, d2s, contiglen):
-	# this generates the 5 prime boundary to search for genes, which is the 3' end plus the defined distance
-	vvalue = endval + d2s
+		uvalue = 1
 	# if it extends past the length of the contig, use that length instead
 	if vvalue > contiglen:
-		return contiglen
-	else:
-		return vvalue
+		vvalue = contiglen
+	return uvalue, vvalue
+
+def print_new_gff(stdoutLines, outFile, attrstring, gffTag):
+	# output is in bitstring format, so must split by line breaks first
+	for line in stdoutLines.split("\n"):
+		# disregard empty lines and comment lines
+		if line and not line[0] == "/":
+			gffSplits = line.split("\t")
+			# if tag is present, then use it
+			if gffTag:
+				gffSplits[1] = str(gffTag)
+			# add the modified attribute string
+			gffSplits[8] = attrstring
+			print >> outFile, "\t".join(gffSplits)
 
 def main(argv, wayout):
 	if not len(argv):
@@ -242,20 +274,21 @@ def main(argv, wayout):
 	parser.add_argument('-q','--query', help="query file used for the blast")
 	parser.add_argument('-d','--db', help="database file use for the blast")
 	parser.add_argument('-t','--temp', help="directory for temporary files ['temp/']", default="temp/")
+	parser.add_argument('-g','--gff', help="string for gff field instead of Genewise")
 	parser.add_argument('-e','--evalue', type=float, default=1e-1, help="evalue cutoff for post blast filtering [1e-1]")
 	parser.add_argument('-i','--interval-distance', type=int, default=1000, help="max number of bases from end to hsp to splice site [1000]")
 	parser.add_argument('-l','--hsp-length', type=int, default=10, help="minimum hsp length in amino acids [10]")
 	parser.add_argument('-m','--min-coverage', type=float, default=0.8, help="minimum query coverage [0.8]")
+	parser.add_argument('-n','--tandem-distance', type=int, default=10000, help="allowed distance between full hits [10000]")
 	parser.add_argument('-s','--score-cutoff', type=float, help="bitscore/length cutoff for filtering [0.2]", default=0.2)
-	parser.add_argument('-C','--commands', help="write commands to file instead of running", action="store_true")
+	parser.add_argument('-C','--commands', action="store_true", help="write commands to file instead of running")
 	parser.add_argument('-p','--processors', type=int, default=1, help="number of processors for parallel [1]")
 	parser.add_argument('-v','--verbose', help="verbose output", action="store_true")
 	args = parser.parse_args(argv)
 
-	# counter for number of lines, and strand flips
+	# counter for number of lines, and inferred exons
 	linecounter = 0
 	exoncounter = 0
-	plusstrand, minusstrand = 0,0
 	# counter for number of hits that are filtered
 	badhits = 0
 
@@ -309,6 +342,11 @@ def main(argv, wayout):
 
 	# PART II
 	#
+	# counter for strandedness of the hits
+	plusstrand, minusstrand = 0,0
+	# counter for potentially overlapping hits or tandem duplicates
+	tandemdups = 0
+
 	print >> sys.stderr, "Reading query sequences from %s" % (args.query), time.asctime()
 	querydict = SeqIO.to_dict(SeqIO.parse(args.query, 'fasta'))
 	print >> sys.stderr, "Counted %d query sequences" % (len(querydict)), time.asctime()
@@ -316,6 +354,11 @@ def main(argv, wayout):
 	dbdict = SeqIO.to_dict(SeqIO.parse(args.db, 'fasta'))
 	print >> sys.stderr, "Counted %d db sequences" % (len(dbdict)), time.asctime()
 
+	# for either direct output or written as output for each command
+	#genewiseGff = "{}_genewise_{}.gff".format(args.blast, time.strftime("%Y%m%d") )
+	genewiseGff = "{}_genewise_{}.gff".format(args.blast, time.strftime("%H%M%S") )
+	if os.path.isfile(genewiseGff):
+		print >> sys.stderr, "File %s already exists, results will be appended" % (genewiseGff), time.asctime()
 	# if using commands argument, make a file listing the commands instead of running them
 	if args.commands:
 		# generate a file for commands to be called in parallel
@@ -326,12 +369,11 @@ def main(argv, wayout):
 		# generate the gff output filename
 		genewiseoutput = genewiseGff
 		print >> sys.stderr, "Writing hits to %s" % (genewiseGff), time.asctime()
-	#
-	genewiseGff = "{}_genewise.gff".format(args.blast)
-	print >> sys.stderr, "Sorting %d contigs with valid hits" % (len(blasthitdict) ), time.asctime()
+
 	# in either case for the output, write to genewiseoutput file
 	with open(genewiseoutput, 'a') as gwo:
 		# sort through each contig
+		print >> sys.stderr, "Sorting %d contigs with valid hits" % (len(blasthitdict) ), time.asctime()
 		for contig in blasthitdict.iterkeys():
 			# make temporary file for each contig with hits
 			contigName = os.path.join(tempdir, "{}.fa".format(contig) ).replace("|","_")
@@ -362,36 +404,53 @@ def main(argv, wayout):
 						reversehits.append(hit)
 				# to check if full hits are long enough, get the length of the query protein
 				querylen = len(querydict[query].seq)
-				# within forward hits
-				flpositions = get_fl_positions(sorted(forwardhits, key=lambda x: x[3]), querylen, args.min_coverage )
-				for flpair in flpositions:
-					plusstrand += 1
-					uvalue = calc_5p_boundary(flpair[0], args.interval_distance)
-					vvalue = calc_3p_boundary(flpair[1], args.interval_distance, contiglen)
-					# strand should be either -trev or -tfor
-					# which are the genewise options for reverse (-) and forward (+)
-					gwCommand = ["genewise", "-gff", "-tfor", "-u", "%d" % uvalue, "-v", "%d" % vvalue, queryName, contigName]
-					if args.commands:
-						print >> gwo, " ".join(gwCommand), ">> {}".format(genewiseGff)
-					else:
-						if args.verbose:
-							print >> sys.stderr, "Calling command:\n%s" % (" ".join(gwCommand) )
-						subprocess.call(gwCommand, stdout=gwo)
+
+			# within forward hits
+				if forwardhits:
+					protmatches, tandems = get_pm_positions(sorted(forwardhits, key=lambda x: x[3]), querylen, args.min_coverage, args.tandem_distance)
+					tandemdups += tandems
+					for pm in protmatches:
+						plusstrand += 1
+						uvalue, vvalue = calc_boundaries(pm.gstart_position, pm.gend_position, args.interval_distance, contiglen)
+						# strand should be either -trev or -tfor
+						# which are the genewise options for reverse (-) and forward (+)
+						gwCommand = ["genewise", "-gff", "-tfor", "-u", "%d" % uvalue, "-v", "%d" % vvalue, queryName, contigName]
+						if args.commands:
+							print >> gwo, " ".join(gwCommand), ">> {}".format(genewiseGff)
+						else:
+							if args.verbose:
+								print >> sys.stderr, "Calling command:\n%s" % (" ".join(gwCommand) )
+							gwcall = subprocess.Popen(gwCommand, stdout=subprocess.PIPE)
+							gffLines = gwcall.communicate()[0]
+							# if there is any output
+							if gffLines:
+								IDstring = "ID={};Target={} {} {}".format(contig, query, pm.pstart_position, pm.pend_position)
+								print_new_gff(gffLines, gwo, IDstring, args.gff)
+
 				# within reverse hits
-				flpositions = get_fl_positions(sorted(reversehits, key=lambda x: x[2], reverse=True), querylen, args.min_coverage )
-				for flpair in flpositions:
-					minusstrand += 1
-					uvalue = calc_5p_boundary(flpair[1], args.interval_distance)
-					vvalue = calc_3p_boundary(flpair[0], args.interval_distance, contiglen)
-					gwCommand = ["genewise", "-gff", "-trev", "-u", "%d" % uvalue, "-v", "%d" % vvalue, queryName, contigName]
-					if args.commands:
-						print >> gwo, " ".join(gwCommand), ">> {}".format(genewiseGff)
-					else:
-						if args.verbose:
-							print >> sys.stderr, "Calling command:\n%s" % (" ".join(gwCommand) )
-						subprocess.call(gwCommand, stdout=gwo)
+				if reversehits:
+					protmatches, tandems = get_pm_positions(sorted(reversehits, key=lambda x: x[2], reverse=True), querylen, args.min_coverage, args.tandem_distance)
+					tandemdups += tandems
+					for pm in protmatches:
+						minusstrand += 1
+						# gend and gstart positions are switched, since it is reverse
+						uvalue, vvalue = calc_boundaries(pm.gend_position, pm.gstart_position, args.interval_distance, contiglen)
+						gwCommand = ["genewise", "-gff", "-trev", "-u", "%d" % uvalue, "-v", "%d" % vvalue, queryName, contigName]
+						if args.commands:
+							print >> gwo, " ".join(gwCommand), ">> {}".format(genewiseGff)
+						else:
+							if args.verbose:
+								print >> sys.stderr, "Calling command:\n%s" % (" ".join(gwCommand) )
+							gwcall = subprocess.Popen(gwCommand, stdout=subprocess.PIPE)
+							gffLines = gwcall.communicate()[0]
+							# if there is any output
+							if gffLines:
+								IDstring = "ID={};Target={} {} {}".format(contig, query, pm.pstart_position, pm.pend_position)
+								print_new_gff(gffLines, gwo, IDstring, args.gff)
+
 	# these counts relate only to the preprocessing, and not to the output of genewise
 	print >> sys.stderr, "Found %d forward and %d reverse hits" % (plusstrand, minusstrand), time.asctime()
+	print >> sys.stderr, "Found %d possible tandem duplicates" % (tandemdups), time.asctime()
 	print >> sys.stderr, "Processed completed in %.1f minutes" % ( (time.time()-starttime)/60)
 	if args.commands:
 		genewiselog = "{}_genewise.log".format(args.blast)
