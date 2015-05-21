@@ -8,9 +8,9 @@ This is a strategy to convert blast hits into gene models. This takes advantage 
 
   `tblastn -query proteins.fa -db target_genome.fa -num_threads 16 -outfmt 6 > prots_vs_genome.tab`
 
-2) Run blast2gff.py with the same three files, and output the commands automatically.
+2) Run blast2genewise.py with the same three files, and output the commands automatically.
 
-  `blast2gff.py -q proteins.fa -d target_genome.fa -b prots_vs_genome.tab -C`
+  `blast2genewise.py -q proteins.fa -d target_genome.fa -b prots_vs_genome.tab -C`
 
 This will automatically generate the command to run in parallel, which will be printed to stderr for convenience.
 
@@ -19,6 +19,8 @@ This will automatically generate the command to run in parallel, which will be p
   `parallel --gnu -a genewise_commands_171710.sh -j 16 --joblog target_genome_genewise.log --halt 1`
 
 4) If parallel is not installed, or cannot be used, then run command 2 without the `-C` option, to run each genewise command sequentially. For a normal sized genome with 20k proteins, this would take about 6 hours.
+
+  `blast2genewise.py -q proteins.fa -d target_genome.fa -b prots_vs_genome.tab`
 
 ## History
 For *ab initio* gene prediction of a new genome, it is often useful to confirm (or even just find) genes that may not be expressed (thus have no mRNA evidence) but are highly similar to known genes in other genomes. These might include developmentally restricted genes (hopefully most of them), paralogs that do not map correctly, or pseudogenes.
