@@ -85,6 +85,7 @@ def main(argv, wayout):
 	parser.add_argument('-e','--evalue-cutoff', type=float, help="evalue cutoff [1]", default=1.0)
 	parser.add_argument('-s','--score-cutoff', type=float, help="bitscore/length cutoff for filtering [0.1]", default=0.1)
 	parser.add_argument('-F','--filter', action="store_true", help="filter low quality matches")
+	parser.add_argument('-S','--swissprot', action="store_true", help="query sequences have swissprot headers")
 	parser.add_argument('-v','--verbose', action="store_true", help="extra output")
 	args = parser.parse_args(argv)
 
@@ -101,7 +102,11 @@ def main(argv, wayout):
 		qseqid, sseqid, pident, length, mismatch, gapopen, qstart, qend, sstart, send, evalue, bitscore = line.rstrip().split("\t")
 
 		# remove stray characters
-		qseqid = qseqid.replace("|","")
+		if args.swissprot:
+		# blast outputs swissprot proteins as: sp|P0DI82|TPC2B_HUMAN
+			qseqid = qseqid.split("|")[2]
+		else:
+			qseqid = qseqid.replace("|","")
 		hitDictCounter[qseqid] += 1
 		# currently 'attributes' is only query id
 		# ID only appears to not work for visualization, as the gene should be the blast query
@@ -139,7 +144,8 @@ def main(argv, wayout):
 		write_line(outlist, wayout)
 	print >> sys.stderr, "Parsed %d lines" % (linecounter), time.asctime()
 	print >> sys.stderr, "Found %d forward and %d reverse hits" % (plusstrand, minusstrand), time.asctime()
-	print >> sys.stderr, "Removed %d weak matches" % (badhits), time.asctime()
+	if badhits:
+		print >> sys.stderr, "Removed %d weak matches" % (badhits), time.asctime()
 	print >> sys.stderr, "Wrote %d matches" % (writecounter), time.asctime()
 
 if __name__ == "__main__":
