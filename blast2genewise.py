@@ -20,7 +20,7 @@
 # http://dendrome.ucdavis.edu/resources/tooldocs/wise2/doc_wise2.html
 
 '''
-BLAST2GENEWISE.PY v2.3 2015-05-22
+BLAST2GENEWISE.PY v2.4 2015-05-26
 
   ## GENERAL OPERATION
 
@@ -122,28 +122,17 @@ from Bio import SeqIO
 
 # class for storing some information about the matches of groups of exons
 class ProteinMatch:
-	def __init__(self, number):
-		# initialize with a unique number
-		self.num = number
-		self.gstart_position = 0
+	def __init__(self, gs, ps):
+		# initialize with the start positions
+		self.gstart_position = gs
 		self.gend_position = 0
-		self.pstart_position = 0
+		self.pstart_position = ps
 		self.pend_position = 0
 		self.exon_count = 0
 		self.intron_lengths = []
-	def set_start(self, position):
-		# start position is the integer start value on the target genome
-		self.gstart_position = position
-	def set_end(self, position):
+	def set_ends(self, gp, pp):
 		# end position is the integer end value on the target genome
-		self.gend_position = position
-	# related to protein paramters
-	def prot_start(self, position):
-		# integer of first protein position
-		self.pstart_position = position
-	def prot_end(self, position):
-		# integer of final protein position from blast hit
-		self.pend_position = position
+		self.gend_position, self.pend_position = gp, pp
 	def prot_span(self):
 		return self.pend_position - self.pstart_position
 	# calculate the coverage as number of amino acids that align at least once divided by query length
@@ -186,8 +175,7 @@ def get_position(hittuples, direction):
 	else:
 		return min([x[0] for x in hittuples])
 
-def get_pm_positions(sortedhits, tandemcutoff, querylen, verbose, slidecutoff=0.1):
-	tandemcounter = 0
+def get_pm_positions(sortedhits, querylen, verbose, slidecutoff=0.1):
 	# if no hits are found, perhaps in one direction, then return an empty list
 	if not sortedhits:
 		return []
@@ -202,22 +190,17 @@ def get_pm_positions(sortedhits, tandemcutoff, querylen, verbose, slidecutoff=0.
 	# generate a protein match each time exon order goes from beginning to end
 	for i,hit in enumerate(sortedhits):
 		iqend = hit[1]
-		# checks if the current end position is earlier than the max
+		# checks if the current end position is earlier than the most recent max, this allows a drop in value of the sildecutoff, which is by default 10 percent
 		if iqend < (lastqend - (querylen * slidecutoff) ):
 			# there should be no prevhit for the first hit
 			if prevhit:
 				# also add the previous value to the match, assuming there is a prevhit
-				proteinmatch.set_end(prevhit[3])
-				proteinmatch.prot_end(prevhit[1])
+				proteinmatch.set_ends(prevhit[3],prevhit[1])
 				geneEnd = prevhit[3]
 				protMatches.append(proteinmatch)
 			# if yes, assume that it is the start of a new protein match
-			proteinmatch = ProteinMatch(i)
-			proteinmatch.set_start(hit[2])
-			proteinmatch.prot_start(hit[0])
+			proteinmatch = ProteinMatch(hit[2],hit[0])
 			# also check here if genes are tandem duplicates
-			if hit[2] + tandemcutoff > geneEnd:
-				tandemcounter += 1
 		elif iqend == lastqend:
 			# this probably occurs due to repeated domains and the query being too short
 			### TODO figure out how to deal with this
@@ -228,10 +211,21 @@ def get_pm_positions(sortedhits, tandemcutoff, querylen, verbose, slidecutoff=0.
 		prevhit = hit
 	else:
 		# need to add the final hit
-		proteinmatch.set_end(hit[3])
-		proteinmatch.prot_end(hit[1])
+		proteinmatch.set_ends(hit[3], hit[1])
 		protMatches.append(proteinmatch)
-	return protMatches, tandemcounter
+	return protMatches
+
+def tandem_counter(tandemcutoff, protMatches):
+	tandemCount = 0
+	geneEnd = 0
+	# direction does not matter, only closeness of boundaries, so sort by start position
+	for pm in sorted(protMatches, key=lambda x: x.gstart_position):
+		if geneEnd: # from previous pm
+			geneStart = min(pm.gstart_position, pm.gend_position)
+			if abs(geneStart - geneEnd) <= tandemcutoff:
+				tandemCount += 1
+		geneEnd = max(pm.gstart_position, pm.gend_position)
+	return tandemCount
 
 def check_match_length(protMatches, querylen, covcutoff, verbose, min_protein=100):
 	# for each match, check if it is long enough and return the start and end values
@@ -265,11 +259,12 @@ def calc_coverage_drop(protstart, protend, querylen, interval, flatexon):
 	ucov = protstart
 	vcov = abs(querylen-protend)
 	# remaining interval should be proportional to missing size of protein
+	# flatexon is defined by args.interval_distance
 	uinterval = int(ucov*interval) + flatexon
 	vinterval = int(vcov*interval) + flatexon
 	return uinterval, vinterval
 
-def calc_boundaries(startval, endval, uinverval, vinterval, contiglen):
+def adjust_boundaries(startval, endval, uinverval, vinterval, contiglen):
 	# this generates the 5' boundary to search for genes, which is the 5' blast hit minus the defined distance
 	uvalue = startval - uinverval
 	# this generates the 3' boundary to search for genes, which is the 3' hit plus the defined distance
@@ -465,14 +460,14 @@ def main(argv, wayout):
 
 			# within forward hits
 				if forwardhits:
-					protMatches, tandems = get_pm_positions(sorted(forwardhits, key=lambda x: x[3]), args.tandem_distance, querylen, args.verbose)
+					protMatches = get_pm_positions(sorted(forwardhits, key=lambda x: x[3]), querylen, args.verbose)
 					longMatches = check_match_length(protMatches, querylen, args.min_coverage, args.verbose)
-					tandemdups += tandems
+					tandemdups += tandem_counter(args.tandem_distance, protMatches)
 					for pm in longMatches:
 						plusstrand += 1
 						hitDictCounter[targetid] += 1
 						uinterval, vinterval = calc_coverage_drop(pm.pstart_position, pm.pend_position, querylen, pm.base_per_aa(), args.interval_distance )
-						uvalue, vvalue = calc_boundaries(pm.gstart_position, pm.gend_position, uinterval, vinterval, contiglen)
+						uvalue, vvalue = adjust_boundaries(pm.gstart_position, pm.gend_position, uinterval, vinterval, contiglen)
 						# strand should be either -trev or -tfor
 						# which are the genewise options for reverse (-) and forward (+)
 						gwCommand = ["genewise", "-gff", "-tfor", "-u", "%d" % uvalue, "-v", "%d" % vvalue, queryName, contigName]
@@ -490,16 +485,16 @@ def main(argv, wayout):
 
 				# within reverse hits
 				if reversehits:
-					protMatches, tandems = get_pm_positions(sorted(reversehits, key=lambda x: x[2], reverse=True), args.tandem_distance, querylen, args.verbose)
+					protMatches = get_pm_positions(sorted(reversehits, key=lambda x: x[2], reverse=True), querylen, args.verbose)
 					longMatches = check_match_length(protMatches, querylen, args.min_coverage, args.verbose)
-					tandemdups += tandems
+					tandemdups += tandem_counter(args.tandem_distance, protMatches)
 					for pm in longMatches:
 						minusstrand += 1
 						hitDictCounter[targetid] += 1
 						# intervals are switched since the end of the protein is at 5prime end
 						vinterval, uinterval = calc_coverage_drop(pm.pstart_position, pm.pend_position, querylen, pm.base_per_aa(), args.interval_distance )
 						# gend and gstart positions are switched, since it is reverse
-						uvalue, vvalue = calc_boundaries(pm.gend_position, pm.gstart_position, uinterval, vinterval, contiglen)
+						uvalue, vvalue = adjust_boundaries(pm.gend_position, pm.gstart_position, uinterval, vinterval, contiglen)
 						gwCommand = ["genewise", "-gff", "-trev", "-u", "%d" % uvalue, "-v", "%d" % vvalue, queryName, contigName]
 						if args.commands:
 							print >> gwo, " ".join(gwCommand), ">> {}".format(genewiseGff)
