@@ -21,7 +21,7 @@ In general, blasting all human proteins against the target genome can find many 
 
   `blast2gff.py -b prots_vs_genome.tab > prots_vs_genome.gff3`
 
-3) Run blast2genewise.py to run generate Genewise commands from the blast hits. Groups of blast hits in the same region define the boundary for Genewise to speed up the gene search, plus a margin on both sides. All gff outputs of Genewise are collected into a single file that is named automatically. These will be in the normal gene-mRNA-exon-CDS format for gff3 files.
+3) Run blast2genewise.py to run generate Genewise commands from the blast hits. Groups of blast hits in the same region define the boundary for Genewise to speed up the gene search, plus a margin on both sides. All gff outputs of Genewise are collected into a single file that is named automatically. These will be in the normal gene-mRNA-exon-CDS format for gff3 files. If the goal is to use EVM or similar program other than a browser, exon features in the gff3 may be needed and can be added to the output by adding the `-E` flag.
 
   `blast2genewise.py -q proteins.fa -d target_genome.fa -b prots_vs_genome.tab`
   
