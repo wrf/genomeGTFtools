@@ -37,6 +37,10 @@ blast2genewise.py -b tblastn_output.tab -q refprots.fa -d target_genome.fa
   GNU parallel, to allow parallel processing of something like 20k commands
   single process operation could take 6-8 hours, which could become 1 hour
 
+  ## NOTE FOR EVM
+  some downstream programs require either exon or intron features in the gff,
+  which are not included by default, but can be added with the -E option
+
   ## GETTING BLAST RESULTS WITH TBLASTN
 
   tabular blast output should be made from blast programs with -outfmt 6
@@ -53,9 +57,32 @@ tblastn -query refprots.fa -db target_genome.fa -outfmt 6 > tblastn_output.tab
   limit number of hits for common domains with -max_target_seqs 10
 '''
 
-# TEST
+# TEST PARAMETERS
 test_prepare = "tblastn -query ml199826a.fasta -db ml2635.fa -outfmt 6 > ml199826a.tblastn6.tab"
 test_run = "blast2genewise.py -b ml199826a.tblastn6.tab -q ml199826a.fasta -d ml2635.fa"
+test_gff = """
+ML2635	GeneWise	match	109142	107522	161.60	-	.	ML2635-genewise-prediction-1
+ML2635	GeneWise	cds	109142	108998	0.00	-	0	ML2635-genewise-prediction-1
+ML2635	GeneWise	intron	108997	108834	0.00	-	.	ML2635-genewise-prediction-1
+ML2635	GeneWise	cds	108833	108689	0.00	-	2	ML2635-genewise-prediction-1
+ML2635	GeneWise	intron	108688	107574	0.00	-	.	ML2635-genewise-prediction-1
+ML2635	GeneWise	cds	107573	107522	0.00	-	1	ML2635-genewise-prediction-1
+ML2635	GeneWise	match	107517	107039	201.01	-	.	ML2635-genewise-prediction-2
+ML2635	GeneWise	cds	107517	107300	0.00	-	0	ML2635-genewise-prediction-2
+ML2635	GeneWise	intron	107299	107157	0.00	-	.	ML2635-genewise-prediction-2
+ML2635	GeneWise	cds	107156	107039	0.00	-	1	ML2635-genewise-prediction-2
+ML2635	GeneWise	match	106411	104608	694.22	-	.	ML2635-genewise-prediction-1
+ML2635	GeneWise	cds	106411	106341	0.00	-	0	ML2635-genewise-prediction-1
+ML2635	GeneWise	intron	106340	106224	0.00	-	.	ML2635-genewise-prediction-1
+ML2635	GeneWise	cds	106223	105952	0.00	-	1	ML2635-genewise-prediction-1
+ML2635	GeneWise	intron	105951	105759	0.00	-	.	ML2635-genewise-prediction-1
+ML2635	GeneWise	cds	105758	105416	0.00	-	2	ML2635-genewise-prediction-1
+ML2635	GeneWise	intron	105415	105277	0.00	-	.	ML2635-genewise-prediction-1
+ML2635	GeneWise	cds	105276	105168	0.00	-	1	ML2635-genewise-prediction-1
+ML2635	GeneWise	intron	105167	105042	0.00	-	.	ML2635-genewise-prediction-1
+ML2635	GeneWise	cds	105041	104869	0.00	-	0	ML2635-genewise-prediction-1
+ML2635	GeneWise	intron	104868	104726	0.00	-	.	ML2635-genewise-prediction-1
+ML2635	GeneWise	cds	104725	104608	0.00	-	1	ML2635-genewise-prediction-1"""
 test_output = """
 ML2635	GeneWise	gene	107522	109142	161.60	-	.	ID=ML199826a.1;Name=ML199826a.1
 ML2635	GeneWise	mRNA	107522	109142	.	-	.	ID=ML199826a.1.mrna;Parent=ML199826a.1
@@ -277,8 +304,9 @@ def adjust_boundaries(startval, endval, uinverval, vinterval, contiglen):
 		vvalue = contiglen
 	return uvalue, vvalue
 
-def print_new_gff(stdoutLines, outFile, queryname, counter, gffTag):
+def print_new_gff(stdoutLines, outFile, queryname, counter, gffTag, doexons):
 	# output is in bitstring format, so must split by line breaks first
+	exoncounter = 0
 	for line in stdoutLines.split("\n"):
 		# disregard empty lines and comment lines
 		if line and not line[0] == "/":
@@ -307,6 +335,13 @@ def print_new_gff(stdoutLines, outFile, queryname, counter, gffTag):
 				print >> outFile, "\t".join(gffSplits)
 				parent = "Parent={0}.{1}.mrna".format(queryname, counter)
 			elif gffSplits[2]=="cds":
+				if doexons:
+					exoncounter += 1
+					gffSplits[2] = "exon"
+					gffSplits[5] = "."
+					attrstring = "ID={0}.{1}.exon{3};{2}".format(queryname, counter, parent, exoncounter)
+					gffSplits[8] = attrstring
+					print >> outFile, "\t".join(gffSplits)
 				gffSplits[2] = "CDS"
 				gffSplits[5] = "."
 				attrstring = "ID={0}.{1}.cds;{2}".format(queryname, counter, parent)
@@ -330,6 +365,7 @@ def main(argv, wayout):
 	parser.add_argument('-i','--interval-distance', type=int, default=200, help="added distance to end of hsp [200]")
 	parser.add_argument('-n','--tandem-distance', type=int, default=10000, help="allowed distance between full hits [10000]")
 	parser.add_argument('-C','--commands', action="store_true", help="write commands to file instead of running")
+	parser.add_argument('-E','--exons', action="store_true", help="write gff3 features for exons as well")
 	parser.add_argument('-p','--processors', type=int, default=1, help="number of processors for parallel [1]")
 	parser.add_argument('-v','--verbose', help="verbose output", action="store_true")
 	args = parser.parse_args(argv)
@@ -406,13 +442,13 @@ def main(argv, wayout):
 
 	# for either direct output or written as output for each command
 	#genewiseGff = "{}_genewise_{}.gff".format(args.blast, time.strftime("%Y%m%d") )
-	genewiseGff = "{}_genewise_{}.gff".format(args.blast, time.strftime("%H%M%S") )
+	genewiseGff = "{}_genewise_{}.gff".format(args.blast, time.strftime("%Y%m%d-%H%M%S") )
 	if os.path.isfile(genewiseGff):
 		print >> sys.stderr, "File %s already exists, results will be appended" % (genewiseGff), time.asctime()
 	# if using commands argument, make a file listing the commands instead of running them
 	if args.commands:
 		# generate a file for commands to be called in parallel
-		genewiseCommands = "genewise_commands_{}.sh".format(time.strftime("%H%M%S"))
+		genewiseCommands = "genewise_commands_{}.sh".format(time.strftime("%Y%m%d-%H%M%S"))
 		genewiseoutput = genewiseCommands
 		print >> sys.stderr, "Writing commands to %s" % (genewiseCommands), time.asctime()
 	else:
@@ -481,7 +517,7 @@ def main(argv, wayout):
 							# if there is any output
 							if gffLines:
 								#IDstring = make_attr_string(targetid, hitDictCounter[targetid], pm.pstart_position, pm.pend_position)
-								print_new_gff(gffLines, gwo, targetid, hitDictCounter[targetid], args.gff)
+								print_new_gff(gffLines, gwo, targetid, hitDictCounter[targetid], args.gff, args.exons)
 
 				# within reverse hits
 				if reversehits:
@@ -505,7 +541,7 @@ def main(argv, wayout):
 							gffLines = gwcall.communicate()[0]
 							# if there is any output
 							if gffLines:
-								print_new_gff(gffLines, gwo, targetid, hitDictCounter[targetid], args.gff)
+								print_new_gff(gffLines, gwo, targetid, hitDictCounter[targetid], args.gff, args.exons)
 
 	# these counts relate only to the preprocessing, and not to the output of genewise
 	print >> sys.stderr, "Counted %d forward exons and %d reverse exons" % (plusexons, minusexons), time.asctime()
