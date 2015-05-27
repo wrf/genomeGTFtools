@@ -37,10 +37,6 @@ blast2genewise.py -b tblastn_output.tab -q refprots.fa -d target_genome.fa
   GNU parallel, to allow parallel processing of something like 20k commands
   single process operation could take 6-8 hours, which could become 1 hour
 
-  ## NOTE FOR EVM
-  some downstream programs require either exon or intron features in the gff,
-  which are not included by default, but can be added with the -E option
-
   ## GETTING BLAST RESULTS WITH TBLASTN
 
   tabular blast output should be made from blast programs with -outfmt 6
@@ -379,7 +375,7 @@ def main(argv, wayout):
 	parser.add_argument('-i','--interval-distance', type=int, default=200, help="added distance to end of hsp [200]")
 	parser.add_argument('-n','--tandem-distance', type=int, default=10000, help="allowed distance between full hits [10000]")
 	parser.add_argument('-C','--commands', action="store_true", help="write commands to file instead of running")
-	parser.add_argument('-E','--exons', action="store_false", help="write gff3 features for exons as well")
+	parser.add_argument('-E','--exons', action="store_false", help="exclude gff3 features for exons")
 	parser.add_argument('-p','--processors', type=int, default=1, help="number of processors for parallel [1]")
 	parser.add_argument('-v','--verbose', help="verbose output", action="store_true")
 	args = parser.parse_args(argv)
