@@ -86,20 +86,31 @@ ML2635	GeneWise	cds	104725	104608	0.00	-	1	ML2635-genewise-prediction-1"""
 test_output = """
 ML2635	GeneWise	gene	107522	109142	161.60	-	.	ID=ML199826a.1;Name=ML199826a.1
 ML2635	GeneWise	mRNA	107522	109142	.	-	.	ID=ML199826a.1.mrna;Parent=ML199826a.1
+ML2635	GeneWise	exon	108998	109142	.	-	.	ID=ML199826a.1.exon1;Parent=ML199826a.1.mrna
 ML2635	GeneWise	CDS	108998	109142	.	-	0	ID=ML199826a.1.cds;Parent=ML199826a.1.mrna
+ML2635	GeneWise	exon	108689	108833	.	-	.	ID=ML199826a.1.exon2;Parent=ML199826a.1.mrna
 ML2635	GeneWise	CDS	108689	108833	.	-	2	ID=ML199826a.1.cds;Parent=ML199826a.1.mrna
+ML2635	GeneWise	exon	107522	107573	.	-	.	ID=ML199826a.1.exon3;Parent=ML199826a.1.mrna
 ML2635	GeneWise	CDS	107522	107573	.	-	1	ID=ML199826a.1.cds;Parent=ML199826a.1.mrna
 ML2635	GeneWise	gene	107039	107517	201.01	-	.	ID=ML199826a.1;Name=ML199826a.1
 ML2635	GeneWise	mRNA	107039	107517	.	-	.	ID=ML199826a.1.mrna;Parent=ML199826a.1
+ML2635	GeneWise	exon	107300	107517	.	-	.	ID=ML199826a.1.exon4;Parent=ML199826a.1.mrna
 ML2635	GeneWise	CDS	107300	107517	.	-	0	ID=ML199826a.1.cds;Parent=ML199826a.1.mrna
+ML2635	GeneWise	exon	107039	107156	.	-	.	ID=ML199826a.1.exon5;Parent=ML199826a.1.mrna
 ML2635	GeneWise	CDS	107039	107156	.	-	1	ID=ML199826a.1.cds;Parent=ML199826a.1.mrna
 ML2635	GeneWise	gene	104608	106411	694.22	-	.	ID=ML199826a.2;Name=ML199826a.2
 ML2635	GeneWise	mRNA	104608	106411	.	-	.	ID=ML199826a.2.mrna;Parent=ML199826a.2
+ML2635	GeneWise	exon	106341	106411	.	-	.	ID=ML199826a.2.exon1;Parent=ML199826a.2.mrna
 ML2635	GeneWise	CDS	106341	106411	.	-	0	ID=ML199826a.2.cds;Parent=ML199826a.2.mrna
+ML2635	GeneWise	exon	105952	106223	.	-	.	ID=ML199826a.2.exon2;Parent=ML199826a.2.mrna
 ML2635	GeneWise	CDS	105952	106223	.	-	1	ID=ML199826a.2.cds;Parent=ML199826a.2.mrna
+ML2635	GeneWise	exon	105416	105758	.	-	.	ID=ML199826a.2.exon3;Parent=ML199826a.2.mrna
 ML2635	GeneWise	CDS	105416	105758	.	-	2	ID=ML199826a.2.cds;Parent=ML199826a.2.mrna
+ML2635	GeneWise	exon	105168	105276	.	-	.	ID=ML199826a.2.exon4;Parent=ML199826a.2.mrna
 ML2635	GeneWise	CDS	105168	105276	.	-	1	ID=ML199826a.2.cds;Parent=ML199826a.2.mrna
+ML2635	GeneWise	exon	104869	105041	.	-	.	ID=ML199826a.2.exon5;Parent=ML199826a.2.mrna
 ML2635	GeneWise	CDS	104869	105041	.	-	0	ID=ML199826a.2.cds;Parent=ML199826a.2.mrna
+ML2635	GeneWise	exon	104608	104725	.	-	.	ID=ML199826a.2.exon6;Parent=ML199826a.2.mrna
 ML2635	GeneWise	CDS	104608	104725	.	-	1	ID=ML199826a.2.cds;Parent=ML199826a.2.mrna"""
 #
 import sys
@@ -339,9 +350,12 @@ def print_new_gff(stdoutLines, outFile, queryname, counter, gffTag, doexons):
 					exoncounter += 1
 					gffSplits[2] = "exon"
 					gffSplits[5] = "."
+					intronframe = gffSplits[7]
+					gffSplits[7] = "."
 					attrstring = "ID={0}.{1}.exon{3};{2}".format(queryname, counter, parent, exoncounter)
 					gffSplits[8] = attrstring
 					print >> outFile, "\t".join(gffSplits)
+					gffSplits[7] = intronframe
 				gffSplits[2] = "CDS"
 				gffSplits[5] = "."
 				attrstring = "ID={0}.{1}.cds;{2}".format(queryname, counter, parent)
@@ -365,7 +379,7 @@ def main(argv, wayout):
 	parser.add_argument('-i','--interval-distance', type=int, default=200, help="added distance to end of hsp [200]")
 	parser.add_argument('-n','--tandem-distance', type=int, default=10000, help="allowed distance between full hits [10000]")
 	parser.add_argument('-C','--commands', action="store_true", help="write commands to file instead of running")
-	parser.add_argument('-E','--exons', action="store_true", help="write gff3 features for exons as well")
+	parser.add_argument('-E','--exons', action="store_false", help="write gff3 features for exons as well")
 	parser.add_argument('-p','--processors', type=int, default=1, help="number of processors for parallel [1]")
 	parser.add_argument('-v','--verbose', help="verbose output", action="store_true")
 	args = parser.parse_args(argv)
