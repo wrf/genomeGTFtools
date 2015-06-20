@@ -21,20 +21,18 @@ In general, blasting all human proteins against the target genome can find many 
 
   `blast2gff.py -b prots_vs_genome.tab > prots_vs_genome.gff3`
 
-3) Run blast2genewise.py to run generate Genewise commands from the blast hits. Groups of blast hits in the same region define the boundary for Genewise to speed up the gene search, plus a margin on both sides. All gff outputs of Genewise are collected into a single file that is named automatically. These will be in the normal gene-mRNA-exon-CDS format for gff3 files. For some genome browsers, exon features in the gff3 may clutter up the viewing window, therefore can be excluded with the `-E` flag.
+3) Run blast2genewise.py to run generate Genewise commands from the blast hits. Groups of blast hits in the same region define the boundary for Genewise to speed up the gene search, plus a margin on both sides. All gff outputs of Genewise are collected into a single file that is named automatically. These will be in the normal gene-mRNA-exon-CDS format for gff3 files. 
 
   `blast2genewise.py -q proteins.fa -d target_genome.fa -b prots_vs_genome.tab`
   
-4) If parallel is installed and there is perhaps another script to reformat the Genewise output file, then commands can be generated and written automatically to a file from blast2genewise.py with the `-C` option. These commands could be called as follows:
+  For some genome browsers, exon features in the gff3 may clutter up the viewing window, therefore can be excluded with the `-E` flag. In most cases it is good to have them, since they can also be removed later quite easily with `grep -v exon`.
 
-  `parallel --gnu -a genewise_commands_171710.sh -j 16 --joblog target_genome_genewise.log --halt 1`
-  
-  Otherwise the gff format of Genewise does not provide the Name or ID of each feature, so is probably incompatible with most genome browsers.
+I previously had the idea to use parallel to run a bunch of Genewise commands. However, these would all have to be wrapped again since the Genewise gff format does not provide the Name or ID of each feature, so is probably incompatible with most genome browsers.
 
 ## History
 For *ab initio* gene prediction of a new genome, it is often useful to confirm (or even just find) genes that may not be expressed (thus have no mRNA evidence) but are highly similar to known genes in other genomes. These might include developmentally restricted genes (hopefully most of them), paralogs that do not map correctly, or pseudogenes.
 
-The goal is to convert tblastn results into gene models for use in evidenceModeler or similar evidence collection software for generation of gene models. Blast is very fast, which is why it is useful. I had looked into several other programs which generate .gff format gene models from proteins mapping onto genomes. This included [exonerate](https://www.ebi.ac.uk/~guy/exonerate/) and [Genewise](http://dendrome.ucdavis.edu/resources/tooldocs/wise2/doc_wise2.html). Both of these had problems. Exonerate is unbelievably slow, and genewisedb maxed out my memory (32GB) very quickly when searching for a set of genes across the whole genome (15k prots vs. 150Mb genome contigs). Genewise also has a [difficult installation](http://ninebysix.blogspot.de/2012/11/quick-note-genewise-and-glib.html), in that it probably will not compile out of the box on linux. On Ubuntu, it can be installed without downloading the source with `sudo apt-get install wise wise-doc`.
+The goal was to convert tblastn results into gene models for use in evidenceModeler or similar evidence collection software for generation of gene models. Blast is very fast, which is why it is useful. I had looked into several other programs which generate .gff format gene models from proteins mapping onto genomes. This included [exonerate](https://www.ebi.ac.uk/~guy/exonerate/) and [Genewise](http://dendrome.ucdavis.edu/resources/tooldocs/wise2/doc_wise2.html). Both of these had problems. Exonerate is unbelievably slow, and genewisedb maxed out my memory (32GB) very quickly when searching for a set of genes across the whole genome (15k prots vs. 150Mb genome contigs). Genewise also has a [difficult installation](http://ninebysix.blogspot.de/2012/11/quick-note-genewise-and-glib.html), in that it probably will not compile out of the box on linux. On Ubuntu, it can be installed without downloading the source with `sudo apt-get install wise wise-doc`.
 
 My original idea was to fork from the open source blast-to-gff program- [genBlastg](http://genome.sfu.ca/genblast/download.html), which was based on blastall or wublast. Neither of those are typically used (or even updated), so it should instead be compatible with [NCBI blast+](http://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download) (currently v2.2.30).
 
