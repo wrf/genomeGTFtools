@@ -29,6 +29,10 @@ In general, blasting all human proteins against the target genome can find many 
 
 I previously had the idea to use parallel to run a bunch of Genewise commands. However, these would all have to be wrapped again since the Genewise gff format does not provide the Name or ID of each feature, so is probably incompatible with most genome browsers.
 
+4) Because similar proteins or splice variants tend to produce identical gene predictions, these can be removed with the included script `removeredundantgff.py` as:
+
+   `removeredundantgff.py -g target_genome_genewise.gff > target_genome_genewise.unique.gff`
+
 ## History
 For *ab initio* gene prediction of a new genome, it is often useful to confirm (or even just find) genes that may not be expressed (thus have no mRNA evidence) but are highly similar to known genes in other genomes. These might include developmentally restricted genes (hopefully most of them), paralogs that do not map correctly, or pseudogenes.
 
