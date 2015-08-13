@@ -16,13 +16,10 @@ removeredundantgff.py -g genewise.gff3 -C > genewise.nonredundant.gff3
 '''
 
 import sys
-import os
 import argparse
 import time
 import re
 from collections import defaultdict
-from itertools import chain,groupby
-from numpy import histogram,arange
 
 def main(argv, wayout):
 	if not len(argv):
