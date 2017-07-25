@@ -4,10 +4,18 @@
 These are some scripts to convert various features and annotations into a GFF-like file for use in genome browsers.
 
 ## pfam2gff
-This has two modes: one will convert the "tabular" hmmscan output (generated using PFAM-A as the database) into a protein GFF with domains at the protein positions. The other output will convert the domain positions into genomic coordinates for use in genome browsers, so individual domains can be viewed spanning exons.
+This has two modes: one will convert the "tabular" hmmscan output (generated using [PFAM-A](ftp://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/) as the database) into a protein GFF with domains at the protein positions. 
+
+  `hmmscan --cpu 4 --domtblout stringtie.pfam.tab ~/PfamScan/data/Pfam-A.hmm stringtie_transdecoder_prots.fasta > stringtie.pfam.log`
+
+  `pfam2gff.py -i stringtie.pfam.tab > stringtie.pfam.gff`
+
+The other output will convert the domain positions into genomic coordinates for use in genome browsers, so individual domains can be viewed spanning exons. Run `hmmscan` as above, then use the `-g` option to include genomic coordinates. Use `-T` for presets for TransDecoder genome GFF file.
+
+  `pfam2gff.py -g stringtie_transdecoder.gff -i stringtie.pfam.tab -T > stringtie_transdecoder_pfam_domains.gff`
 
 ## pfamgff2clans
-Convert a PFAM protein GFF (above) to the PFAM clans, and remove some redundant hits, essentially just changing the names of the domains and merging duplicates. This is needed for the pfampipeline.py script.
+Convert a PFAM protein GFF (above) to the PFAM clans, and remove some redundant hits, essentially just changing the names of the domains and merging duplicates. This is needed for the pfampipeline.py script. This script requires the [clan links](ftp://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.clans.tsv.gz).
 
 ## repeat2gtf
 From scaffolds or masked contigs, generate a feature for each long repeat of N's or n's (or any other arbitrary letter or pattern). The most obvious application is to make a track for gaps, which is the default behavior. The search is a regular expression, so could be any other simple repeat as well - CACA, CAG (glutamine repeats).
