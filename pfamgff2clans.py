@@ -3,7 +3,7 @@
 # pfamgff2clans.py v1.0 created 2016-04-19
 
 '''
-pfamgff2clans.py  last modified 2016-04-20
+pfamgff2clans.py  last modified 2017-08-24
 
 pfamgff2clans.py -i proteins.pfam.gtf -c Pfam-A.clans.tsv > proteins.clan.gtf
 
@@ -18,7 +18,7 @@ import sys
 import time
 import argparse
 import re
-from collections import defaultdict
+from collections import defaultdict,OrderedDict
 from Bio import SeqIO
 
 def parse_clan_links(clanlinks):
@@ -87,13 +87,19 @@ def parse_pfam_gtf(pfamgtf, overlaplimit, verbose=False):
 def convert_domains(domainsbyprot, programname, outputtype, wayout, pfamtoclandict, annotdict, fastalendict=None):
 	print >> sys.stderr, "# Coverting domains to clans", time.asctime()
 	writecount = 0
-	for protid, domlist in domainsbyprot.iteritems():
+
+	if fastalendict: # if original fasta file is there, use that order
+		iterprots = fastalendict.iterkeys()
+	else:
+		iterprots = domainsbyprot.iterkeys()
+	# iterate over protein IDs, and print respctive domains
+	for protid in iterprots:
 		if fastalendict: # if length is available
 			# print one entry for each protein
 			# this could also be id: SO:0000104 polypeptide
 			print >> wayout, "{0}\t{1}\tprotein\t1\t{2}\t.\t.\t.\tID={0}".format(protid, programname, fastalendict[protid])
 		domaincounter = defaultdict(int)
-		for domainstats in domlist:
+		for domainstats in domainsbyprot[protid]:
 			attributes = domainstats[8]
 			hitid = re.search('ID=([\w.|-]+)', attributes).group(1)
 			pfamid, targetname, domnumber = hitid.split('.') # ID should appear as ID={6}.{7}.{8};
@@ -107,7 +113,7 @@ def convert_domains(domainsbyprot, programname, outputtype, wayout, pfamtoclandi
 
 def get_prot_lengths(sequences):
 	'''from a fasta file, return a dictionary where protein ID is the key and length is the value'''
-	seqlendict = {}
+	seqlendict = OrderedDict()
 	print >> sys.stderr, "# Parsing proteins from {}".format(sequences), time.asctime()
 	for seqrec in SeqIO.parse(sequences,'fasta'):
 		seqlendict[seqrec.id] = len(seqrec.seq)
