@@ -15,6 +15,9 @@ proteintypes = gtftab[which(gtftab[,3]=="protein"),]
 signaltypes = gtftab[which(gtftab[,3]=="signal_peptide"),]
 PFAMtypes = gtftab[which(gtftab[,3]=="PFAM"),]
 
+# residue types must be generated separately with alignmentpos2gff.py
+residuetypes = gtftab[which(gtftab[,3]=="modified residue"),]
+
 protnames = unique(gtftab[,1])
 numprots = length(protnames)
 
@@ -63,4 +66,8 @@ rect(domstart, ylower, domend, yupper, col=colvec[domainindex])
 #text(domstart, protindex*10-1, domainids, pos=4, offset=0)
 text(c(0),match(protnames,protnames)*10-1, protnames, pos=4, offset=0)
 legend(0,numprots*11+10,legend=domainids[match(domnames,domaincodes)],col=colvec,pch=15,x.intersp=0.5,ncol=6)
+
+# draw modified residues as triangles
+residueindex = match(residuetypes[,1],protnames)
+points(residuetypes[,4],residueindex*10-4, pch=6)
 dev.off()
