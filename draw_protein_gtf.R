@@ -17,6 +17,8 @@ PFAMtypes = gtftab[which(gtftab[,3]=="PFAM"),]
 
 # residue types must be generated separately with alignmentpos2gff.py
 residuetypes = gtftab[which(gtftab[,3]=="modified residue"),]
+motiftypes = gtftab[which(gtftab[,3]=="motif"),]
+
 
 protnames = unique(gtftab[,1])
 numprots = length(protnames)
@@ -43,7 +45,8 @@ par(mar=c(2.5,2.5,1,2) )
 maxend = max(gtftab[,5])
 protlenrange = pretty(c(0,maxend))
 
-plot(0,0,type='n',xlim=c(0,max(protlenrange)),ylim=c(0,numprots*11+10),frame.plot=FALSE,xlab="",ylab="")
+plot(0,0,type='n',xlim=c(0,max(protlenrange)),ylim=c(0,numprots*11+10),frame.plot=FALSE,xlab="",ylab="", axes=FALSE)
+axis(1)
 
 # make black lines for length of the protein
 # this works even if no protein types are given, instead just does not draw lines
@@ -69,5 +72,11 @@ legend(0,numprots*11+10,legend=domainids[match(domnames,domaincodes)],col=colvec
 
 # draw modified residues as triangles
 residueindex = match(residuetypes[,1],protnames)
-points(residuetypes[,4],residueindex*10-4, pch=6)
+points(residuetypes[,4],residueindex*10-4, pch=6, cex=1.33)
+
+# draw selected motifs as letters themselves
+motifindex = match(motiftypes[,1],protnames)
+motifnames = gsub("Note=(\\w+)","\\2",motiftypes[,9], perl=TRUE)
+points(motiftypes[,4],motifindex*10-7, pch=motifnames)
+
 dev.off()

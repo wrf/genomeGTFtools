@@ -6,7 +6,7 @@
 # https://github.com/The-Sequence-Ontology/SO-Ontologies/blob/master/subsets/SOFA.obo
 
 '''
-pfam2gff.py  last modified 2016-04-21
+pfam2gff.py  last modified 2016-09-16
 
     EXAMPLE USAGE:
     to convert to protein gff, where domains are protein coordinates
@@ -60,6 +60,7 @@ def cds_to_intervals(gtffile, keepexons, transdecoder, aqumode, jgimode, nogenem
 				lsplits = line.split("\t")
 				scaffold = lsplits[0]
 				feature = lsplits[2]
+				strand = lsplits[6]
 				attributes = lsplits[8]
 				if aqumode:
 					attributes = attributes.replace('CDS:','') # remove CDS: from Aqu2 gene models
@@ -76,7 +77,6 @@ def cds_to_intervals(gtffile, keepexons, transdecoder, aqumode, jgimode, nogenem
 					geneid = geneid.replace(".cds","") # also works for AUGUSTUS
 				if feature=="transcript" or feature=="mRNA" or (aqumode and feature=="gene"):
 					transcounter += 1
-					strand = lsplits[6]
 					genestrand[geneid] = strand
 					genescaffold[geneid] = scaffold
 				elif feature=="CDS" or (keepexons and feature=="exon"):
@@ -84,6 +84,9 @@ def cds_to_intervals(gtffile, keepexons, transdecoder, aqumode, jgimode, nogenem
 					boundaries = ( int(lsplits[3]), int(lsplits[4]) )
 					if nogenemode: # gtf contains only exon and CDS, so get gene info from each CDS
 						geneid = re.search('transcript_id "([\w.|-]+)";', attributes).group(1)
+						# this may reassign multiple times
+						genestrand[geneid] = strand
+						genescaffold[geneid] = scaffold
 					geneintervals[geneid].append(boundaries)
 	print >> sys.stderr, "# Counted {} lines and {} comments".format(linecounter, commentlines), time.asctime()
 	print >> sys.stderr, "# Counted {} exons for {} transcripts".format(exoncounter, transcounter), time.asctime()

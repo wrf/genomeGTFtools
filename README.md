@@ -15,7 +15,19 @@ The other output will convert the domain positions into genomic coordinates for 
   `pfam2gff.py -g stringtie_transdecoder.gff -i stringtie.pfam.tab -T > stringtie_transdecoder_pfam_domains.gff`
 
 ## pfamgff2clans
-Convert a PFAM protein GFF (above) to the PFAM clans, and remove some redundant hits, essentially just changing the names of the domains and merging duplicates. This is needed for the pfampipeline.py script. This script requires the [clan links file, called Pfam-A.clans.tsv](http://pfam.xfam.org/).
+Convert a PFAM protein GFF (above) to the PFAM clans, and remove some redundant hits, essentially just changing the names of the domains and merging duplicates. This is needed for the `pfampipeline.py` script. This script requires the [clan links file, called Pfam-A.clans.tsv](http://pfam.xfam.org/).
+
+**BioPython is required for this step, to get the length of each sequence.**
+
+## pfampipeline
+**Requires BioPython, HMMER, PFAM-A and SignalP**
+Script to generate graph of domains for a FASTA file of proteins. Both of the above scripts (`pfam2gff.py` and `pfamgff2clans.py`) are automatically called, followed by [SignalP](http://www.cbs.dtu.dk/services/SignalP/) and the R script `draw_protein_gtf.R`. This is called as a command on a protein file, for example on the test dataset of [nidogen](http://www.uniprot.org/uniprot/P14543) proteins:
+
+`pfampipeline.py test_data/nidogen_full_prots.fasta`
+
+Several output files are automatically generated, including the domain assignments in a GFF-like format, and a PDF of the domains, where a black line indicates the protein length, black box is the signal peptide, and colors correspond to different domains. **Note that some domains may overlap, due to bad calls in the HMM. Domains are by definition non-overlapping, thus these must be removed. Automatic removal may be implemented in the future.**
+
+![nidogen_full_prots.png](https://github.com/wrf/genomeGTFtools/blob/master/test_data/nidogen_full_prots.png)
 
 ## repeat2gtf
 From scaffolds or masked contigs, generate a feature for each long repeat of N's or n's (or any other arbitrary letter or pattern). The most obvious application is to make a track for gaps, which is the default behavior. The search is a regular expression, so could be any other simple repeat as well - CACA, CAG (glutamine repeats).
