@@ -35,7 +35,7 @@ domaincodes = gsub("ID=([\\w\\d]+)\\..*","\\1",PFAMtypes[,9],perl=TRUE)
 domnames = unique(domaincodes)
 numdomains = length(domnames)
 domainindex = match(domaincodes,domnames)
-colvec = rainbow(numdomains, alpha=0.8)
+colvec = rainbow(numdomains, s=0.82, alpha=0.8)
 domainids = gsub("ID=([\\w\\d]+)\\.([\\w\\d-]+)\\..+","\\2",PFAMtypes[,9],perl=TRUE)
 
 # OUTPUT
@@ -70,7 +70,7 @@ rect(domstart, ylower, domend, yupper, col=colvec[domainindex])
 text(c(0),match(protnames,protnames)*10-1, protnames, pos=4, offset=0)
 legend(0,numprots*11+10,legend=domainids[match(domnames,domaincodes)],col=colvec,pch=15,x.intersp=0.5,ncol=6)
 
-# draw modified residues as triangles
+# draw modified residues as downward pointing triangles
 residueindex = match(residuetypes[,1],protnames)
 points(residuetypes[,4],residueindex*10-4, pch=6, cex=1.33)
 

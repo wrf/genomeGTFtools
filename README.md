@@ -1,7 +1,12 @@
 # genomeGTFtools
 
 ## Overview
-These are some scripts to convert various features and annotations into a GFF-like file for use in genome browsers.
+These are some scripts to convert various features and annotations into a GFF-like file for use in genome browsers. There are also general purpose tools for genome annotation.
+
+Many of these tools were used in [our analysis of the genome of the sponge *Tethya wilhelma*](https://bitbucket.org/molpalmuc/sponge-oxygen). Please cite the paper: [Mills, DB. et al (2018) The last common ancestor of animals lacked the HIF pathway and respired in low-oxygen environments. *eLife* 7:e31176.](https://doi.org/10.7554/eLife.31176)
+
+## number_contigs_by_length
+By convention, the longest chromosomes are numbered first. This naturally applies to scaffolds as well. Contigs/scaffolds can be renumbered and reordered with `number_contigs_by_length.py` script. Use the option `-c` to specify an additional output file of the conversion vector, that can be used to rename the scaffold column in any GFF file with the `rename_gtf_contigs.py` script.
 
 ## pfam2gff
 This has two modes: one will convert the "tabular" hmmscan output (generated using PFAM-A, which can be found in [the FTP section of PFAM](http://pfam.xfam.org/) as the database) into a protein GFF with domains at the protein positions. 
@@ -78,7 +83,6 @@ Because similar proteins or splice variants tend to produce identical gene predi
 
    `removeredundantgff.py -g target_genome_genewise.gff > target_genome_genewise.unique.gff`
 
-### A lengthy explanation
 For *ab initio* gene prediction of a new genome, it is often useful to confirm (or even just find) genes that may not be expressed (thus have no mRNA evidence) but are highly similar to known genes in other genomes. These might include developmentally restricted genes (hopefully most of them), paralogs that do not map correctly, or pseudogenes.
 
 The goal was to convert tblastn results into gene models for use in evidenceModeler or similar evidence collection software for generation of gene models. Blast is very fast, which is why it is useful. I had looked into several other programs which generate .gff format gene models from proteins mapping onto genomes. This included [exonerate](https://www.ebi.ac.uk/~guy/exonerate/) and [Genewise](http://dendrome.ucdavis.edu/resources/tooldocs/wise2/doc_wise2.html). Both of these had problems. Exonerate is unbelievably slow, and genewisedb maxed out my memory (32GB) very quickly when searching for a set of genes across the whole genome (15k prots vs. 150Mb genome contigs). Genewise also has a [difficult installation](http://ninebysix.blogspot.de/2012/11/quick-note-genewise-and-glib.html), in that it probably will not compile out of the box on linux. On Ubuntu, it can be installed without downloading the source with `sudo apt-get install wise wise-doc`.
@@ -89,5 +93,3 @@ As far as I could tell from looking at the code, the program creates a blast out
 
 Both versions of genBlastG that I tried (1.38, and 1.39 compiled from source) did not work; they both hit an error and died, maybe halfway through. The code appeared to be last updated in 2012, so this may not be under development anymore. The original reference for genBlastG can be found [here](http://bioinformatics.oxfordjournals.org/content/27/15/2141.full).
 
-## Misc
-This is a work in progress; there may be a citation to come once anything gets used in a real paper.
