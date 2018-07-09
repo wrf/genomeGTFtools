@@ -11,7 +11,8 @@
 # https://www.sanger.ac.uk/resources/software/gff/spec.html
 # http://www.sequenceontology.org/gff3.shtml
 
-'''
+'''blast2gff.py last modified 2018-07-09
+
 blast2gff.py -b tblastn_output.tab > output.gff3
 
     change the second and third fields in the gff output with -p and -t
@@ -24,6 +25,8 @@ tblastn -query refprots.fa -db target_genome.fa -outfmt 6 > tblastn_output.tab
 
     evalue cutoff between 1 and 1e-3 is appropriate to filter bad hits
     though this depends on the bitscore and so the relatedness of the species
+
+    to generate hints for AUGUSTUS, use -A, also change type as -t CDSpart
 '''
 
 #
@@ -84,6 +87,7 @@ def main(argv, wayout):
 	parser.add_argument('-t','--type', help="gff type or method [match_part]", default="match_part")
 	parser.add_argument('-e','--evalue-cutoff', type=float, help="evalue cutoff [1]", default=1.0)
 	parser.add_argument('-s','--score-cutoff', type=float, help="bitscore/length cutoff for filtering [0.1]", default=0.1)
+	parser.add_argument('-A','--augustus', action="store_true", help="print source information for AUGUSTUS hints")
 	parser.add_argument('-F','--filter', action="store_true", help="filter low quality matches")
 	parser.add_argument('-S','--swissprot', action="store_true", help="query sequences have swissprot headers")
 	parser.add_argument('-v','--verbose', action="store_true", help="extra output")
@@ -111,7 +115,10 @@ def main(argv, wayout):
 		# currently 'attributes' is only query id
 		# ID only appears to not work for visualization, as the gene should be the blast query
 		#attributes = "ID={}".format(qseqid)
-		attributes = "ID={0}.{1}{2};Target={0} {3} {4}".format(qseqid, args.type, hitDictCounter[qseqid], qstart, qend)
+		if args.augustus:
+			attributes = "source=P;ID={0}.{1}-{2}".format(qseqid, qstart, qend)
+		else:
+			attributes = "ID={0}.{1}{2};Target={0} {3} {4}".format(qseqid, args.type, hitDictCounter[qseqid], qstart, qend)
 		# if verbose, display the current attributes format for debugging
 		if args.verbose and linecounter == 1:
 			print >> sys.stderr, attributes
