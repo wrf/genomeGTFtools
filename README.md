@@ -75,9 +75,9 @@ Blocks of colinear genes between two species can be identified using `blast` and
 
 2) Determine the blocks with the `microsynteny.py` script. Various delimiter parameters may need to be set depending on the version of GFF for the annotations and the names of the proteins. In this case, as the subject proteins contain the same names as the `ID` field in the GFF, the delimiter `-D` must be set to any alternate symbol, here using `|`.
 
-  `/microsynteny.py -b acropora_vs_styllophora_blastp.tab -q test_data/adi_aug101220_pasa_mrna_t1_only.gff -d test_data/Spis.genome.annotation.mrna_only.gff -D "|" > test_data/acropora_vs_styllophora_microsynteny.tab`
+  `microsynteny.py -b acropora_vs_styllophora_blastp.tab -q test_data/adi_aug101220_pasa_mrna_t1_only.gff -d test_data/Spis.genome.annotation.mrna_only.gff -D "|" > test_data/acropora_vs_styllophora_microsynteny.tab`
 
-The standard output is a tab-delimited text file of 11 columns.
+The standard output is a tab-delimited text file of 11 columns. The colinear block is evident from the systematic numbering of the two genomes, as the five *A. digitifera* genes (numbered 23536-23540) correspond to the five *S. pistillata* genes (Spis14158-14162). The strand direction is the same for each gene as well.
 
 ```
 query-scaf	sub-scaf	block-id	query-gene	q-start	q-end	q-strand	sub-gene	s-start	s-end	s-strand
@@ -99,11 +99,11 @@ scaf11463	Spis.scaffold21|size1341190	blk-19	aug_v2a.19447.t1	192487	193775	-	Sp
 scaf11463	Spis.scaffold21|size1341190	blk-19	aug_v2a.19447.t1	192487	193775	-	Spis2575	784361	787164	-
 ```
 
-The other potential problem occurs in the case of tandem duplications. If a tandem duplication occurred in one of the two genomes, then nearly identical blocks will be identified for each duplicate, as up to 5 intervening genes are allowed (by the option `-s`). A hypothetical example is shown in the figure below.
+The other potential problem occurs in the case of tandem duplications. If a tandem duplication occurred in one of the two genomes, then nearly identical blocks will be identified for each duplicate, as up to 5 intervening genes are allowed (by the option `-s`). A hypothetical example is shown in the figure below. In such a case, hypothetical genes 1-3 would be matched twice (once normally, once with the intervening gene 1b), meaning the block will be counted twice.
 
 ![microsynteny_example_v1.png](https://github.com/wrf/genomeGTFtools/blob/master/test_data/microsynteny_example_v1.png)
 
-3) Optionally, determine the frequency of random matches using the `-R` option. This will randomly reorder the positions of the query proteins, and then check for synteny. Blocks of 3-in-a-row are extremely rare, though blocks of two can be found easily by setting `-m 2`. This suggests that 3 colinear genes is usually sufficient to infer inherited gene order between the two species.
+3) Optionally, determine the frequency of random matches using the `-R` option. This will randomly reorder the positions of the query proteins, and then check for synteny. Blocks of 3-in-a-row are extremely rare, though blocks of two can be found easily by setting `-m 2`. This suggests that 3 colinear genes is usually sufficient to infer inherited gene order between the two species. Usually, long blocks are actually erroneous gene fusions in one of the genomes (as above).
 
   `microsynteny.py -b acropora_vs_styllophora_blastp.tab -q test_data/adi_aug101220_pasa_mrna_t1_only.gff -d test_data/Spis.genome.annotation.mrna_only.gff -D "|" -R -m 2 > test_data/acropora_vs_styllophora_microsynteny.randomized.tab`
 
