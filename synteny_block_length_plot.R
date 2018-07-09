@@ -22,7 +22,11 @@ outputfile = gsub("([\\w/]+)\\....$","\\1.pdf",inputfile,perl=TRUE)
 pdf(outputfile, width=6, height=5)
 par(mar=c(4.2,5,2,2))
 
-counthist = hist(counttable, breaks=seq(2.5,longestblock+0.5,1), axes=FALSE, plot=TRUE, xlim=c(3,lencap), main=inputfile, xlab="Number of genes in block", ylab="Number of blocks", cex.lab=1.5, col=c("#76ee94") )
+barcolor = c("#76ee94") # green
+#barcolor = c("#fc8d62") # red/orange
+#barcolor = c("#80b1d3") # blue
+
+counthist = hist(counttable, breaks=seq(2.5,longestblock+0.5,1), axes=FALSE, plot=TRUE, xlim=c(3,lencap), main=inputfile, xlab="Number of genes in block", ylab="Number of blocks", cex.lab=1.5, col=barcolor )
 mostcommon = max(counthist$counts)
 
 axis(1,at=seq(3,lencap,3), labels=seq(3,lencap,3), cex.axis=1.2 )
@@ -34,8 +38,8 @@ totallab = paste(totalblk, "total blocks", sep=" ")
 
 totalgenes = length(unique(blockdata[,4]))
 genelab = paste(totalgenes, "total genes in blocks", sep=" ")
-text(lencap+1, mostcommon*0.65, totallab, cex=1.5, pos=2)
-text(lencap+1, mostcommon*0.50, genelab, cex=1.5, pos=2)
+text(lencap, mostcommon*0.65, totallab, cex=1.5, pos=2)
+text(lencap, mostcommon*0.50, genelab, cex=1.5, pos=2)
 
 dev.off()
 
