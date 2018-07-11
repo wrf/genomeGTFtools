@@ -20,7 +20,7 @@
 # http://dendrome.ucdavis.edu/resources/tooldocs/wise2/doc_wise2.html
 
 '''
-BLAST2GENEWISE.PY v2.4 2015-05-26
+BLAST2GENEWISE.PY v2.4 2015-05-27
 
   ## GENERAL OPERATION
 
@@ -51,6 +51,33 @@ tblastn -query refprots.fa -db target_genome.fa -outfmt 6 > tblastn_output.tab
   here 1e-1 is used, but the same can be used for tblastn to reduce file size
 
   limit number of hits for common domains with -max_target_seqs 10
+'''
+
+description_md = '''THIS PROGRAM IS DEPRICATED, AND WILL NOT BE DEVELOPED
+
+For long proteins with repeated domains, the prediction will probably not work well unless the query can cover the entire gene on the genome.
+
+Groups of blast hits in the same region define the boundary for Genewise to speed up the gene search, plus a margin on both sides. All gff outputs of Genewise are collected into a single file that is named automatically. These will be in the normal gene-mRNA-exon-CDS format for gff3 files. 
+
+  `blast2genewise.py -q proteins.fa -d target_genome.fa -b prots_vs_genome.tab`
+  
+  For some genome browsers, exon features in the gff3 may clutter up the viewing window, therefore can be excluded with the `-E` flag. In most cases it is good to have them, since they can also be removed later quite easily with `grep -v exon`.
+
+I previously had the idea to use parallel to run a bunch of Genewise commands. However, these would all have to be wrapped again since the Genewise gff format does not provide the Name or ID of each feature, so is probably incompatible with most genome browsers.
+
+Because similar proteins or splice variants tend to produce identical gene predictions, these can be removed with the included script `removeredundantgff.py` as:
+
+   `removeredundantgff.py -g target_genome_genewise.gff > target_genome_genewise.unique.gff`
+
+For *ab initio* gene prediction of a new genome, it is often useful to confirm (or even just find) genes that may not be expressed (thus have no mRNA evidence) but are highly similar to known genes in other genomes. These might include developmentally restricted genes (hopefully most of them), paralogs that do not map correctly, or pseudogenes.
+
+The goal was to convert tblastn results into gene models for use in evidenceModeler or similar evidence collection software for generation of gene models. Blast is very fast, which is why it is useful. I had looked into several other programs which generate .gff format gene models from proteins mapping onto genomes. This included [exonerate](https://www.ebi.ac.uk/~guy/exonerate/) and [Genewise](http://dendrome.ucdavis.edu/resources/tooldocs/wise2/doc_wise2.html). Both of these had problems. Exonerate is unbelievably slow, and genewisedb maxed out my memory (32GB) very quickly when searching for a set of genes across the whole genome (15k prots vs. 150Mb genome contigs). Genewise also has a [difficult installation](http://ninebysix.blogspot.de/2012/11/quick-note-genewise-and-glib.html), in that it probably will not compile out of the box on linux. On Ubuntu, it can be installed without downloading the source with `sudo apt-get install wise wise-doc`.
+
+My original idea was to fork from the open source blast-to-gff program- [genBlastg](http://genome.sfu.ca/genblast/download.html), which was based on blastall or wublast. Neither of those are typically used (or even updated), so it should instead be compatible with [NCBI blast+](http://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download) (currently v2.2.30).
+
+As far as I could tell from looking at the code, the program creates a blast output in normal text format (the default) and then parses the text to create a "report" that vaguely resembles the tabular blast output. That is then parsed to make the genes. I had considered configuring the program to work with blast+ (which was not so hard) but the parsing of the text was so messy that I had no interest in continuing by editing existing code. The program should have taken blast output format 6 as a raw input (or generated it on the fly), but this will probably never be implemented (at least not by me)
+
+Both versions of genBlastG that I tried (1.38, and 1.39 compiled from source) did not work; they both hit an error and died, maybe halfway through. The code appeared to be last updated in 2012, so this may not be under development anymore. The original reference for genBlastG can be found [here](http://bioinformatics.oxfordjournals.org/content/27/15/2141.full).
 '''
 
 # TEST PARAMETERS
@@ -223,6 +250,8 @@ def get_pm_positions(sortedhits, querylen, verbose, slidecutoff=0.1):
 	prevhit = None
 	# generate a protein match each time exon order goes from beginning to end
 	for i,hit in enumerate(sortedhits):
+		if verbose: # debugging purposes, show hits in order
+			print >> sys.stdout, hit
 		iqend = hit[1]
 		# checks if the current end position is earlier than the most recent max, this allows a drop in value of the sildecutoff, which is by default 10 percent
 		if iqend < (lastqend - (querylen * slidecutoff) ):
@@ -265,6 +294,7 @@ def check_match_length(protMatches, querylen, covcutoff, verbose, min_protein=10
 	# for each match, check if it is long enough and return the start and end values
 	longMatches = []
 	# determine if proteins are long enough to search
+	### TODO possibly have lower covcutoff for longer proteins, like 65% for short ones and 50% for long
 	for pm in protMatches:
 		if verbose:
 			print >> sys.stdout, "match length is %d vs query %d" % (pm.prot_span(), querylen)
@@ -346,12 +376,12 @@ def print_new_gff(stdoutLines, outFile, queryname, counter, gffTag, doexons):
 					exoncounter += 1
 					gffSplits[2] = "exon"
 					gffSplits[5] = "."
-					intronframe = gffSplits[7]
-					gffSplits[7] = "."
+					intronphase = gffSplits[7] # holding variable for intron phase
+					gffSplits[7] = "." # exon is displayed without phase
 					attrstring = "ID={0}.{1}.exon{3};{2}".format(queryname, counter, parent, exoncounter)
 					gffSplits[8] = attrstring
 					print >> outFile, "\t".join(gffSplits)
-					gffSplits[7] = intronframe
+					gffSplits[7] = intronphase # phase is put back for CDS
 				gffSplits[2] = "CDS"
 				gffSplits[5] = "."
 				attrstring = "ID={0}.{1}.cds;{2}".format(queryname, counter, parent)
