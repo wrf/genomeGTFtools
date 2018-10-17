@@ -2,7 +2,7 @@
 # microsynteny.py
 # v1.0 2015-10-09
 
-'''microsynteny.py v1.2 last modified 2018-07-04
+'''microsynteny.py v1.2 last modified 2018-10-17
 
 microsynteny.py -q query.gtf -d ref_species.gtf -b query_vs_ref_blast.tab -E ../bad_contigs -g -D '_' --blast-query-delimiter '.' > query_vs_ref_microsynteny.tab
 
@@ -96,7 +96,7 @@ def parse_gtf(gtffile, exonstogenes, excludedict, isref=False):
 		print >> sys.stderr, "# Found {} genes".format(len(genesbyscaffold) ), time.asctime() # uses len here
 		return genesbyscaffold
 
-def parse_tabular_blast(blasttabfile, evaluecutoff, querydelimiter, refdelimiter, maxhits=10):
+def parse_tabular_blast(blasttabfile, evaluecutoff, querydelimiter, refdelimiter, switchquery=False, maxhits=100):
 	'''read tabular blast file, return a dict where key is query ID and value is subject ID'''
 	if blasttabfile.rsplit('.',1)[1]=="gz": # autodetect gzip format
 		opentype = gzip.open
@@ -105,19 +105,29 @@ def parse_tabular_blast(blasttabfile, evaluecutoff, querydelimiter, refdelimiter
 		opentype = open
 		print >> sys.stderr, "# Parsing tabular blastx output {}".format(blasttabfile), time.asctime()
 	query_to_sub_dict = defaultdict(dict)
+	query_hits = defaultdict(int) # counter of hits
 	evalueRemovals = 0
 	for line in opentype(blasttabfile, 'r').readlines():
 		line = line.strip()
 		lsplits = line.split("\t")
 		# qseqid, sseqid, pident, length, mismatch, gapopen, qstart, qend, sstart, send, evalue, bitscore
-		queryseq = lsplits[0].rsplit(querydelimiter,1)[0]
+		if switchquery:
+			queryseq = lsplits[1].rsplit(refdelimiter,1)[0]
+			subjectid = lsplits[0].rsplit(querydelimiter,1)[0]
+		else:
+			queryseq = lsplits[0].rsplit(querydelimiter,1)[0]
+			subjectid = lsplits[1].rsplit(refdelimiter,1)[0]
+
+		# filter by evalue
 		if float(lsplits[10]) > evaluecutoff:
 			evalueRemovals += 1
 			continue
-		if len(query_to_sub_dict[queryseq]) >= maxhits: # too many hits already, skip
+		# filter by number of hits
+		if query_hits.get(queryseq) >= maxhits: # too many hits already, skip
 			continue
-		subjectid = lsplits[1].rsplit(refdelimiter,1)[0]
+		# otherwise add the entry
 		query_to_sub_dict[queryseq][subjectid] = True
+		query_hits[queryseq] += 1
 	print >> sys.stderr, "# Found blast hits for {} query sequences".format( len(query_to_sub_dict) ), time.asctime()
 	print >> sys.stderr, "# Removed {} hits by evalue".format(evalueRemovals), time.asctime()
 	print >> sys.stderr, "# Names parsed as {} from {}, and {} from {}".format( queryseq,lsplits[0], subjectid,lsplits[1] )
@@ -144,6 +154,121 @@ def randomize_genes(refdict):
 	print >> sys.stderr, "# Randomized {} genes".format(genecounter), time.asctime()
 	return randomgenesbyscaf
 
+def synteny_walk(querydict, blastdict, refdict, min_block, max_span, max_distance, db_delimiter, is_verbose, wayout):
+	'''for each query scaffold, begin with the first gene and follow as far as possible to identify colinear blocks, then print to stdout'''
+	syntenylist = []
+	blocknum = 1
+	blocklengths = defaultdict(int) # dictionary to keep track of number of blocks of length N
+	splitgenes = 0 # counter for number of genes where next gene hits same reference, so query might be split
+	basetotal = 0 # counter for block length in bases
+	scaffoldgenecounts = defaultdict(int)
+	lastmatch = "" # default is empty string
+	print >> sys.stderr, "# searching for colinear blocks of at least {} genes, with up to {} intervening genes".format( min_block, max_span )
+	for scaffold, transdict in querydict.iteritems():
+		orderedtranslist = sorted(transdict.items(), key=lambda x: x[1].start) # sort by start position
+		genesonscaff = len(orderedtranslist) # keeping track of number of genes by scaffold, for scale
+		scaffoldgenecounts[genesonscaff] += 1
+		if is_verbose:
+			print >> sys.stderr, "# Scanning scaffold {0} with {1} genes".format(scaffold, genesonscaff)
+		if genesonscaff < min_block: # not enough genes, thus no synteny would be found
+			if is_verbose:
+				print >> sys.stderr, "# Only {1} genes on scaffold {0}, skipping scaffold".format(scaffold, genesonscaff)
+			continue
+		accountedgenes = [] # list of genes already in synteny blocks on this contig
+		for i,transtuple in enumerate(orderedtranslist):
+			walksteps = max_span # genes until drop, walk starts new for each transcript
+			# starting from each transcript
+			startingtrans = transtuple[0]
+			blastrefmatch_dict = blastdict.get(startingtrans,None) # get the blast match
+			if blastrefmatch_dict==None: # if no blast match, then skip to next gene
+				if is_verbose:
+					print >> sys.stderr, "# No blast matches for {}, skipping walk".format(startingtrans)
+				continue
+			for refmatch in blastrefmatch_dict.iterkeys():
+				if refmatch==lastmatch: # unique test to see if blast hit matches previous
+					splitgenes += 1
+				if startingtrans in accountedgenes: # if gene is already in a synteny block, ignore it
+					continue
+				syntenylist = [(startingtrans,refmatch)]
+				if i < genesonscaff - 1: # this allows for 2 genes left
+					if is_verbose:
+						print >> sys.stderr, "# Starting walk from gene {}".format(startingtrans)
+					refcontig = refdict[refmatch].scaffold
+					endpos = transtuple[1].end
+					# begin of gene walk
+					for ntrans, ngeneinfo in orderedtranslist[i+1:]: # getting next transcript, and next gene
+						if walksteps > 0:
+							if ngeneinfo.start-endpos > max_distance: # next gene is too far
+								if is_verbose:
+									print >> sys.stderr, "# Next gene {} bases away from {}, stopping walk".format(ngeneinfo.start-endpos, ntrans)
+								break # end gene block
+							nmatch_dict = blastdict.get(ntrans,None)
+							if nmatch_dict==None:
+								if is_verbose:
+									print >> sys.stderr, "# No blast matches for {}, skipping gene".format(ntrans)
+								walksteps -= 1 # if no blast match, then skip to next walk step, and decrement
+								continue
+							for nmatch in nmatch_dict.iterkeys():
+								if nmatch==refmatch: # if last match is the same as current match
+									accountedgenes.append(ntrans)
+									continue # since it is still the same gene, move on but do not penalize
+								elif nmatch.rsplit(db_delimiter,1)[0]==refmatch.rsplit(db_delimiter,1)[0]:
+									accountedgenes.append(ntrans)
+									continue # since it is still the same gene, move on but do not penalize
+								else:
+									ncontig = refdict[nmatch].scaffold
+								if not ncontig==refcontig: # if contigs are different match
+									walksteps -= 1 # then skip to next walk step and decrement
+									if is_verbose:
+										print >> sys.stderr, "# {} matches {} on wrong contig {}, skipping gene".format(ntrans, nmatch, ncontig)
+								else:
+									if is_verbose:
+										print >> sys.stderr, "# Match {} found for {}".format(nmatch, ntrans)
+									walksteps = max_span # if a gene is found, reset steps
+									endpos = ngeneinfo.end
+									accountedgenes.append(ntrans)
+									syntenylist.append( (ntrans,nmatch) )
+						else: # if walksteps is 0, then break out of for loop
+							if is_verbose:
+								print >> sys.stderr, "# Limit reached for {}, stopping walk".format(ntrans)
+							break # no more searching for genes after walksteps is 0
+					### WRITE LONGEST MATCH
+					blocklen = len(syntenylist)
+					if blocklen >= min_block:
+						if is_verbose:
+							print >> sys.stderr, "# Found block of {0} genes starting from {1}".format(blocklen, startingtrans)
+						try:
+							if blocklen > max(blocklengths.keys()):
+								print >> sys.stderr, "New longest block blk-{} of {} on {}".format(blocknum, blocklen, scaffold)
+						except ValueError: # for first check where blocklengths is empty
+							print >> sys.stderr, "New longest block blk-{} of {} on {}".format(blocknum, blocklen, scaffold)
+						basetotal += transdict[syntenylist[-1][0]].end-transdict[syntenylist[0][0]].start
+						blocklengths[blocklen] += 1
+						for pair in syntenylist:
+							outline = "{}\t{}\tblk-{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}".format(scaffold, refcontig, blocknum, pair[0], transdict[pair[0]].start, transdict[pair[0]].end, transdict[pair[0]].strand, pair[1], refdict[pair[1]].start, refdict[pair[1]].end, refdict[pair[1]].strand)
+							print >> wayout, outline
+						blocknum += 1
+					else:
+						if is_verbose:
+							print >> sys.stderr, "# Block only contained {0} genes, ignoring block".format(blocklen)
+				else:
+					if is_verbose:
+						print >> sys.stderr, "# Too few genes left from {} on scaffold {}, skipping walk".format(startingtrans, scaffold)
+				lastmatch = str(refmatch)
+	print >> sys.stderr, "# Found {} possible split genes".format(splitgenes), time.asctime()
+	print >> sys.stderr, "# Most genes on a query scaffold was {}".format(max(scaffoldgenecounts.keys())), time.asctime() 
+	genetotal = sum(x*y for x,y in blocklengths.items())
+	print >> sys.stderr, "# Found {} total putative synteny blocks for {} genes".format(sum(blocklengths.values()), genetotal), time.asctime()
+	if len(blocklengths)==0: # if no blocks are found
+		sys.exit("### NO SYNTENY DETECTED, CHECK GENE ID FORMAT PARAMTERS -Q -D")
+	print >> sys.stderr, "# Average block is {:.2f}, longest block was {} genes".format( 1.0*genetotal/sum(blocklengths.values()), max(blocklengths.keys()) ), time.asctime()
+	print >> sys.stderr, "# Total block span was {} bases".format(basetotal), time.asctime()
+
+	### MAKE BLOCK HISTOGRAM
+	for k,v in sorted(blocklengths.items(),key=lambda x: x[0]):
+		print >> sys.stderr, k, v
+	# no return
+
 def main(argv, wayout):
 	if not len(argv):
 		argv.append("-h")
@@ -156,12 +281,13 @@ def main(argv, wayout):
 	parser.add_argument('--blast-query-delimiter', help="gene transcript separator for blast query [|]", default='|')
 	parser.add_argument('--blast-db-delimiter', help="gene transcript separator for blast ref [|]", default='|')
 	parser.add_argument('-e','--evalue', type=float, default=1e-4, help="evalue cutoff for post blast filtering [1e-4]")
-	parser.add_argument('-E','--exclude', help="file of list of bad contigs")
+	parser.add_argument('-E','--exclude', help="file of list of bad contigs, from either genome")
 	parser.add_argument('-g','--no-genes', action="store_true", help="genes are not defined, get gene ID for each exon")
 	parser.add_argument('-m','--minimum', type=int, default=3, help="minimum syntenic genes to keep block, must be >=2 [3]")
 	parser.add_argument('-s','--span', type=int, default=5, help="max number of skippable genes [5]")
-	parser.add_argument('-z','--distance', type=int, default=30000, help="max distance before next gene [30000]")
+	parser.add_argument('-z','--distance', type=int, default=30000, help="max distance on query scaffold before next gene [30000]")
 	parser.add_argument('-R','--randomize', help="randomize positions of query GTF", action="store_true")
+	parser.add_argument('-S','--switch-query', help="switch query and subject", action="store_true")
 	parser.add_argument('-v','--verbose', help="verbose output", action="store_true")
 	args = parser.parse_args(argv)
 
@@ -183,126 +309,21 @@ def main(argv, wayout):
 		exclusionDict = None
 
 	### SETUP DICTIONARIES ###
-	querydict = parse_gtf(args.query_gtf, args.no_genes, exclusionDict)
-	refdict = parse_gtf(args.db_gtf, args.no_genes, exclusionDict, isref=True)
-	blastdict = parse_tabular_blast(args.blast, args.evalue, args.blast_query_delimiter, args.blast_db_delimiter)
+	if args.switch_query:
+		querydict = parse_gtf(args.db_gtf, args.no_genes, exclusionDict)
+		refdict = parse_gtf(args.query_gtf, args.no_genes, exclusionDict, isref=True)
+		blastdict = parse_tabular_blast(args.blast, args.evalue, args.blast_query_delimiter, args.blast_db_delimiter, args.switch_query)
+	else:
+		querydict = parse_gtf(args.query_gtf, args.no_genes, exclusionDict)
+		refdict = parse_gtf(args.db_gtf, args.no_genes, exclusionDict, isref=True)
+		blastdict = parse_tabular_blast(args.blast, args.evalue, args.blast_query_delimiter, args.blast_db_delimiter)
 
 	### IF DOING RANDOMIZATION ###
 	if args.randomize:
 		querydict = randomize_genes(querydict)
 
 	### START SYNTENY WALKING ###
-	syntenylist = []
-	blocknum = 1
-	blocklengths = defaultdict(int) # dictionary to keep track of number of blocks of length N
-	splitgenes = 0 # counter for number of genes where next gene hits same reference, so query might be split
-	basetotal = 0 # counter for block length in bases
-	scaffoldgenecounts = defaultdict(int)
-	lastmatch = "" # default is empty string
-	print >> sys.stderr, "# searching for colinear blocks of at least {} genes, with up to {} intervening genes".format( args.minimum, args.span )
-	for scaffold, transdict in querydict.iteritems():
-		orderedtranslist = sorted(transdict.items(), key=lambda x: x[1].start) # sort by start position
-		genesonscaff = len(orderedtranslist) # keeping track of number of genes by scaffold, for scale
-		scaffoldgenecounts[genesonscaff] += 1
-		if args.verbose:
-			print >> sys.stderr, "# Scanning scaffold {0} with {1} genes".format(scaffold, genesonscaff)
-		if genesonscaff < args.minimum: # not enough genes, thus no synteny would be found
-			if args.verbose:
-				print >> sys.stderr, "# Only {1} genes on scaffold {0}, skipping scaffold".format(scaffold, genesonscaff)
-			continue
-		accountedgenes = [] # list of genes already in synteny blocks on this contig
-		for i,transtuple in enumerate(orderedtranslist):
-			walksteps = args.span # genes until drop, walk starts new for each transcript
-			# starting from each transcript
-			startingtrans = transtuple[0]
-			refmatch_dict = blastdict.get(startingtrans,None) # get the blast match
-			if refmatch_dict==None: # if no blast match, then skip to next gene
-				if args.verbose:
-					print >> sys.stderr, "# No blast matches for {}, skipping walk".format(startingtrans)
-				continue
-			for refmatch in refmatch_dict.iterkeys():
-				if refmatch==lastmatch: # unique test to see if blast hit matches previous
-					splitgenes += 1
-				if startingtrans in accountedgenes: # if gene is already in a synteny block, ignore it
-					continue
-				syntenylist = [(startingtrans,refmatch)]
-				if i < genesonscaff - 1: # this allows for 2 genes left
-					if args.verbose:
-						print >> sys.stderr, "# Starting walk from gene {}".format(startingtrans)
-					refcontig = refdict[refmatch].scaffold
-					endpos = transtuple[1].end
-					# begin of gene walk
-					for ntrans, ngeneinfo in orderedtranslist[i+1:]: # getting next transcript, and next gene
-						if walksteps > 0:
-							if ngeneinfo.start-endpos > args.distance: # next gene is too far
-								if args.verbose:
-									print >> sys.stderr, "# Next gene {} bases away from {}, stopping walk".format(ngeneinfo.start-endpos, ntrans)
-								break # end gene block
-							nmatch_dict = blastdict.get(ntrans,None)
-							if nmatch_dict==None:
-								if args.verbose:
-									print >> sys.stderr, "# No blast matches for {}, skipping gene".format(ntrans)
-								walksteps -= 1 # if no blast match, then skip to next walk step, and decrement
-								continue
-							for nmatch in nmatch_dict.iterkeys():
-								if nmatch==refmatch: # if last match is the same as current match
-									accountedgenes.append(ntrans)
-									continue # since it is still the same gene, move on but do not penalize
-								elif nmatch.rsplit(args.db_delimiter,1)[0]==refmatch.rsplit(args.db_delimiter,1)[0]:
-									accountedgenes.append(ntrans)
-									continue # since it is still the same gene, move on but do not penalize
-								else:
-									ncontig = refdict[nmatch].scaffold
-								if not ncontig==refcontig: # if contigs are different match
-									walksteps -= 1 # then skip to next walk step and decrement
-									if args.verbose:
-										print >> sys.stderr, "# {} matches {} on wrong contig {}, skipping gene".format(ntrans, nmatch, ncontig)
-								else:
-									if args.verbose:
-										print >> sys.stderr, "# Match {} found for {}".format(nmatch, ntrans)
-									walksteps = args.span # if a gene is found, reset steps
-									endpos = ngeneinfo.end
-									accountedgenes.append(ntrans)
-									syntenylist.append( (ntrans,nmatch) )
-						else: # if walksteps is 0, then break out of for loop
-							if args.verbose:
-								print >> sys.stderr, "# Limit reached for {}, stopping walk".format(ntrans)
-							break # no more searching for genes after walksteps is 0
-					### WRITE LONGEST MATCH
-					blocklen = len(syntenylist)
-					if blocklen >= args.minimum:
-						if args.verbose:
-							print >> sys.stderr, "# Found block of {0} genes starting from {1}".format(blocklen, startingtrans)
-						try:
-							if blocklen > max(blocklengths.keys()):
-								print >> sys.stderr, "New longest block blk-{} of {} on {}".format(blocknum, blocklen, scaffold)
-						except ValueError: # for first check where blocklengths is empty
-							print >> sys.stderr, "New longest block blk-{} of {} on {}".format(blocknum, blocklen, scaffold)
-						basetotal += transdict[syntenylist[-1][0]].end-transdict[syntenylist[0][0]].start
-						blocklengths[blocklen] += 1
-						for pair in syntenylist:
-							outline = "{}\t{}\tblk-{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}".format(scaffold, refcontig, blocknum, pair[0], transdict[pair[0]].start, transdict[pair[0]].end, transdict[pair[0]].strand, pair[1], refdict[pair[1]].start, refdict[pair[1]].end, refdict[pair[1]].strand)
-							print >> wayout, outline
-						blocknum += 1
-					else:
-						if args.verbose:
-							print >> sys.stderr, "# Block only contained {0} genes, ignoring block".format(blocklen)
-				else:
-					if args.verbose:
-						print >> sys.stderr, "# Too few genes left from {} on scaffold {}, skipping walk".format(startingtrans, scaffold)
-				lastmatch = str(refmatch)
-	print >> sys.stderr, "# Found {} possible split genes".format(splitgenes), time.asctime()
-	print >> sys.stderr, "# Most genes on a query scaffold was {}".format(max(scaffoldgenecounts.keys())), time.asctime() 
-	genetotal = sum(x*y for x,y in blocklengths.items())
-	print >> sys.stderr, "# Found {} total putative synteny blocks for {} genes".format(sum(blocklengths.values()), genetotal), time.asctime()
-	if len(blocklengths)==0: # if no blocks are found
-		sys.exit("### NO SYNTENY DETECTED, CHECK GENE ID FORMAT PARAMTERS -Q -D")
-	print >> sys.stderr, "# Average block is {:.2f}, longest block was {} genes".format( 1.0*genetotal/sum(blocklengths.values()), max(blocklengths.keys()) ), time.asctime()
-	print >> sys.stderr, "# Total block span was {} bases".format(basetotal), time.asctime()
-
-	### MAKE BLOCK HISTOGRAM
-	for k,v in sorted(blocklengths.items(),key=lambda x: x[0]):
-		print >> sys.stderr, k, v
+	synteny_walk(querydict, blastdict, refdict, args.minimum, args.span, args.distance, args.db_delimiter, args.verbose, wayout)
 
 if __name__ == "__main__":
 	main(sys.argv[1:],sys.stdout)
