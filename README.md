@@ -3,6 +3,20 @@
 ## Overview
 These are some scripts to convert various features and annotations into a GFF-like file for use in genome browsers. There are also general purpose tools for genome annotation.
 
+GFF (generic feature format) is a [tab-delimited pseudoformat](https://github.com/The-Sequence-Ontology/Specifications/blob/master/gff3.md) for annotating genomes, consisting of 8 well-defined columns, and a free-text 9th column (with some "guidelines" of what to include).
+
+| Column | Name | Description |
+|--------|------|-------------|
+| 1      | seqid | The sequence ID, usually this is the contig, scaffold or chromosome (e.g. `ctg0123`, `scaffold_99`, `chrX`), and NOT the name of the gene or feature (which goes in column 9) |
+| 2      | source | Usually the program that generated the data (e.g. `blastp`, `AUGUSTUS`) |
+| 3      | type | Type of feature (e.g. `gene`, `exon`), typically using [standarized terms](https://github.com/The-Sequence-Ontology/SO-Ontologies/blob/master/so.obo) |
+| 4      | start | First base in the feature |
+| 5      | end   | Last base the feature |
+| 6      | score | Float (of an arbitrary scale), could be something like coverage (say 0-1000), percent identity (0.0-100.0) |
+| 7      | strand | Which DNA strand, as forward (+), reverse (-), unstranded (.) or unknown (?) |
+| 8      | phase | Phase of the coding sequence as 0, 1, or 2 (i.e. whether the exon ends mid-codon), only applies to `CDS` features |
+| 9      | attributes | All other information, as a string of pairs of `key=value;`, though this is variable depending on version or program. Most problems with GFF are problems with parsing information from this column. |
+
 Many of these tools were used in [our analysis of the genome of the sponge *Tethya wilhelma*](https://bitbucket.org/molpalmuc/sponge-oxygen). Please cite the paper: [Mills, DB. et al (2018) The last common ancestor of animals lacked the HIF pathway and respired in low-oxygen environments. *eLife* 7:e31176.](https://doi.org/10.7554/eLife.31176)
 
 ### Jump to: ###
@@ -71,8 +85,16 @@ As above for the domains in `pfam2gff.py`, entire blast hits to transcripts or p
 
   `blast2genomegff.py -b transcripts_sprot.tab -d uniprot_sprot.fasta -g transcripts.gtf > transcripts_sprot.genome.gff`
 
+If starting from proteins, and the `CDS` features are available (such as from `AUGUSTUS`), use the options `-x` to make use of CDS instead of exons.
+
 ## microsynteny
 Blocks of colinear genes between two species can be identified using `blast` and GFF files of the gene positions for each species.
+
+   Common options are:
+   * `-m` minimum length of a block, 3 is usually sufficient for true synteny, as determined by randomized gene order (with `-R`)
+   * `-z` max allowed distance between genes. This should be roughly the upper limit of intergenic distances in the genome, meaning 99% of genes are closer than `-z` (see [here for an example](https://github.com/wrf/misc-analyses/tree/master/intron_evolution)).
+   * `-R` randomize gene order of the query, to estimate false discovery rate
+   * `--make-gff` produce a GFF output, instead of gene-by-gene information of the synteny blocks
 
 1) Blastx or blastp of the transcriptome (or translated CDS) against a database of proteins from the target species. Use the tabular output `-outfmt 6`. A maximum number of sequences does not need to be set, since the objective is to find homology, and this is not assumed from blast similarity. For example, here I am using the genomes of the corals [Acropora digitifera](http://marinegenomics.oist.jp/coral/viewer/info?project_id=3) and [Styllophora pistillata](http://spis.reefgenomics.org/).
 
@@ -117,6 +139,10 @@ The other potential problem occurs in the case of tandem duplications. If a tand
   `Rscript synteny_block_length_plot.R acropora_vs_styllophora_microsynteny.tab`
 
 ![acropora_vs_styllophora_microsynteny.png](https://github.com/wrf/genomeGTFtools/blob/master/test_data/acropora_vs_styllophora_microsynteny.png)
+
+5) Generate a GFF of the blocks, to plot in a genome browser. Use the option `--make-gff`.
+
+  `microsynteny.py -b acropora_vs_styllophora_blastp.tab -q test_data/adi_aug101220_pasa_mrna_t1_only.gff -d test_data/Spis.genome.annotation.mrna_only.gff -D "|" > test_data/acropora_vs_styllophora_microsynteny.gff`
 
 ## DEPRICATED: blast2genewise
 **To get gene models from blast hits, the best strategy may be to use** `blast2gff.py` **with the option** `-A` **to convert the blast hits to** [AUGUSTUS hints](http://augustus.gobics.de/binaries/README.TXT) (which are in a GFF-like format). This is then specified in the [AUGUSTUS](http://bioinf.uni-greifswald.de/augustus/) run as: `--hintsfile=geneset_vs_scaffolds.gff`
