@@ -6,7 +6,7 @@
 # https://github.com/The-Sequence-Ontology/SO-Ontologies/blob/master/subsets/SOFA.obo
 
 '''
-pfam2gff.py  last modified 2016-09-16
+pfam2gff.py  last modified 2018-10-24
 
     EXAMPLE USAGE:
     to convert to protein gff, where domains are protein coordinates
@@ -125,14 +125,19 @@ def parse_pfam_domains(pfamtabular, evaluecutoff, lengthcutoff, programname, out
 		domstart = int(lsplits[17])
 		domend = int(lsplits[18])
 		domnumber = lsplits[9]
+		# include target description in the Name, change disallowed characters to -
+		targetdescription = lsplits[22].replace("=","-").replace(",","-").replace(";","-")
 		domainlength = domend - domstart + 1 # bases 1 to 6 should have length 6
 		fractioncov = domainlength/float(lsplits[2])
+		# filter matches by evalue, length, etc
 		if fractioncov < lengthcutoff: # skip domains that are too short
 			shortRemovals += 1
 			continue
 		if evalue >= evaluecutoff: # skip domains with bad evalue
 			evalueRemovals += 1
 			continue
+
+		### FOR GENOME GFF ###
 		if geneintervals: # if gene intervals are given in genomic coordinates
 			genomeintervals = [] # to have empty iterable
 			# convert domain protein positions to transcript nucleotide
@@ -156,7 +161,9 @@ def parse_pfam_domains(pfamtabular, evaluecutoff, lengthcutoff, programname, out
 				continue
 			for interval in genomeintervals:
 				# thus ID appears as protein.targetname.number, so avic1234.G2F.1, and uses ID in most browsers
-				print >> sys.stdout, "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t.\tID={10}.{8}.{9};Name={7}.{8}.{9}".format(scaffold, programname, outputtype, interval[0], interval[1], domscore, strand, pfamacc, targetname, domnumber, queryid)
+				print >> sys.stdout, "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t.\tID={10}.{8}.{9};Name={7}.{8}.{11}".format(scaffold, programname, outputtype, interval[0], interval[1], domscore, strand, pfamacc, targetname, domnumber, queryid, targetdescription)
+
+		### FOR PROTEIN GFF ###
 		else: # for protein GFF, make outline for later sorting
 			boundaries = (domstart,domend)
 			if debugmode:
