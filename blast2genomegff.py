@@ -46,8 +46,6 @@ def make_seq_length_dict(sequencefile):
 	print >> sys.stderr, "# Parsing target sequences from {}".format(sequencefile), time.asctime()
 	lengthdict = {}
 	for seqrec in SeqIO.parse(sequencefile,'fasta'):
-		seqid = seqrec.id.split("|")[2]
-		lengthdict[seqid] = len(seqrec.seq)
 		lengthdict[seqrec.id] = len(seqrec.seq)
 	print >> sys.stderr, "# Found {} sequences".format(len(lengthdict)), time.asctime()
 	return lengthdict
