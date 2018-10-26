@@ -108,7 +108,7 @@ def parse_pfam_domains(pfamtabular, evaluecutoff, lengthcutoff, programname, out
 		if not line or line[0]=="#": # skip comment lines
 			continue # also catch for empty line, which would cause IndexError
 		domaincounter += 1
-		lsplits = line.split()
+		lsplits = line.split(None, 22)
 #                                                                            --- full sequence --- -------------- this domain -------------   hmm coord   ali coord   env coord
 #      0                 1         2     3                    4         5        6       7     8     9  10   11       12        13     14    15     16   17     18   19     20  21  22
 # target name        accession   tlen query name           accession   qlen   E-value  score  bias   #  of  c-Evalue  i-Evalue  score  bias  from    to  from    to  from    to  acc description of target
@@ -127,6 +127,7 @@ def parse_pfam_domains(pfamtabular, evaluecutoff, lengthcutoff, programname, out
 		domnumber = lsplits[9]
 		# include target description in the Name, change disallowed characters to -
 		targetdescription = lsplits[22].replace("=","-").replace(",","-").replace(";","-")
+		targetdescription = targetdescription.replace(" ","_")
 		domainlength = domend - domstart + 1 # bases 1 to 6 should have length 6
 		fractioncov = domainlength/float(lsplits[2])
 		# filter matches by evalue, length, etc
