@@ -8,7 +8,7 @@
 # for SOFA terms:
 # https://github.com/The-Sequence-Ontology/SO-Ontologies/blob/master/subsets/SOFA.obo
 
-'''blast2genomegff.py  last modified 2018-10-18
+'''blast2genomegff.py  last modified 2018-10-26
     convert blast output to gff format for genome annotation
     blastx of a transcriptome (genome guided or de novo) against a protein DB:
 
@@ -46,11 +46,13 @@ def make_seq_length_dict(sequencefile):
 	print >> sys.stderr, "# Parsing target sequences from {}".format(sequencefile), time.asctime()
 	lengthdict = {}
 	for seqrec in SeqIO.parse(sequencefile,'fasta'):
+		seqid = seqrec.id.split("|")[2]
+		lengthdict[seqid] = len(seqrec.seq)
 		lengthdict[seqrec.id] = len(seqrec.seq)
 	print >> sys.stderr, "# Found {} sequences".format(len(lengthdict)), time.asctime()
 	return lengthdict
 
-def gtf_to_intervals(gtffile, keepcds, transdecoder, nogenemode):
+def gtf_to_intervals(gtffile, keepcds, transdecoder, nogenemode, genesplit):
 	'''convert protein or gene intervals from gff to dictionary where mrna IDs are keys and lists of intervals are values'''
 	# this should probably be a class
 	geneintervals = defaultdict(list)
@@ -79,19 +81,21 @@ def gtf_to_intervals(gtffile, keepcds, transdecoder, nogenemode):
 				feature = lsplits[2]
 				strand = lsplits[6]
 				attributes = lsplits[8]
-			#	if aqumode:
-			#		attributes = attributes.replace('CDS:','') # remove CDS: from Aqu2 gene models
+
 				if attributes.find("ID")==0: # indicates gff3 format
 					geneid = re.search('ID=([\w.|-]+)', attributes).group(1)
 				elif attributes.find("Parent")==0: # gff3 format but no ID
 					geneid = re.search('Parent=([\w.|-]+)', attributes).group(1)
 				elif attributes.find("gene_id")==0: # indicates gtf format
 					geneid = re.search('transcript_id "([\w.|-]+)";', attributes).group(1)
-			#	elif jgimode and attributes.find("name")==0: # for JGI like: name "fgeneshTA2_pg.C_scaffold_1000001";
-			#		geneid = re.search('name "([\w.|-]+)";', attributes).group(1)
+				# clean up transdecoder IDs
 				if transdecoder: # meaning CDS IDs will start with cds.gene.123|m.1
 					geneid = geneid.replace("cds.","") # simply remove the cds.
 					geneid = geneid.replace(".cds","") # also works for AUGUSTUS
+				# universally split all gene IDs
+				if genesplit:
+					geneid = geneid.rsplit(genesplit,1)[0]
+
 				if feature=="transcript" or feature=="mRNA": # or (aqumode and feature=="gene"):
 					transcounter += 1
 					genestrand[geneid] = strand
@@ -115,9 +119,12 @@ def gtf_to_intervals(gtffile, keepcds, transdecoder, nogenemode):
 def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, programname, outputtype, donamechop, is_swissprot, seqlengthdict, geneintervals, genestrand, genescaffold, debugmode=False):
 	'''parse blast hits from tabular blast and write to stdout as genome gff'''
 	querynamedict = defaultdict(int) # counter of unique queries
+	# count results to filter
 	shortRemovals = 0
 	evalueRemovals = 0
 	bitsRemovals = 0
+
+	missingscaffolds = 0 # count if scaffold cannot be found, suggesting naming problem
 	intervalproblems = 0 # counter if no intervals are found for some sequence
 	intervalcounts = 0
 	backframecounts = 0
@@ -136,10 +143,10 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, progr
 		if not line or line[0]=="#": # skip comment lines
 			continue # also catch for empty line, which would cause IndexError
 		linecounter += 1
-		lsplits = line.split()
-		#qseqid, sseqid, pident, length, mismatch, gapopen, qstart, qend, sstart, send, evalue, bitscore
-		sseqid = lsplits[1]
+		#qseqid, sseqid, pident, length, mismatch, gapopen, qstart, qend, sstart, send, evalue, bitscore		
+		lsplits = line.split("\t")
 
+		sseqid = lsplits[1]
 		# do all removals before any real counting
 		evalue = float(lsplits[10])
 		bitscore = float(lsplits[11])
@@ -180,13 +187,18 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, progr
 			backframe = True # also change the strand
 			backframecounts += 1
 
-		genomeintervals = [] # to have empty iterable
 		# convert protein positions to transcript nucleotide, as needed
 		# protein position 1 becomes nucleotide position 1, position 2 becomes nucleotide 4, 3 to 7
 		hitstart = (hitstart - 1) * multiplier + 1
 		hitend = hitend * multiplier # end is necessarily the end of a codon
 		scaffold = genescaffold.get(qseqid, None)
+		if scaffold is None:
+			missingscaffolds += 1
+			if missingscaffolds < 10:
+				print >> sys.stderr, "WARNING: cannot get scaffold for {}".format( qseqid )
+
 		strand = genestrand.get(qseqid, None)
+		genomeintervals = [] # to have empty iterable
 		if backframe: # reassign strand if match is backwards
 			strand = "+" if strand=="-" else "-"
 		# convert transcript nucleotide to genomic nucleotide, and split at exon bounds
@@ -195,8 +207,11 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, progr
 		elif strand=='-': # implies '-'
 			genomeintervals = get_intervals(geneintervals[qseqid], hitstart, hitlength, doreverse=True)
 		else: # strand is None
+			# strand could not be found
+			# meaning mismatch between query ID in blast and query ID in the GFF
 			print >> sys.stderr, "WARNING: cannot retrieve strand for {}".format(qseqid)
 			continue
+
 		intervalcounts += len(genomeintervals)
 		if not len(genomeintervals):
 			print >> sys.stderr, "WARNING: no intervals for {} in {}".format(sseqid, qseqid)
@@ -273,10 +288,6 @@ def get_intervals(intervals, domstart, domlength, doreverse=True):
 		print >> sys.stderr, "WARNING: cannot finish protein at {} for {} in {}".format(domstart, domlength, intervals)
 		return genomeintervals
 
-def write_line(outlist, wayout):
-	outline = "\t".join(outlist)
-	print >> wayout, outline
-
 def main(argv, wayout):
 	if not len(argv):
 		argv.append("-h")
@@ -287,6 +298,7 @@ def main(argv, wayout):
 	parser.add_argument('-p','--program', help="blast program for 2nd column in output [BLASTX]", default="BLASTX")
 	parser.add_argument('-t','--type', help="gff type or method [protein_match]", default="protein_match")
 	parser.add_argument('-D','--delimiter', help="optional delimiter for protein names, cuts off end split")
+	parser.add_argument('--gff-delimiter', help="optional delimiter for GFF gene IDs, cuts off end split")
 	parser.add_argument('-c','--coverage-cutoff', type=float, help="query coverage cutoff for filtering [0.1]", default=0.1)
 	parser.add_argument('-e','--evalue-cutoff', type=float, help="evalue cutoff [1e-3]", default=1e-3)
 	parser.add_argument('-s','--score-cutoff', type=float, help="bitscore/length cutoff for filtering [0.1]", default=0.1)
@@ -299,7 +311,7 @@ def main(argv, wayout):
 	args = parser.parse_args(argv)
 
 	protlendb = make_seq_length_dict(args.database)
-	geneintervals, genestrand, genescaffold =  gtf_to_intervals(args.genes, args.exons, args.transdecoder, args.no_genes)
+	geneintervals, genestrand, genescaffold =  gtf_to_intervals(args.genes, args.exons, args.transdecoder, args.no_genes, args.gff_delimiter)
 
 	parse_tabular_blast(args.blast, args.coverage_cutoff, args.evalue_cutoff, args.score_cutoff, args.program, args.type, args.delimiter, args.swissprot, protlendb, geneintervals, genestrand, genescaffold)
 
