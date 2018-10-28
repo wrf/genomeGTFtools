@@ -1,0 +1,78 @@
+jcf7180000021585	blastp	protein_match	3993	4713	77.8	+	.	ID=g1.t1.ZSC22_HUMAN.1;Target=ZSC22_HUMAN 214 385 +;same_sense=1
+jcf7180000021585	blastp	match_part	3993	4077	77.8	+	.	Parent=g1.t1.ZSC22_HUMAN.1
+jcf7180000021585	blastp	match_part	4626	4713	77.8	+	.	Parent=g1.t1.ZSC22_HUMAN.1
+jcf7180000021585	blastp	protein_match	6008	6083	66.2	+	.	ID=g1.t1.ZSC22_HUMAN.2;Target=ZSC22_HUMAN 407 482 +;same_sense=1
+jcf7180000021585	blastp	match_part	6008	6083	66.2	+	.	Parent=g1.t1.ZSC22_HUMAN.2
+jcf7180000021585	blastp	protein_match	6008	6084	64.7	+	.	ID=g1.t1.ZSC22_HUMAN.3;Target=ZSC22_HUMAN 323 399 +;same_sense=1
+jcf7180000021585	blastp	match_part	6008	6084	64.7	+	.	Parent=g1.t1.ZSC22_HUMAN.3
+jcf7180000021585	blastp	protein_match	6008	6084	60.1	+	.	ID=g1.t1.ZSC22_HUMAN.4;Target=ZSC22_HUMAN 379 455 +;same_sense=1
+jcf7180000021585	blastp	match_part	6008	6084	60.1	+	.	Parent=g1.t1.ZSC22_HUMAN.4
+jcf7180000021585	blastp	protein_match	6008	6074	56.6	+	.	ID=g1.t1.ZSC22_HUMAN.5;Target=ZSC22_HUMAN 351 417 +;same_sense=1
+jcf7180000021585	blastp	match_part	6008	6074	56.6	+	.	Parent=g1.t1.ZSC22_HUMAN.5
+jcf7180000021585	blastp	protein_match	4709	6052	52.4	+	.	ID=g1.t1.ZSC22_HUMAN.6;Target=ZSC22_HUMAN 431 487 +;same_sense=1
+jcf7180000021585	blastp	match_part	4709	4713	52.4	+	.	Parent=g1.t1.ZSC22_HUMAN.6
+jcf7180000021585	blastp	match_part	6001	6052	52.4	+	.	Parent=g1.t1.ZSC22_HUMAN.6
+jcf7180000021585	blastp	protein_match	1011	2589	77.8	+	.	ID=g1.t1.COEA1_HUMAN.1;Target=COEA1_HUMAN 1032 1206 +;same_sense=1
+jcf7180000021585	blastp	match_part	1011	1117	77.8	+	.	Parent=g1.t1.COEA1_HUMAN.1
+jcf7180000021585	blastp	match_part	2514	2589	77.8	+	.	Parent=g1.t1.COEA1_HUMAN.1
+jcf7180000021585	blastp	protein_match	1011	2606	54.7	+	.	ID=g1.t1.COEA1_HUMAN.2;Target=COEA1_HUMAN 158 355 +;same_sense=1
+jcf7180000021585	blastp	match_part	1011	1117	54.7	+	.	Parent=g1.t1.COEA1_HUMAN.2
+jcf7180000021585	blastp	match_part	2514	2606	54.7	+	.	Parent=g1.t1.COEA1_HUMAN.2
+jcf7180000021585	blastp	protein_match	6008	6095	75.1	+	.	ID=g1.t1.ZN669_HUMAN.1;Target=ZN669_HUMAN 361 448 +;same_sense=1
+jcf7180000021585	blastp	match_part	6008	6095	75.1	+	.	Parent=g1.t1.ZN669_HUMAN.1
+jcf7180000021585	blastp	protein_match	16685	16795	73.9	-	.	ID=g2.t1.ZN696_HUMAN.1;Target=ZN696_HUMAN 153 264 +;same_sense=1
+jcf7180000021585	blastp	match_part	16685	16795	73.9	-	.	Parent=g2.t1.ZN696_HUMAN.1
+jcf7180000021585	blastp	protein_match	16720	16795	65.5	-	.	ID=g2.t1.ZN696_HUMAN.2;Target=ZN696_HUMAN 237 312 +;same_sense=1
+jcf7180000021585	blastp	match_part	16720	16795	65.5	-	.	Parent=g2.t1.ZN696_HUMAN.2
+jcf7180000021585	blastp	protein_match	16687	16795	60.8	-	.	ID=g2.t1.ZN696_HUMAN.3;Target=ZN696_HUMAN 125 234 +;same_sense=1
+jcf7180000021585	blastp	match_part	16687	16795	60.8	-	.	Parent=g2.t1.ZN696_HUMAN.3
+jcf7180000021585	blastp	protein_match	16720	16795	58.9	-	.	ID=g2.t1.ZN696_HUMAN.4;Target=ZN696_HUMAN 265 340 +;same_sense=1
+jcf7180000021585	blastp	match_part	16720	16795	58.9	-	.	Parent=g2.t1.ZN696_HUMAN.4
+jcf7180000021585	blastp	protein_match	16685	16795	57.0	-	.	ID=g2.t1.ZN696_HUMAN.5;Target=ZN696_HUMAN 209 320 +;same_sense=1
+jcf7180000021585	blastp	match_part	16685	16795	57.0	-	.	Parent=g2.t1.ZN696_HUMAN.5
+jcf7180000021585	blastp	protein_match	16720	16795	46.6	-	.	ID=g2.t1.ZN696_HUMAN.6;Target=ZN696_HUMAN 293 368 +;same_sense=1
+jcf7180000021585	blastp	match_part	16720	16795	46.6	-	.	Parent=g2.t1.ZN696_HUMAN.6
+jcf7180000021585	blastp	protein_match	16668	16804	73.9	-	.	ID=g2.t1.ZN569_HUMAN.1;Target=ZN569_HUMAN 239 380 +;same_sense=1
+jcf7180000021585	blastp	match_part	16668	16804	73.9	-	.	Parent=g2.t1.ZN569_HUMAN.1
+jcf7180000021585	blastp	protein_match	16662	16795	68.9	-	.	ID=g2.t1.ZN569_HUMAN.2;Target=ZN569_HUMAN 438 576 +;same_sense=1
+jcf7180000021585	blastp	match_part	16662	16795	68.9	-	.	Parent=g2.t1.ZN569_HUMAN.2
+jcf7180000021585	blastp	protein_match	16720	16795	56.2	-	.	ID=g2.t1.ZN569_HUMAN.3;Target=ZN569_HUMAN 186 261 +;same_sense=1
+jcf7180000021585	blastp	match_part	16720	16795	56.2	-	.	Parent=g2.t1.ZN569_HUMAN.3
+jcf7180000021585	blastp	protein_match	21749	23163	67.4	+	.	ID=g3.t1.SYT6_HUMAN.1;Target=SYT6_HUMAN 207 361 +;same_sense=1
+jcf7180000021585	blastp	match_part	21749	21781	67.4	+	.	Parent=g3.t1.SYT6_HUMAN.1
+jcf7180000021585	blastp	match_part	22499	22575	67.4	+	.	Parent=g3.t1.SYT6_HUMAN.1
+jcf7180000021585	blastp	match_part	23117	23163	67.4	+	.	Parent=g3.t1.SYT6_HUMAN.1
+jcf7180000021585	blastp	protein_match	22538	23184	66.6	+	.	ID=g3.t1.SYT3_HUMAN.1;Target=SYT3_HUMAN 301 411 +;same_sense=1
+jcf7180000021585	blastp	match_part	22538	22575	66.6	+	.	Parent=g3.t1.SYT3_HUMAN.1
+jcf7180000021585	blastp	match_part	23117	23184	66.6	+	.	Parent=g3.t1.SYT3_HUMAN.1
+jcf7180000021585	blastp	protein_match	22538	23177	65.5	+	.	ID=g3.t1.SYT2_HUMAN.1;Target=SYT2_HUMAN 141 240 +;same_sense=1
+jcf7180000021585	blastp	match_part	22538	22575	65.5	+	.	Parent=g3.t1.SYT2_HUMAN.1
+jcf7180000021585	blastp	match_part	23117	23177	65.5	+	.	Parent=g3.t1.SYT2_HUMAN.1
+jcf7180000021585	blastp	protein_match	22538	23211	65.5	+	.	ID=g3.t1.SYT10_HUMAN.1;Target=SYT10_HUMAN 233 363 +;same_sense=1
+jcf7180000021585	blastp	match_part	22538	22575	65.5	+	.	Parent=g3.t1.SYT10_HUMAN.1
+jcf7180000021585	blastp	match_part	23117	23211	65.5	+	.	Parent=g3.t1.SYT10_HUMAN.1
+jcf7180000021585	blastp	protein_match	21749	23142	59.3	+	.	ID=g3.t1.SYT9_HUMAN.1;Target=SYT9_HUMAN 198 338 +;same_sense=1
+jcf7180000021585	blastp	match_part	21749	21781	59.3	+	.	Parent=g3.t1.SYT9_HUMAN.1
+jcf7180000021585	blastp	match_part	22499	22575	59.3	+	.	Parent=g3.t1.SYT9_HUMAN.1
+jcf7180000021585	blastp	match_part	23117	23142	59.3	+	.	Parent=g3.t1.SYT9_HUMAN.1
+jcf7180000021585	blastp	protein_match	22538	23189	43.5	+	.	ID=g3.t1.SYT9_HUMAN.2;Target=SYT9_HUMAN 354 466 +;same_sense=1
+jcf7180000021585	blastp	match_part	22538	22575	43.5	+	.	Parent=g3.t1.SYT9_HUMAN.2
+jcf7180000021585	blastp	match_part	23117	23189	43.5	+	.	Parent=g3.t1.SYT9_HUMAN.2
+jcf7180000021585	blastp	protein_match	29147	30736	489.0	-	.	ID=g4.t1.HSDL2_HUMAN.1;Target=HSDL2_HUMAN 7 418 +;same_sense=1
+jcf7180000021585	blastp	match_part	30574	30736	489.0	-	.	Parent=g4.t1.HSDL2_HUMAN.1
+jcf7180000021585	blastp	match_part	30179	30347	489.0	-	.	Parent=g4.t1.HSDL2_HUMAN.1
+jcf7180000021585	blastp	match_part	29417	29461	489.0	-	.	Parent=g4.t1.HSDL2_HUMAN.1
+jcf7180000021585	blastp	match_part	29147	29172	489.0	-	.	Parent=g4.t1.HSDL2_HUMAN.1
+jcf7180000021585	blastp	protein_match	36581	37416	362.0	-	.	ID=g4.t1.3HIDH_HUMAN.1;Target=3HIDH_HUMAN 42 334 +;same_sense=1
+jcf7180000021585	blastp	match_part	37223	37416	362.0	-	.	Parent=g4.t1.3HIDH_HUMAN.1
+jcf7180000021585	blastp	match_part	36809	36853	362.0	-	.	Parent=g4.t1.3HIDH_HUMAN.1
+jcf7180000021585	blastp	match_part	36581	36634	362.0	-	.	Parent=g4.t1.3HIDH_HUMAN.1
+jcf7180000021585	blastp	protein_match	36604	37416	116.0	-	.	ID=g4.t1.GLYR1_HUMAN.1;Target=GLYR1_HUMAN 270 532 +;same_sense=1
+jcf7180000021585	blastp	match_part	37223	37416	116.0	-	.	Parent=g4.t1.GLYR1_HUMAN.1
+jcf7180000021585	blastp	match_part	36809	36853	116.0	-	.	Parent=g4.t1.GLYR1_HUMAN.1
+jcf7180000021585	blastp	match_part	36604	36634	116.0	-	.	Parent=g4.t1.GLYR1_HUMAN.1
+jcf7180000021585	blastp	protein_match	30264	30727	89.7	-	.	ID=g4.t1.DHRS1_HUMAN.1;Target=DHRS1_HUMAN 7 268 +;same_sense=1
+jcf7180000021585	blastp	match_part	30574	30727	89.7	-	.	Parent=g4.t1.DHRS1_HUMAN.1
+jcf7180000021585	blastp	match_part	30264	30347	89.7	-	.	Parent=g4.t1.DHRS1_HUMAN.1
+jcf7180000021585	blastp	protein_match	26081	26192	80.1	-	.	ID=g4.t1.STML1_HUMAN.1;Target=STML1_HUMAN 283 398 +;same_sense=1
+jcf7180000021585	blastp	match_part	26081	26192	80.1	-	.	Parent=g4.t1.STML1_HUMAN.1

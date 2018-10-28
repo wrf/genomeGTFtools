@@ -1,0 +1,154 @@
+#                                                                            --- full sequence --- -------------- this domain -------------   hmm coord   ali coord   env coord
+# target name        accession   tlen query name           accession   qlen   E-value  score  bias   #  of  c-Evalue  i-Evalue  score  bias  from    to  from    to  from    to  acc description of target
+#------------------- ---------- ----- -------------------- ---------- ----- --------- ------ ----- --- --- --------- --------- ------ ----- ----- ----- ----- ----- ----- ----- ---- ---------------------
+VWA                  PF00092.28   175 g1.t1                -           1539   3.9e-33  115.2   1.5   1   2   1.6e-35   1.4e-32  113.3   0.6     1   173    31   209    31   211 0.93 von Willebrand factor type A domain
+VWA                  PF00092.28   175 g1.t1                -           1539   3.9e-33  115.2   1.5   2   2       2.1   1.9e+03   -1.1   0.0   128   168   611   661   597   666 0.67 von Willebrand factor type A domain
+VWA_2                PF13519.6    107 g1.t1                -           1539   2.9e-15   56.8   0.1   1   1   8.6e-18   7.7e-15   55.5   0.1     1   107    32   148    32   148 0.86 von Willebrand factor type A domain
+zf-C2H2              PF00096.26    23 g1.t1                -           1539   3.5e-11   42.9  29.1   1   5   3.8e-06    0.0034   17.8   1.0     1    23   290   313   290   313 0.98 Zinc finger, C2H2 type
+zf-C2H2              PF00096.26    23 g1.t1                -           1539   3.5e-11   42.9  29.1   2   5   3.6e-07   0.00033   21.0   0.7     1    23   318   340   318   340 0.96 Zinc finger, C2H2 type
+zf-C2H2              PF00096.26    23 g1.t1                -           1539   3.5e-11   42.9  29.1   3   5   6.9e-05     0.062   13.8   0.6     1    21   346   366   346   367 0.93 Zinc finger, C2H2 type
+zf-C2H2              PF00096.26    23 g1.t1                -           1539   3.5e-11   42.9  29.1   4   5    0.0042       3.8    8.2   0.5     1    19   674   692   674   693 0.96 Zinc finger, C2H2 type
+zf-C2H2              PF00096.26    23 g1.t1                -           1539   3.5e-11   42.9  29.1   5   5       3.6   3.2e+03   -1.1   0.2     3     8   827   832   826   834 0.85 Zinc finger, C2H2 type
+Trypsin              PF00089.26   221 g1.t1                -           1539   9.2e-11   42.0   0.3   1   1   2.6e-13   2.4e-10   40.6   0.3     1    47   237   289   237   380 0.76 Trypsin
+VWA_3                PF13768.6    155 g1.t1                -           1539   4.9e-09   36.3   0.0   1   1   1.3e-11   1.2e-08   35.1   0.0     2   147    31   190    30   194 0.84 von Willebrand factor type A domain
+zf-H2C2_2            PF13465.6     26 g1.t1                -           1539   2.6e-07   30.7  18.7   1   4    0.0039       3.5    8.2   0.3    14    26   289   301   283   301 0.89 Zinc-finger double domain
+zf-H2C2_2            PF13465.6     26 g1.t1                -           1539   2.6e-07   30.7  18.7   2   4   0.00044      0.39   11.2   0.7     1    26   304   329   304   329 0.87 Zinc-finger double domain
+zf-H2C2_2            PF13465.6     26 g1.t1                -           1539   2.6e-07   30.7  18.7   3   4   4.8e-06    0.0043   17.4   0.8     1    25   332   356   332   357 0.94 Zinc-finger double domain
+zf-H2C2_2            PF13465.6     26 g1.t1                -           1539   2.6e-07   30.7  18.7   4   4     0.079        71    4.1   0.3    12    24   669   683   663   685 0.72 Zinc-finger double domain
+zf-C2H2_4            PF13894.6     24 g1.t1                -           1539     9e-06   26.1  35.2   1   5   1.8e-05     0.016   16.0   1.0     1    24   290   313   290   313 0.97 C2H2-type zinc finger
+zf-C2H2_4            PF13894.6     24 g1.t1                -           1539     9e-06   26.1  35.2   2   5   3.8e-07   0.00034   21.2   0.5     1    23   318   340   318   341 0.96 C2H2-type zinc finger
+zf-C2H2_4            PF13894.6     24 g1.t1                -           1539     9e-06   26.1  35.2   3   5     0.016        14    6.8   2.0     2    21   347   366   346   368 0.90 C2H2-type zinc finger
+zf-C2H2_4            PF13894.6     24 g1.t1                -           1539     9e-06   26.1  35.2   4   5      0.15   1.4e+02    3.8   0.8     1    19   674   692   674   695 0.87 C2H2-type zinc finger
+zf-C2H2_4            PF13894.6     24 g1.t1                -           1539     9e-06   26.1  35.2   5   5       7.8     7e+03   -1.6   1.0     2    19   826   842   825   844 0.64 C2H2-type zinc finger
+zf-C2H2_6            PF13912.6     27 g1.t1                -           1539   0.00016   21.6   0.4   1   4    0.0027       2.4    8.2   1.1     2    24   290   313   290   314 0.90 C2H2-type zinc finger
+zf-C2H2_6            PF13912.6     27 g1.t1                -           1539   0.00016   21.6   0.4   2   4   1.7e-07   0.00016   21.6   0.4     2    25   318   341   317   343 0.95 C2H2-type zinc finger
+zf-C2H2_6            PF13912.6     27 g1.t1                -           1539   0.00016   21.6   0.4   3   4     0.018        16    5.6   2.2     1    20   345   364   345   368 0.92 C2H2-type zinc finger
+zf-C2H2_6            PF13912.6     27 g1.t1                -           1539   0.00016   21.6   0.4   4   4       2.1   1.9e+03   -1.0   0.3     3    21   675   693   674   695 0.80 C2H2-type zinc finger
+zf-C2H2_jaz          PF12171.8     27 g1.t1                -           1539   0.00095   19.4  21.4   1   4   0.00012      0.11   12.9   0.4     2    23   290   311   289   313 0.94 Zinc-finger double-stranded RNA-binding
+zf-C2H2_jaz          PF12171.8     27 g1.t1                -           1539   0.00095   19.4  21.4   2   4   0.00059      0.53   10.6   2.1     1    22   317   338   317   340 0.94 Zinc-finger double-stranded RNA-binding
+zf-C2H2_jaz          PF12171.8     27 g1.t1                -           1539   0.00095   19.4  21.4   3   4      0.22     2e+02    2.5   0.6     4    23   348   367   345   367 0.86 Zinc-finger double-stranded RNA-binding
+zf-C2H2_jaz          PF12171.8     27 g1.t1                -           1539   0.00095   19.4  21.4   4   4     0.051        46    4.5   0.4     2    20   674   692   673   693 0.92 Zinc-finger double-stranded RNA-binding
+Endonuclease_7       PF02945.15    82 g1.t1                -           1539   0.00096   19.0   0.5   1   3      0.03        27    4.8   2.3    24    62   290   326   278   341 0.79 Recombination endonuclease VII
+Endonuclease_7       PF02945.15    82 g1.t1                -           1539   0.00096   19.0   0.5   2   3       2.7   2.5e+03   -1.5   0.2    21    58   671   709   650   725 0.70 Recombination endonuclease VII
+Endonuclease_7       PF02945.15    82 g1.t1                -           1539   0.00096   19.0   0.5   3   3   1.1e-06   0.00096   19.0   0.5    22    61   822   859   807   879 0.80 Recombination endonuclease VII
+SAM_Ste50p           PF09235.10    75 g1.t1                -           1539     0.041   14.1   0.1   1   1   0.00019      0.17   12.1   0.1    16    72  1374  1430  1370  1433 0.83 Ste50p, sterile alpha motif
+zinc_ribbon_9        PF14369.6     35 g1.t1                -           1539       0.1   12.9   0.3   1   3      0.51   4.6e+02    1.2   0.1    18    31   313   327   306   330 0.75 zinc-ribbon
+zinc_ribbon_9        PF14369.6     35 g1.t1                -           1539       0.1   12.9   0.3   2   3      0.98   8.8e+02    0.3   0.0    23    32   347   356   333   358 0.77 zinc-ribbon
+zinc_ribbon_9        PF14369.6     35 g1.t1                -           1539       0.1   12.9   0.3   3   3     0.016        15    6.0   0.0    23    34   675   686   666   686 0.82 zinc-ribbon
+PhnA_Zn_Ribbon       PF08274.12    30 g1.t1                -           1539      0.11   12.4   3.3   1   2     9e-05     0.081   12.9   0.5     1    26   287   324   287   327 0.92 PhnA Zinc-Ribbon
+PhnA_Zn_Ribbon       PF08274.12    30 g1.t1                -           1539      0.11   12.4   3.3   2   2       4.9   4.4e+03   -2.3   0.1    19    27   673   681   671   682 0.82 PhnA Zinc-Ribbon
+DUF1194              PF06707.11   206 g1.t1                -           1539      0.15   11.2   0.0   1   1   0.00041      0.36   10.0   0.0    69   141    89   162    28   186 0.67 Protein of unknown function (DUF1194)
+zf_UBZ               PF18439.1     32 g1.t1                -           1539       0.5   10.0   6.4   1   3    0.0076       6.8    6.4   0.2     2    13   317   328   316   340 0.83 Ubiquitin-Binding Zinc Finger
+zf_UBZ               PF18439.1     32 g1.t1                -           1539       0.5   10.0   6.4   2   3     0.027        24    4.6   0.1     3    15   346   358   344   365 0.76 Ubiquitin-Binding Zinc Finger
+zf_UBZ               PF18439.1     32 g1.t1                -           1539       0.5   10.0   6.4   3   3       1.1   9.5e+02   -0.5   0.1     2    20   673   692   672   693 0.79 Ubiquitin-Binding Zinc Finger
+zf-met               PF12874.7     25 g1.t1                -           1539       2.1    8.8   8.4   1   3      0.31   2.8e+02    2.1   0.3     1    12   290   301   290   310 0.75 Zinc-finger of C2H2 type
+zf-met               PF12874.7     25 g1.t1                -           1539       2.1    8.8   8.4   2   3    0.0014       1.3    9.6   0.2     1    20   318   337   318   338 0.92 Zinc-finger of C2H2 type
+zf-met               PF12874.7     25 g1.t1                -           1539       2.1    8.8   8.4   3   3         3   2.7e+03   -1.0   0.2     6    20   351   365   347   367 0.86 Zinc-finger of C2H2 type
+Yippee-Mis18         PF03226.14   105 g1.t1                -           1539       2.1    8.6   6.7   1   2     0.013        11    6.2   4.1     3    63   290   353   288   355 0.89 Yippee zinc-binding/DNA-binding /Mis18, centromere assembly
+Yippee-Mis18         PF03226.14   105 g1.t1                -           1539       2.1    8.6   6.7   2   2      0.34   3.1e+02    1.6   0.0    44    67   812   836   798   848 0.74 Yippee zinc-binding/DNA-binding /Mis18, centromere assembly
+zf-C2H2_11           PF16622.5     29 g1.t1                -           1539       2.2    8.1   7.2   1   3     0.029        26    4.7   0.5     5    28   290   313   285   313 0.87 zinc-finger C2H2-type
+zf-C2H2_11           PF16622.5     29 g1.t1                -           1539       2.2    8.1   7.2   2   3      0.35   3.1e+02    1.2   0.0     5    23   318   336   314   338 0.86 zinc-finger C2H2-type
+zf-C2H2_11           PF16622.5     29 g1.t1                -           1539       2.2    8.1   7.2   3   3     0.084        75    3.2   0.4     3    21   344   362   343   365 0.76 zinc-finger C2H2-type
+zf-C2H2_3rep         PF18868.1    126 g1.t1                -           1539       2.9    8.6  14.4   1   5     0.029        26    5.5   0.1    94   125   282   313   268   314 0.88 Zinc finger C2H2-type, 3 repeats
+zf-C2H2_3rep         PF18868.1    126 g1.t1                -           1539       2.9    8.6  14.4   2   5    0.0086       7.7    7.2   2.5     1    83   320   396   320   414 0.70 Zinc finger C2H2-type, 3 repeats
+zf-C2H2_3rep         PF18868.1    126 g1.t1                -           1539       2.9    8.6  14.4   3   5       7.4   6.6e+03   -2.3   0.1    92   111   664   683   638   696 0.66 Zinc finger C2H2-type, 3 repeats
+zf-C2H2_3rep         PF18868.1    126 g1.t1                -           1539       2.9    8.6  14.4   4   5       2.1   1.9e+03   -0.5   0.1    79   121   803   842   760   845 0.66 Zinc finger C2H2-type, 3 repeats
+zf-C2H2_3rep         PF18868.1    126 g1.t1                -           1539       2.9    8.6  14.4   5   5       2.3     2e+03   -0.6   0.0     5    26  1416  1437  1414  1443 0.84 Zinc finger C2H2-type, 3 repeats
+zf-C2HC_2            PF13913.6     25 g1.t1                -           1539       3.1    7.8  22.7   1   4     0.042        38    4.3   0.1     4    22   291   310   290   311 0.94 zinc-finger of a C2HC-type
+zf-C2HC_2            PF13913.6     25 g1.t1                -           1539       3.1    7.8  22.7   2   4   0.00088      0.79    9.7   0.5     4    23   319   339   317   339 0.94 zinc-finger of a C2HC-type
+zf-C2HC_2            PF13913.6     25 g1.t1                -           1539       3.1    7.8  22.7   3   4     0.018        16    5.5   1.4     5    24   348   368   346   369 0.92 zinc-finger of a C2HC-type
+zf-C2HC_2            PF13913.6     25 g1.t1                -           1539       3.1    7.8  22.7   4   4      0.49   4.4e+02    0.9   1.4     5    25   676   697   675   697 0.93 zinc-finger of a C2HC-type
+zf-C2H2              PF00096.26    23 g2.t1                -           1260     9e-11   41.6  32.7   1   5   4.1e-05     0.056   13.9   4.0     1    23    11    34    11    34 0.98 Zinc finger, C2H2 type
+zf-C2H2              PF00096.26    23 g2.t1                -           1260     9e-11   41.6  32.7   2   5   3.1e-07   0.00043   20.6   2.7     1    23    39    61    39    61 0.95 Zinc finger, C2H2 type
+zf-C2H2              PF00096.26    23 g2.t1                -           1260     9e-11   41.6  32.7   3   5   3.6e-05      0.05   14.1   0.6     1    21    67    87    67    88 0.93 Zinc finger, C2H2 type
+zf-C2H2              PF00096.26    23 g2.t1                -           1260     9e-11   41.6  32.7   4   5     0.001       1.4    9.5   0.3     1    20   395   414   395   414 0.97 Zinc finger, C2H2 type
+zf-C2H2              PF00096.26    23 g2.t1                -           1260     9e-11   41.6  32.7   5   5       1.9   2.6e+03   -0.8   0.2     3     8   548   553   547   555 0.85 Zinc finger, C2H2 type
+zf-H2C2_2            PF13465.6     26 g2.t1                -           1260   9.2e-07   29.0  25.0   1   4     0.014        19    5.9   0.7    14    25    10    21     6    22 0.81 Zinc-finger double domain
+zf-H2C2_2            PF13465.6     26 g2.t1                -           1260   9.2e-07   29.0  25.0   2   4   6.2e-05     0.085   13.3   4.5     1    26    25    50    25    50 0.95 Zinc-finger double domain
+zf-H2C2_2            PF13465.6     26 g2.t1                -           1260   9.2e-07   29.0  25.0   3   4   2.5e-06    0.0034   17.7   0.8     1    25    53    77    53    78 0.94 Zinc-finger double domain
+zf-H2C2_2            PF13465.6     26 g2.t1                -           1260   9.2e-07   29.0  25.0   4   4     0.042        57    4.4   0.3    12    24   390   404   384   406 0.72 Zinc-finger double domain
+zf-C2H2_4            PF13894.6     24 g2.t1                -           1260   0.00042   20.9  37.4   1   5   0.00035      0.49   11.4   3.0     1    24    11    34    11    34 0.83 C2H2-type zinc finger
+zf-C2H2_4            PF13894.6     24 g2.t1                -           1260   0.00042   20.9  37.4   2   5   1.2e-06    0.0017   19.1   2.1     1    23    39    61    39    62 0.95 C2H2-type zinc finger
+zf-C2H2_4            PF13894.6     24 g2.t1                -           1260   0.00042   20.9  37.4   3   5    0.0081        11    7.1   2.0     2    21    68    87    67    89 0.90 C2H2-type zinc finger
+zf-C2H2_4            PF13894.6     24 g2.t1                -           1260   0.00042   20.9  37.4   4   5     0.077   1.1e+02    4.1   0.7     1    19   395   413   395   416 0.88 C2H2-type zinc finger
+zf-C2H2_4            PF13894.6     24 g2.t1                -           1260   0.00042   20.9  37.4   5   5       4.1   5.6e+03   -1.3   1.0     2    19   547   563   546   565 0.64 C2H2-type zinc finger
+Endonuclease_7       PF02945.15    82 g2.t1                -           1260   0.00078   19.3   0.5   1   3       4.3     6e+03   -2.7   8.0    23    62    10    47     3    84 0.73 Recombination endonuclease VII
+Endonuclease_7       PF02945.15    82 g2.t1                -           1260   0.00078   19.3   0.5   2   3         1   1.4e+03   -0.7   0.1    21    60   392   432   370   448 0.71 Recombination endonuclease VII
+Endonuclease_7       PF02945.15    82 g2.t1                -           1260   0.00078   19.3   0.5   3   3   5.6e-07   0.00078   19.3   0.5    22    61   543   580   528   600 0.80 Recombination endonuclease VII
+zinc_ribbon_9        PF14369.6     35 g2.t1                -           1260     0.017   15.4   1.4   1   3     0.035        48    4.3   0.3    15    31    32    48    27    51 0.85 zinc-ribbon
+zinc_ribbon_9        PF14369.6     35 g2.t1                -           1260     0.017   15.4   1.4   2   3      0.52   7.2e+02    0.6   0.0    23    32    68    77    55    79 0.77 zinc-ribbon
+zinc_ribbon_9        PF14369.6     35 g2.t1                -           1260     0.017   15.4   1.4   3   3    0.0086        12    6.3   0.0    23    34   396   407   387   407 0.82 zinc-ribbon
+zf-met               PF12874.7     25 g2.t1                -           1260     0.047   14.1   0.3   1   3      0.34   4.6e+02    1.4   0.2     1    11    11    21    11    29 0.84 Zinc-finger of C2H2 type
+zf-met               PF12874.7     25 g2.t1                -           1260     0.047   14.1   0.3   2   3   3.4e-05     0.047   14.1   0.3     1    20    39    58    39    59 0.94 Zinc-finger of C2H2 type
+zf-met               PF12874.7     25 g2.t1                -           1260     0.047   14.1   0.3   3   3       1.6   2.3e+03   -0.8   0.5     3    20    69    86    67    88 0.84 Zinc-finger of C2H2 type
+SAM_Ste50p           PF09235.10    75 g2.t1                -           1260     0.075   13.3   1.1   1   2         7   9.7e+03   -3.1   0.1    55    74  1014  1033  1003  1034 0.82 Ste50p, sterile alpha motif
+SAM_Ste50p           PF09235.10    75 g2.t1                -           1260     0.075   13.3   1.1   2   2   9.9e-05      0.14   12.5   0.1    16    72  1095  1151  1091  1154 0.83 Ste50p, sterile alpha motif
+zf-C2H2_6            PF13912.6     27 g2.t1                -           1260       0.1   12.6  32.0   1   5   3.6e-05      0.05   13.6   2.0     1    25    10    35    10    37 0.85 C2H2-type zinc finger
+zf-C2H2_6            PF13912.6     27 g2.t1                -           1260       0.1   12.6  32.0   2   5   4.2e-05     0.058   13.4   1.2     4    25    41    62    39    64 0.93 C2H2-type zinc finger
+zf-C2H2_6            PF13912.6     27 g2.t1                -           1260       0.1   12.6  32.0   3   5    0.0095        13    5.9   2.2     1    20    66    85    66    89 0.92 C2H2-type zinc finger
+zf-C2H2_6            PF13912.6     27 g2.t1                -           1260       0.1   12.6  32.0   4   5         3   4.2e+03   -2.1   0.2     3    11   396   404   395   413 0.75 C2H2-type zinc finger
+zf-C2H2_6            PF13912.6     27 g2.t1                -           1260       0.1   12.6  32.0   5   5       6.7   9.2e+03   -3.2   0.5     3     8   547   552   547   552 0.86 C2H2-type zinc finger
+Suv3_N               PF18114.1    117 g2.t1                -           1260       0.3   11.2   2.3   1   3       4.6   6.3e+03   -2.7   0.0    62    80   198   216   192   225 0.61 Suv3 helical N-terminal domain
+Suv3_N               PF18114.1    117 g2.t1                -           1260       0.3   11.2   2.3   2   3     0.052        72    3.5   0.0    56    77   746   767   711   770 0.83 Suv3 helical N-terminal domain
+Suv3_N               PF18114.1    117 g2.t1                -           1260       0.3   11.2   2.3   3   3     0.019        27    4.9   0.6    12    69   990  1047   983  1063 0.87 Suv3 helical N-terminal domain
+zf-C2H2_jaz          PF12171.8     27 g2.t1                -           1260      0.65   10.4  29.3   1   5     0.025        34    4.9   1.5     2    23    11    32    10    34 0.90 Zinc-finger double-stranded RNA-binding
+zf-C2H2_jaz          PF12171.8     27 g2.t1                -           1260      0.65   10.4  29.3   2   5   1.8e-05     0.024   14.9   2.7     2    22    39    59    38    61 0.94 Zinc-finger double-stranded RNA-binding
+zf-C2H2_jaz          PF12171.8     27 g2.t1                -           1260      0.65   10.4  29.3   3   5      0.11   1.6e+02    2.8   0.6     4    23    69    88    66    88 0.86 Zinc-finger double-stranded RNA-binding
+zf-C2H2_jaz          PF12171.8     27 g2.t1                -           1260      0.65   10.4  29.3   4   5       7.2   9.9e+03   -3.0   0.1    11    22   351   362   351   362 0.82 Zinc-finger double-stranded RNA-binding
+zf-C2H2_jaz          PF12171.8     27 g2.t1                -           1260      0.65   10.4  29.3   5   5     0.026        36    4.8   0.4     2    20   395   413   394   414 0.93 Zinc-finger double-stranded RNA-binding
+zf-C2HC_2            PF13913.6     25 g2.t1                -           1260         2    8.4  18.3   1   4   0.00022       0.3   11.0   0.7     4    23    40    60    37    60 0.93 zinc-finger of a C2HC-type
+zf-C2HC_2            PF13913.6     25 g2.t1                -           1260         2    8.4  18.3   2   4    0.0093        13    5.8   1.4     5    24    69    89    67    90 0.92 zinc-finger of a C2HC-type
+zf-C2HC_2            PF13913.6     25 g2.t1                -           1260         2    8.4  18.3   3   4      0.24   3.3e+02    1.3   0.9     5    25   397   418   396   418 0.93 zinc-finger of a C2HC-type
+zf-C2HC_2            PF13913.6     25 g2.t1                -           1260         2    8.4  18.3   4   4       6.8   9.4e+03   -3.3   0.0    11    18   692   699   692   699 0.89 zinc-finger of a C2HC-type
+zf-C2H2_3rep         PF18868.1    126 g2.t1                -           1260       2.3    8.9  14.0   1   5     0.014        19    6.0   0.1   100   125     9    34     5    35 0.90 Zinc finger C2H2-type, 3 repeats
+zf-C2H2_3rep         PF18868.1    126 g2.t1                -           1260       2.3    8.9  14.0   2   5    0.0065         9    7.0   1.2     1    68    41   102    41   130 0.70 Zinc finger C2H2-type, 3 repeats
+zf-C2H2_3rep         PF18868.1    126 g2.t1                -           1260       2.3    8.9  14.0   3   5       2.5   3.4e+03   -1.4   0.2    92   121   385   413   354   417 0.67 Zinc finger C2H2-type, 3 repeats
+zf-C2H2_3rep         PF18868.1    126 g2.t1                -           1260       2.3    8.9  14.0   4   5         1   1.4e+03   -0.1   0.1    79   121   524   563   480   566 0.66 Zinc finger C2H2-type, 3 repeats
+zf-C2H2_3rep         PF18868.1    126 g2.t1                -           1260       2.3    8.9  14.0   5   5       1.2   1.6e+03   -0.3   0.0     5    26  1137  1158  1135  1164 0.84 Zinc finger C2H2-type, 3 repeats
+zf-ribbon_3          PF13248.6     26 g2.t1                -           1260       4.5    6.8   6.9   1   4      0.76     1e+03   -0.7   0.0     2    16    38    53    37    55 0.72 zinc-ribbon domain
+zf-ribbon_3          PF13248.6     26 g2.t1                -           1260       4.5    6.8   6.9   2   4     0.057        79    2.9   0.2    17    25    67    75    61    76 0.81 zinc-ribbon domain
+zf-ribbon_3          PF13248.6     26 g2.t1                -           1260       4.5    6.8   6.9   3   4     0.033        46    3.6   0.0     2     8   394   400   393   408 0.78 zinc-ribbon domain
+zf-ribbon_3          PF13248.6     26 g2.t1                -           1260       4.5    6.8   6.9   4   4      0.34   4.7e+02    0.4   0.2    16    26   545   555   543   555 0.84 zinc-ribbon domain
+C2                   PF00168.30   103 g3.t1                -            231   1.8e-09   37.8   0.0   1   2     0.088   1.6e+03   -0.6   0.0    68    90    81   103    79   111 0.77 C2 domain
+C2                   PF00168.30   103 g3.t1                -            231   1.8e-09   37.8   0.0   2   2   4.4e-13     8e-09   35.7   0.0     2    94   109   204   108   211 0.86 C2 domain
+NAD_binding_2        PF03446.15   158 g4.t1                -            900   9.3e-51  172.1   3.2   1   3       3.7   4.7e+03   -2.4   0.1    91   122   115   147    96   152 0.64 NAD binding domain of 6-phosphogluconate dehydrogenase
+NAD_binding_2        PF03446.15   158 g4.t1                -            900   9.3e-51  172.1   3.2   2   3   1.6e-51   2.1e-48  164.5   0.2     2   157   206   364   205   365 0.99 NAD binding domain of 6-phosphogluconate dehydrogenase
+NAD_binding_2        PF03446.15   158 g4.t1                -            900   9.3e-51  172.1   3.2   3   3    0.0036       4.6    7.4   0.0    10    91   513   594   507   612 0.91 NAD binding domain of 6-phosphogluconate dehydrogenase
+NAD_binding_11       PF14833.6    122 g4.t1                -            900     6e-36  123.4   0.0   1   1     1e-38   1.3e-35  122.3   0.0     2   122   368   494   367   494 0.94 NAD-binding of NADP-dependent 3-hydroxyisobutyrate dehydrogenase
+adh_short            PF00106.25   195 g4.t1                -            900   9.8e-35  119.8   0.3   1   2     0.036        47    3.4   0.0    12    47   214   249   210   265 0.74 short chain dehydrogenase
+adh_short            PF00106.25   195 g4.t1                -            900   9.8e-35  119.8   0.3   2   2   4.9e-36   6.2e-33  113.9   0.0     1   181   502   691   502   703 0.90 short chain dehydrogenase
+adh_short_C2         PF13561.6    234 g4.t1                -            900   1.6e-29  103.1   0.6   1   2     0.099   1.3e+02    2.0   0.0     6    50   214   262   209   265 0.75 Enoyl-(Acyl carrier protein) reductase
+adh_short_C2         PF13561.6    234 g4.t1                -            900   1.6e-29  103.1   0.6   2   2   2.5e-31   3.2e-28   98.9   0.1     1   195   508   713   508   722 0.80 Enoyl-(Acyl carrier protein) reductase
+SCP2                 PF02036.17   101 g4.t1                -            900   3.8e-28   97.9   0.1   1   1   7.5e-31   9.6e-28   96.6   0.1     1   100   798   893   794   894 0.91 SCP-2 sterol transfer family
+F420_oxidored        PF03807.17    97 g4.t1                -            900   6.8e-09   36.2   0.5   1   2   1.1e-09   1.4e-06   28.8   0.0     2    70   206   268   205   297 0.86 NADP oxidoreductase coenzyme F420-dependent
+F420_oxidored        PF03807.17    97 g4.t1                -            900   6.8e-09   36.2   0.5   2   2      0.05        64    4.2   0.1    10    39   513   538   504   558 0.77 NADP oxidoreductase coenzyme F420-dependent
+2-Hacid_dh_C         PF02826.19   178 g4.t1                -            900   3.2e-08   33.1   0.2   1   2   1.2e-07   0.00015   21.2   0.0    34   126   201   296   177   298 0.77 D-isomer specific 2-hydroxyacid dehydrogenase, NAD binding domain
+2-Hacid_dh_C         PF02826.19   178 g4.t1                -            900   3.2e-08   33.1   0.2   2   2   0.00045      0.58    9.5   0.0    27    73   492   539   469   591 0.84 D-isomer specific 2-hydroxyacid dehydrogenase, NAD binding domain
+Alkyl_sulf_C         PF14864.6    126 g4.t1                -            900   3.8e-06   27.2   0.0   1   1   6.6e-09   8.5e-06   26.1   0.0    34   117   815   896   787   899 0.80 Alkyl sulfatase C-terminal
+KR                   PF08659.10   180 g4.t1                -            900   8.4e-06   25.8   1.1   1   3     0.025        32    4.4   0.0     8    65   210   259   206   267 0.80 KR domain
+KR                   PF08659.10   180 g4.t1                -            900   8.4e-06   25.8   1.1   2   3       3.8   4.9e+03   -2.7   0.0     9    29   466   486   466   491 0.87 KR domain
+KR                   PF08659.10   180 g4.t1                -            900   8.4e-06   25.8   1.1   3   3   1.1e-06    0.0013   18.6   0.1     2    93   503   597   502   620 0.80 KR domain
+IlvN                 PF07991.12   165 g4.t1                -            900     0.001   18.7   0.5   1   2   2.6e-06    0.0034   17.0   0.0     5    77   204   277   200   298 0.80 Acetohydroxy acid isomeroreductase, NADPH-binding domain
+IlvN                 PF07991.12   165 g4.t1                -            900     0.001   18.7   0.5   2   2       1.5     2e+03   -1.8   0.1     2    38   499   536   498   577 0.64 Acetohydroxy acid isomeroreductase, NADPH-binding domain
+UDPG_MGDP_dh_N       PF03721.14   187 g4.t1                -            900    0.0011   18.6   0.0   1   3   3.8e-05     0.049   13.2   0.0     3    50   206   253   204   262 0.93 UDP-glucose/GDP-mannose dehydrogenase family, NAD binding domain
+UDPG_MGDP_dh_N       PF03721.14   187 g4.t1                -            900    0.0011   18.6   0.0   2   3      0.11   1.4e+02    1.9   0.0   106   137   282   313   268   323 0.81 UDP-glucose/GDP-mannose dehydrogenase family, NAD binding domain
+UDPG_MGDP_dh_N       PF03721.14   187 g4.t1                -            900    0.0011   18.6   0.0   3   3       3.4   4.4e+03   -2.9   0.0   149   164   671   686   652   690 0.76 UDP-glucose/GDP-mannose dehydrogenase family, NAD binding domain
+SCP2_2               PF13530.6    104 g4.t1                -            900    0.0036   17.7   0.0   1   1   1.2e-05     0.015   15.7   0.0    30    98   823   895   750   899 0.84 Sterol carrier protein domain
+TrkA_N               PF02254.18   116 g4.t1                -            900     0.036   14.3   0.0   1   3   0.00036      0.46   10.8   0.0     4    44   209   249   206   256 0.88 TrkA-N domain
+TrkA_N               PF02254.18   116 g4.t1                -            900     0.036   14.3   0.0   2   3         5   6.4e+03   -2.6   0.0    91    91   540   540   511   580 0.57 TrkA-N domain
+TrkA_N               PF02254.18   116 g4.t1                -            900     0.036   14.3   0.0   3   3       1.4   1.8e+03   -0.8   0.0    51    69   738   756   736   761 0.84 TrkA-N domain
+3HCDH_N              PF02737.18   180 g4.t1                -            900     0.051   13.4   0.1   1   4       4.4   5.6e+03   -3.0   0.2    75    86   105   116    68   143 0.56 3-hydroxyacyl-CoA dehydrogenase, NAD binding domain
+3HCDH_N              PF02737.18   180 g4.t1                -            900     0.051   13.4   0.1   2   4     4e-05     0.051   13.4   0.1     2    41   206   245   205   264 0.75 3-hydroxyacyl-CoA dehydrogenase, NAD binding domain
+3HCDH_N              PF02737.18   180 g4.t1                -            900     0.051   13.4   0.1   3   4      0.86   1.1e+03   -0.7   0.0    10    49   513   552   503   580 0.79 3-hydroxyacyl-CoA dehydrogenase, NAD binding domain
+3HCDH_N              PF02737.18   180 g4.t1                -            900     0.051   13.4   0.1   4   4       1.3   1.6e+03   -1.2   0.0    13    93   672   748   665   750 0.71 3-hydroxyacyl-CoA dehydrogenase, NAD binding domain
+Aldo_ket_red         PF00248.21   294 g5.t1                -            244   8.5e-27   94.1   0.0   1   1   6.1e-31   1.1e-26   93.7   0.0    78   285     1   204     1   209 0.86 Aldo/keto reductase family
+#
+# Program:         hmmscan
+# Version:         3.1b2 (February 2015)
+# Pipeline mode:   SCAN
+# Query file:      renilla_test_prots.fasta
+# Target file:     /home/wrf/db/Pfam-A.hmm
+# Option settings: hmmscan --domtblout renilla_test_prots.pfam.tab --cpu 4 /home/wrf/db/Pfam-A.hmm renilla_test_prots.fasta 
+# Current dir:     /home/wrf/git/genomeGTFtools/test_data
+# Date:            Sun Oct 28 15:44:12 2018
+# [ok]

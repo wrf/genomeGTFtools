@@ -20,6 +20,7 @@ GFF (generic feature format) is a [tab-delimited pseudoformat](https://github.co
 Many of these tools were used in [our analysis of the genome of the sponge *Tethya wilhelma*](https://bitbucket.org/molpalmuc/sponge-oxygen). Please cite the paper: [Mills, DB. et al (2018) The last common ancestor of animals lacked the HIF pathway and respired in low-oxygen environments. *eLife* 7:e31176.](https://doi.org/10.7554/eLife.31176)
 
 ### Jump to: ###
+* [pfam2gff.py](https://github.com/wrf/genomeGTFtools#pfam2gff) PFAM domains of proteins/coding sequences made into a GFF
 * [blast2gff.py](https://github.com/wrf/genomeGTFtools#blast2gff) blast hits to GFF, generally indicating exons or conserved domains
 * [microsynteny.py](https://github.com/wrf/genomeGTFtools#microsynteny) using two GFF files of two different genomes and blast hits, determine blocks of conserved gene order
 
@@ -27,7 +28,7 @@ Many of these tools were used in [our analysis of the genome of the sponge *Teth
 By convention, the longest chromosomes are numbered first. This naturally applies to scaffolds as well. Contigs/scaffolds can be renumbered and reordered with `number_contigs_by_length.py` script. Use the option `-c` to specify an additional output file of the conversion vector, that can be used to rename the scaffold column in any GFF file with the `rename_gtf_contigs.py` script.
 
 ## pfam2gff
-This has two modes: one will convert the "tabular" hmmscan output (generated using PFAM-A, which can be found in [the FTP section of PFAM](http://pfam.xfam.org/) as the database) into a protein GFF with domains at the protein positions. 
+This has two modes: one will convert the "tabular" hmmscan output (generated using PFAM-A (`Pfam-A.hmm`), which can be found in [the FTP section of PFAM](http://pfam.xfam.org/) as the database) into a protein GFF with domains at the protein positions.
 
   `hmmscan --cpu 4 --domtblout stringtie.pfam.tab ~/PfamScan/data/Pfam-A.hmm stringtie_transdecoder_prots.fasta > stringtie.pfam.log`
 
@@ -36,7 +37,47 @@ This has two modes: one will convert the "tabular" hmmscan output (generated usi
 ### For genomic coordinates ###
 The other output will convert the domain positions into genomic coordinates for use in genome browsers, so individual domains can be viewed spanning exons. Run `hmmscan` as above, then use the `-g` option to include genomic coordinates. Use `-T` for presets for [TransDecoder genome GFF](https://github.com/TransDecoder/TransDecoder/wiki) file.
 
+![renilla_pfam_example.png](https://github.com/wrf/genomeGTFtools/blob/master/test_data/renilla_pfam_example.png)
+
   `pfam2gff.py -g stringtie_transdecoder.gff -i stringtie.pfam.tab -T > stringtie_transdecoder_pfam_domains.gff`
+
+For `AUGUSTUS` proteins (using [extract_features.py](https://bitbucket.org/wrf/sequences/src/master/extract_features.py) or translated nucleotides), this would be run as:
+
+  `hmmscan --cpu 4 --domtblout renilla_test_prots.pfam.tab ~/db/Pfam-A.hmm renilla_test_prots.fasta > /dev/null`
+
+Then run with the `AUGUSTUS` GFF (ensure this is GFF format and not GTF), instructing to use CDS features as exons with `-x`. Depending on version, the `AUGUSTUS` output might appear as below, where ID is not explicitly given in the attributes of the gene or transcripts (it just says `g1`), but is given for the introns or CDS. This makes it difficult to parse in a standarized way.
+
+```
+jcf7180000021585	AUGUSTUS	gene	921	9763	0.03	+	.	g1
+jcf7180000021585	AUGUSTUS	transcript	921	9763	0.03	+	.	g1.t1
+jcf7180000021585	AUGUSTUS	intron	1118	2513	0.83	+	.	transcript_id "g1.t1"; gene_id "g1";
+jcf7180000021585	AUGUSTUS	CDS	921	1117	0.57	+	0	transcript_id "g1.t1"; gene_id "g1";
+jcf7180000021585	AUGUSTUS	CDS	2514	2647	1	+	1	transcript_id "g1.t1"; gene_id "g1";
+```
+
+This should be changed to appear as GFF format. Introns are ignored anyway (thus can be removed) and CDS features will be treated as exons (with option `-x`).
+
+```
+jcf7180000021585	AUGUSTUS	gene	921	9763	0.03	+	.	ID=g1;Name=g1
+jcf7180000021585	AUGUSTUS	mRNA	921	9763	0.03	+	.	ID=g1.t1;Parent=g1;Name=g1.t1
+jcf7180000021585	AUGUSTUS	CDS	921	1117	0.57	+	0	Parent=g1.t1
+jcf7180000021585	AUGUSTUS	CDS	2514	2647	1	+	1	Parent=g1.t1
+```
+
+This can be run with `pfam2gff.py`, specifying the GFF file with `-g` (this will also make it print a GFF of genomic coordinates).
+
+  `pfam2gff.py -g aug_nocomments_cds.gff -e 1e-3 -i aug_prots.pfam.tab -x > aug_prots_pfam.gff`
+
+Produces the following example output. The results are not filtered by position, so it is evident that 3 different von Willebrand domains are found, though group 1 is clearly the strongest match, as indicated by the score column.
+
+```
+jcf7180000021585	hmmscan	PFAM	1011	1117	113.3	+	.	ID=g1.t1.VWA.1;Name=PF00092.VWA.von_Willebrand_factor_type_A_domain
+jcf7180000021585	hmmscan	PFAM	2514	2585	113.3	+	.	ID=g1.t1.VWA.1;Name=PF00092.VWA.von_Willebrand_factor_type_A_domain
+jcf7180000021585	hmmscan	PFAM	1014	1117	55.5	+	.	ID=g1.t1.VWA_2.1;Name=PF13519.VWA_2.von_Willebrand_factor_type_A_domain
+jcf7180000021585	hmmscan	PFAM	2514	2526	55.5	+	.	ID=g1.t1.VWA_2.1;Name=PF13519.VWA_2.von_Willebrand_factor_type_A_domain
+jcf7180000021585	hmmscan	PFAM	1011	1117	35.1	+	.	ID=g1.t1.VWA_3.1;Name=PF13768.VWA_3.von_Willebrand_factor_type_A_domain
+jcf7180000021585	hmmscan	PFAM	2514	2566	35.1	+	.	ID=g1.t1.VWA_3.1;Name=PF13768.VWA_3.von_Willebrand_factor_type_A_domain
+```
 
 ## pfamgff2clans
 Convert a PFAM protein GFF (above) to the PFAM clans, and remove some redundant hits, essentially just changing the names of the domains and merging duplicates. This is needed for the `pfampipeline.py` script. This script requires the [clan links file, called Pfam-A.clans.tsv](http://pfam.xfam.org/).
@@ -54,14 +95,6 @@ Several output files are automatically generated, including the domain assignmen
 ![nidogen_full_prots.png](https://github.com/wrf/genomeGTFtools/blob/master/test_data/nidogen_full_prots.png)
 
 To view exon structure from a GFF file on a 3D protein structure, see instructions at my [PDBcolor repo](https://github.com/wrf/pdbcolor#gene-structure).
-
-## repeat2gtf
-From scaffolds or masked contigs, generate a feature for each long repeat of N's or n's (or any other arbitrary letter or pattern). The most obvious application is to make a track for gaps, which is the default behavior. The search is a regular expression, so could be any other simple repeat as well - CACA, CAG (glutamine repeats).
-
-  `repeat2gtf.py scaffolds.fasta > scaffolds_gaps.gtf`
-
-## pal2gtf
-Convert palindromic repeats from the [EMBOSS program palindrome](http://emboss.sourceforge.net/apps/release/6.6/emboss/apps/palindrome.html) into GTF features. This was meant for mitochondrial genomes, but could potentially be whole nuclear genomes.
 
 ## blast2gff
 This was a strategy to convert blast hits into gene models. The direction of the blast hit and the grouping of blast hits in the same region is most indicative of a gene (though possibly pseudogenes as well). In general, blasting all human proteins against the target genome can find many proteins even in distantly related organisms. Repeated domains or very common domains (like ATP binding for kinases) will show up all over the place, so limiting the `-max_target_seqs` is advisable.
@@ -85,12 +118,32 @@ As above for the domains in `pfam2gff.py`, entire blast hits to transcripts or p
 
   `blast2genomegff.py -b transcripts_sprot.tab -d uniprot_sprot.fasta -g transcripts.gtf > transcripts_sprot.genome.gff`
 
-If starting from proteins, and the `CDS` features are available (such as from `AUGUSTUS`), use the options `-x` to make use of CDS instead of exons.
+#### Options are: ####
+   * `-p` : program, by default is `blastx`, but change to `blastp` if proteins were used. The correct blast program is needed to calculate the intervals correctly.
+   * `-x` : if starting from proteins, and the `CDS` features are available (such as from `AUGUSTUS`), use CDS features from the GFF instead of exons (that is, exons are not specified at all).
+   * `-D` : delimiter for spliting names in the tabular blast output. For example, if names were `gene1.CDS`, the option `-D .` would be used to split at `gene1`.
+   * `--gff-delimiter` : as above for `-D`, but to split the IDs in the GFF. If the query column in blast (first column) and the ID in the GFF do not match, and there is no output, then this or `-D` may fix the problem.
+   * `-c` : coverage cutoff, remove queries where the hit is under 0.1 of the subject length
+   * `-e` : E-value cutoff, by default is 1e-3
+   * `-s` : bitscore/length cutoff, remove hits with bitscore/length of under 0.1, that is, remove very distant matches. Set higher for more closely related species (0.3) or lower for distance species (0.05).
+
+### starting from AUGUSTUS proteins or CDS
+When running `AUGUSTUS`, include the options `--protein=on --cds=on --gff=on`. As above, the proteins themselves (and the CDS nucleotides) can be extracted with the [extract_features.py script](https://bitbucket.org/wrf/sequences/src/master/extract_features.py). Then run either `blastp` or `blastx`, for proteins or nucleotide CDS, respectively.
+
+  `blastp -query renilla_test_prots.fasta -db ~/db/human_uniprot.fasta -outfmt 6 -evalue 1e-4 -max_target_seqs 5 > renilla_vs_human_blastp_1e-4.tab`
+
+By default, `AUGUSTUS` does not report exon features (only `intron` and `CDS`). 
+
+  `blast2genomegff.py -b renilla_vs_human_blastp_1e-4.tab -g renilla_test_prots.gff -d ~/db/human_uniprot.fasta -S -x > renilla_vs_human_blastp_1e-4.gff`
+
+If proteins were used, set `-p` to `blastp`. If nucleotide CDS was used, the default `-p` is `blastx`.
+
+![renilla_blast_v_human_example.png](https://github.com/wrf/genomeGTFtools/blob/master/test_data/renilla_blast_v_human_example.png)
 
 ## microsynteny
 Blocks of colinear genes between two species can be identified using `blast` and GFF files of the gene positions for each species.
 
-   Common options are:
+#### Common options are: ####
    * `-m` minimum length of a block, 3 is usually sufficient for true synteny, as determined by randomized gene order (with `-R`)
    * `-z` max allowed distance between genes. This should be roughly the upper limit of intergenic distances in the genome, meaning 99% of genes are closer than `-z` (see [here for an example](https://github.com/wrf/misc-analyses/tree/master/intron_evolution)).
    * `-R` randomize gene order of the query, to estimate false discovery rate
@@ -143,6 +196,14 @@ The other potential problem occurs in the case of tandem duplications. If a tand
 5) Generate a GFF of the blocks, to plot in a genome browser. Use the option `--make-gff`.
 
   `microsynteny.py -b acropora_vs_styllophora_blastp.tab -q test_data/adi_aug101220_pasa_mrna_t1_only.gff -d test_data/Spis.genome.annotation.mrna_only.gff -D "|" > test_data/acropora_vs_styllophora_microsynteny.gff`
+
+## repeat2gtf
+From scaffolds or masked contigs, generate a feature for each long repeat of N's or n's (or any other arbitrary letter or pattern). The most obvious application is to make a track for gaps, which is the default behavior. The search is a regular expression, so could be any other simple repeat as well - CACA, CAG (glutamine repeats).
+
+  `repeat2gtf.py scaffolds.fasta > scaffolds_gaps.gtf`
+
+## pal2gtf
+Convert palindromic repeats from the [EMBOSS program palindrome](http://emboss.sourceforge.net/apps/release/6.6/emboss/apps/palindrome.html) into GTF features. This was meant for mitochondrial genomes, but could potentially be whole nuclear genomes.
 
 ## DEPRICATED: blast2genewise
 **To get gene models from blast hits, the best strategy may be to use** `blast2gff.py` **with the option** `-A` **to convert the blast hits to** [AUGUSTUS hints](http://augustus.gobics.de/binaries/README.TXT) (which are in a GFF-like format). This is then specified in the [AUGUSTUS](http://bioinf.uni-greifswald.de/augustus/) run as: `--hintsfile=geneset_vs_scaffolds.gff`
