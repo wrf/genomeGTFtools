@@ -6,7 +6,7 @@
 # https://github.com/The-Sequence-Ontology/SO-Ontologies/blob/master/subsets/SOFA.obo
 
 '''
-pfam2gff.py  last modified 2018-10-24
+pfam2gff.py  last modified 2018-10-28
 
     EXAMPLE USAGE:
     to convert to protein gff, where domains are protein coordinates
@@ -37,8 +37,9 @@ import time
 import argparse
 import re
 from collections import defaultdict
+from itertools import chain
 
-def cds_to_intervals(gtffile, keepexons, transdecoder, aqumode, jgimode, nogenemode):
+def cds_to_intervals(gtffile, keepexons, transdecoder, jgimode, nogenemode):
 	'''convert protein or gene intervals from gff to dictionary where mrna IDs are keys and lists of intervals are values'''
 	# this should probably be a class
 	geneintervals = defaultdict(list)
@@ -62,8 +63,7 @@ def cds_to_intervals(gtffile, keepexons, transdecoder, aqumode, jgimode, nogenem
 				feature = lsplits[2]
 				strand = lsplits[6]
 				attributes = lsplits[8]
-				if aqumode:
-					attributes = attributes.replace('CDS:','') # remove CDS: from Aqu2 gene models
+
 				if attributes.find("ID")==0: # indicates gff3 format
 					geneid = re.search('ID=([\w.|-]+)', attributes).group(1)
 				elif attributes.find("Parent")==0: # gff3 format but no ID
@@ -75,7 +75,7 @@ def cds_to_intervals(gtffile, keepexons, transdecoder, aqumode, jgimode, nogenem
 				if transdecoder: # meaning CDS IDs will start with cds.gene.123|m.1
 					geneid = geneid.replace("cds.","") # simply remove the cds.
 					geneid = geneid.replace(".cds","") # also works for AUGUSTUS
-				if feature=="transcript" or feature=="mRNA" or (aqumode and feature=="gene"):
+				if feature=="transcript" or feature=="mRNA":
 					transcounter += 1
 					genestrand[geneid] = strand
 					genescaffold[geneid] = scaffold
@@ -160,9 +160,23 @@ def parse_pfam_domains(pfamtabular, evaluecutoff, lengthcutoff, programname, out
 				print >> sys.stderr, "WARNING: no intervals for {} in {}".format(targetname, queryid)
 				intervalproblems += 1
 				continue
+
+			# make Parent feature
+			allpositions = list(chain(*genomeintervals))
+			parentstart = min(allpositions)
+			parentend = max(allpositions)
+			# ID consists of: query gene, "target name" of up to 21 characters, domain number 
+			# ID=g1.t1.VWA.1
+			# Name consists of: PFAM accession, target name, target description
+			# Name=PF00092.VWA.von_Willebrand_factor_type_A_domain
+			outline = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t.\tID={10}.{8}.{9};Name={7}.{8}.{11}".format(scaffold, programname, outputtype, parentstart, parentend, domscore, strand, pfamacc, targetname, domnumber, queryid, targetdescription)
+			print >> sys.stdout, outline
+			# make child features for each interval
 			for interval in genomeintervals:
-				# thus ID appears as protein.targetname.number, so avic1234.G2F.1, and uses ID in most browsers
-				print >> sys.stdout, "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t.\tID={10}.{8}.{9};Name={7}.{8}.{11}".format(scaffold, programname, outputtype, interval[0], interval[1], domscore, strand, pfamacc, targetname, domnumber, queryid, targetdescription)
+				# thus ID appears as protein.targetname.number,
+				# so avic1234.G2F.1, and uses ID in most browsers
+				outline = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t.\tParent={10}.{8}.{9};Name={7}.{8}.{11}".format(scaffold, programname, outputtype, interval[0], interval[1], domscore, strand, pfamacc, targetname, domnumber, queryid, targetdescription)
+				print >> sys.stdout, outline
 
 		### FOR PROTEIN GFF ###
 		else: # for protein GFF, make outline for later sorting
@@ -248,7 +262,6 @@ def main(argv, wayout):
 		argv.append("-h")
 	parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description=__doc__)
 	parser.add_argument('-i','--input', help="PFAM domain information as hmmscan tabular")
-	parser.add_argument('-A','--aqu', action="store_true", help="use presets for Aqu2")
 	parser.add_argument('-d','--delimiter', help="optional delimiter for protein names, cuts off end split")
 	parser.add_argument('-e','--evalue', type=float, default=1e-1, help="evalue cutoff for domain filtering [1e-1]")
 	parser.add_argument('-g','--genes', help="genes or proteins in gff format")
@@ -264,7 +277,7 @@ def main(argv, wayout):
 	args = parser.parse_args(argv)
 
 	if args.genes:
-		geneintervals, genestrand, genescaffold = cds_to_intervals(args.genes, args.exons, args.transdecoder, args.aqu, args.JGI, args.no_genes)
+		geneintervals, genestrand, genescaffold = cds_to_intervals(args.genes, args.exons, args.transdecoder, args.JGI, args.no_genes)
 		parse_pfam_domains(args.input, args.evalue, args.length_cutoff, args.program, args.type, args.delimiter, args.debug, args.JGI, geneintervals, genestrand, genescaffold)
 	else: # assume protein gff
 		parse_pfam_domains(args.input, args.evalue, args.length_cutoff, args.program, args.type, args.delimiter, args.debug)
