@@ -190,6 +190,8 @@ def parse_pfam_domains(pfamtabular, evaluecutoff, lengthcutoff, programname, out
 	print >> sys.stderr, "# Found {} domains for {} proteins".format(domaincounter, len(protnamedict) ), time.asctime()
 	if intervalcounts:
 		print >> sys.stderr, "# Wrote {} domain intervals".format(intervalcounts), time.asctime()
+	else:
+		print >> sys.stderr, "WARNING: NO DOMAINS WRITTEN, CHECK OPTIONS"
 	print >> sys.stderr, "# Removed {} domain hits by shortness".format(shortRemovals), time.asctime()
 	print >> sys.stderr, "# Removed {} domain hits by evalue".format(evalueRemovals), time.asctime()
 	if intervalproblems:

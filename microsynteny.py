@@ -96,7 +96,10 @@ def parse_gtf(gtffile, exonstogenes, excludedict, delimiter, isref=False):
 				exonboundaries[geneid].append(exonbounds) # for calculating gene boundaries
 
 	if len(genesbyscaffold) > 0: # even if no-genes was set, this should be more than 0 if genes were in one gtf
-		print >> sys.stderr, "# Found {} genes".format(sum(len(x) for x in genesbyscaffold.values()) ), time.asctime()
+		if isref:
+			print >> sys.stderr, "# Found {} genes".format( len(genesbyscaffold) ), time.asctime()
+		else:
+			print >> sys.stderr, "# Found {} genes".format(sum(len(x) for x in genesbyscaffold.values()) ), time.asctime()
 		return genesbyscaffold
 	else: # generate gene boundaries by scaffold
 		print >> sys.stderr, "# Estimated {} genes from {} exons".format(len(exonboundaries), sum(len(x) for x in exonboundaries.values() ) ), time.asctime()

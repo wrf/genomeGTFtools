@@ -14,7 +14,7 @@ def main(argv, wayout):
 	if not len(argv):
 		argv.append("-h")
 	parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description=__doc__)
-	parser.add_argument('-g','--gtf', help="stringtie GTF file")
+	parser.add_argument('gtf', help="stringtie GTF file")
 	parser.add_argument('--transcript', default="transcript", help="optional name for transcript features, default is transcript")
 	args = parser.parse_args(argv)
 
