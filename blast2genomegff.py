@@ -114,7 +114,7 @@ def gtf_to_intervals(gtffile, keepcds, transdecoder, nogenemode, genesplit):
 		print >> sys.stderr, "# Counted {} exons for {} inferred transcripts".format(exoncounter, transcounter), time.asctime()
 	return geneintervals, genestrand, genescaffold
 
-def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, programname, outputtype, donamechop, is_swissprot, seqlengthdict, geneintervals, genestrand, genescaffold, debugmode=False):
+def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxtargets, programname, outputtype, donamechop, is_swissprot, seqlengthdict, geneintervals, genestrand, genescaffold, debugmode=False):
 	'''parse blast hits from tabular blast and write to stdout as genome gff'''
 	querynamedict = defaultdict(int) # counter of unique queries
 	# count results to filter
@@ -176,7 +176,8 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, progr
 			sseqid = sseqid.replace("|","")
 		hitDictCounter[sseqid] += 1
 
-		if querynamedict.get(qseqid) >= 10:
+		# skip if there are already enough targets, default is 10
+		if querynamedict.get(qseqid) >= maxtargets:
 			continue
 
 		backframe = False
@@ -300,6 +301,7 @@ def main(argv, wayout):
 	parser.add_argument('-c','--coverage-cutoff', type=float, help="query coverage cutoff for filtering [0.1]", default=0.1)
 	parser.add_argument('-e','--evalue-cutoff', type=float, help="evalue cutoff [1e-3]", default=1e-3)
 	parser.add_argument('-s','--score-cutoff', type=float, help="bitscore/length cutoff for filtering [0.1]", default=0.1)
+	parser.add_argument('-M','--max-targets', type=int, help="most targets to allow per query [10]", default=10)
 	parser.add_argument('-F','--filter', action="store_true", help="filter low quality matches")
 	parser.add_argument('-G','--no-genes', action="store_true", help="genes are not defined, get gene ID for each exon")
 	parser.add_argument('-S','--swissprot', action="store_true", help="db sequences have swissprot headers")
@@ -311,7 +313,7 @@ def main(argv, wayout):
 	protlendb = make_seq_length_dict(args.database)
 	geneintervals, genestrand, genescaffold =  gtf_to_intervals(args.genes, args.exons, args.transdecoder, args.no_genes, args.gff_delimiter)
 
-	parse_tabular_blast(args.blast, args.coverage_cutoff, args.evalue_cutoff, args.score_cutoff, args.program, args.type, args.delimiter, args.swissprot, protlendb, geneintervals, genestrand, genescaffold)
+	parse_tabular_blast(args.blast, args.coverage_cutoff, args.evalue_cutoff, args.score_cutoff, args.max_targets, args.program, args.type, args.delimiter, args.swissprot, protlendb, geneintervals, genestrand, genescaffold)
 
 if __name__ == "__main__":
 	main(sys.argv[1:],sys.stdout)
