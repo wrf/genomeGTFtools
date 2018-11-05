@@ -37,9 +37,9 @@ This has two modes: one will convert the "tabular" hmmscan output (generated usi
 ### For genomic coordinates ###
 The other output will convert the domain positions into genomic coordinates for use in genome browsers, so individual domains can be viewed spanning exons. Run `hmmscan` as above, then use the `-g` option to include genomic coordinates. Use `-T` for presets for [TransDecoder genome GFF](https://github.com/TransDecoder/TransDecoder/wiki) file.
 
-![renilla_pfam_example.png](https://github.com/wrf/genomeGTFtools/blob/master/test_data/renilla_pfam_example.png)
-
   `pfam2gff.py -g stringtie_transdecoder.gff -i stringtie.pfam.tab -T > stringtie_transdecoder_pfam_domains.gff`
+
+![renilla_pfam_example.png](https://github.com/wrf/genomeGTFtools/blob/master/test_data/renilla_pfam_example.png)
 
 For `AUGUSTUS` proteins (using [extract_features.py](https://bitbucket.org/wrf/sequences/src/master/extract_features.py) or translated nucleotides), this would be run as:
 
@@ -108,14 +108,10 @@ This was a strategy to convert blast hits into gene models. The direction of the
   `blast2gff.py -b prots_vs_genome.tab > prots_vs_genome.gff3`
 
 ## blast2genomegff
-As above for the domains in `pfam2gff.py`, entire blast hits to transcripts or proteins can be printed as GFF using the `blast2genomegff.py` script, where the blast hits will be shown spanning multiple exons as a single feature. This might help to identify erroneously fused genes. Using transcripts from a *de novo* transcriptome [Trinity](http://trinityrnaseq.github.io/), or genome guided [StringTie](http://ccb.jhu.edu/software/stringtie/), convert blastx protein matches into genomic coordinates.
-
-1) Blastx the transcriptome against a protein set, such as [Swissprot](https://www.uniprot.org/downloads), or perhaps gene models of a related organism.
+As above for the domains in `pfam2gff.py`, entire blast hits to transcripts or proteins can be printed as GFF using the `blast2genomegff.py` script, where the blast hits will be shown spanning multiple exons as a single feature. This might help to identify erroneously fused genes. Using transcripts from a *de novo* transcriptome [Trinity](http://trinityrnaseq.github.io/), or genome guided [StringTie](http://ccb.jhu.edu/software/stringtie/), convert blastx protein matches into genomic coordinates. For Trinity transcripts, the coordinates on the genome need to be determined by mapping the transcripts to the genome. This can be done with [GMAP](http://research-pub.gene.com/gmap/). Generically, this would be run as:
 
   `blastx -query transcripts.fasta -db uniprot_sprot.fasta -num_threads 16 -outfmt 6 -max_target_seqs 5 > transcripts_sprot.tab`
   
-2) Convert to genomic coordinates, so individual protein hits can be seen spanning exons. Transcripts from StringTie can be used directly. For Trinity transcripts, the coordinates on the genome need to be determined by mapping the transcripts to the genome. This can be done with [GMAP](http://research-pub.gene.com/gmap/).
-
   `blast2genomegff.py -b transcripts_sprot.tab -d uniprot_sprot.fasta -g transcripts.gtf > transcripts_sprot.genome.gff`
 
 #### Options are: ####
@@ -126,6 +122,17 @@ As above for the domains in `pfam2gff.py`, entire blast hits to transcripts or p
    * `-c` : coverage cutoff, remove queries where the hit is under 0.1 of the subject length
    * `-e` : E-value cutoff, by default is 1e-3
    * `-s` : bitscore/length cutoff, remove hits with bitscore/length of under 0.1, that is, remove very distant matches. Set higher for more closely related species (0.3) or lower for distance species (0.05).
+
+### starting from StringTie transcripts
+[StringTie](https://ccb.jhu.edu/software/stringtie/) transcripts can be converted to fasta using the script `cufflinks_gtf_genome_to_cdna_fasta.pl` (packaged with [TransDecoder](https://github.com/TransDecoder/TransDecoder/wiki)). These are used as input for `blastx`. Note that with `blastx`, some can hit antisense, which suggests there is a protein on the antisense strand, or possibly there is an erroneous fusion of two adjacent genes.
+
+1) Blastx the transcriptome against a protein set, such as [Swissprot](https://www.uniprot.org/downloads), or perhaps gene models of a related organism.
+
+  `blastx -query stringtie.fasta -db uniprot_sprot.fasta -max_target_seqs 10 -evalue 1e-3 > stringtie_vs_swissprot_blastx.tab`
+
+2) Convert to genomic coordinates, so individual protein hits can be seen spanning exons. The genes `-g` can be defined using the GTF output of StringTie.
+
+  `blast2genomegff.py -b stringtie_vs_swissprot_blastx.tab -g stringtie.gtf -d uniprot_sprot.fasta -S > stringtie_vs_swissprot_blastx.gff`
 
 ### starting from AUGUSTUS proteins or CDS
 When running `AUGUSTUS`, include the options `--protein=on --cds=on --gff=on`. As above, the proteins themselves (and the CDS nucleotides) can be extracted with the [extract_features.py script](https://bitbucket.org/wrf/sequences/src/master/extract_features.py). Then run either `blastp` or `blastx`, for proteins or nucleotide CDS, respectively.
