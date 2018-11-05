@@ -2,7 +2,7 @@
 # microsynteny.py
 # v1.0 2015-10-09
 
-'''microsynteny.py v1.3 last modified 2018-10-22
+'''microsynteny.py v1.3 last modified 2018-11-05
 
 microsynteny.py -q query.gtf -d ref_species.gtf -b query_vs_ref_blast.tab -E ../bad_contigs -g -D '_' --blast-query-delimiter '.' > query_vs_ref_microsynteny.tab
 
@@ -301,7 +301,7 @@ def synteny_walk(querydict, blastdict, refdict, min_block, max_span, max_distanc
 						# generate GFF for entire block
 						if make_gff:
 							# could also be "cross_genome_match"
-							blockline = "{0}\tmicrosynteny\tmatch\t{1}\t{2}\t{3}\t{4}\t.\tID=blk-{5};Target={6} {7} {8}".format( scaffold, qblockstart, qblockend, blocklen, strand, blocknum, refscaffold, sblockstart, sblockend)
+							blockline = "{0}\tmicrosynteny\tmatch\t{1}\t{2}\t{3}\t{4}\t.\tID=blk-{5};Name=blk-{5}_to_{6};Target={6} {7} {8}".format( scaffold, qblockstart, qblockend, blocklen, strand, blocknum, refscaffold, sblockstart, sblockend)
 							print >> wayout, blockline
 							# make GFF line for each match
 							for j,pair in enumerate(syntenylist):
