@@ -21,6 +21,7 @@ cd /mnt/genome_data/Hhon/
 prepare-refseqs.pl --fasta Hhon_final_contigs_unmasked.fasta --out ./
 ```
 
+### Adding StringTie and TransDecoder ###
 Because of issues with parsing the GTF format of [StringTie](https://ccb.jhu.edu/software/stringtie/index.shtml), this needs to be converted to a GFF file with a Parent-Child feature, here simply as mRNA-exon. By default, each transcript and exon will be a standalone feature, rather than a transcript composed of exons as subfeatures.
 
 ```
@@ -28,19 +29,64 @@ stringtie_gtf_to_gff3.py Hhon_tophat2_stringtie.gtf > Hhon_tophat2_stringtie.gff
 flatfile-to-json.pl --gff Hhon_tophat2_stringtie.gff --trackType CanvasFeatures --trackLabel Stringtie --out ./
 ```
 
+Several other configuration changes are used. CDS features are expected for subfeatures, but these are not specified in the GFF. JBrowse can be instructed to use exons instead, by changing the `subParts` tag.
+
+`"subParts" : "exon",`
+
+For [TransDecoder](https://github.com/TransDecoder/TransDecoder/wiki), the translations can be turned into a `genome-GFF` as given by the instructions. The first five lines are given below.
+
+```
+contig_001_length_2062630	transdecoder	gene	7072	9993	.	-	.	ID=stringtie.1;Name=ORF
+contig_001_length_2062630	transdecoder	mRNA	7072	9993	.	-	.	ID=stringtie.1.1|m.290;Parent=stringtie.1;Name=ORF
+contig_001_length_2062630	transdecoder	exon	9894	9993	.	-	.	ID=stringtie.1.1|m.290.exon1;Parent=stringtie.1.1|m.290
+contig_001_length_2062630	transdecoder	exon	9565	9746	.	-	.	ID=stringtie.1.1|m.290.exon2;Parent=stringtie.1.1|m.290
+contig_001_length_2062630	transdecoder	CDS	9565	9744	.	-	.	ID=cds.stringtie.1.1|m.290;Parent=stringtie.1.1|m.290
+...
+```
+
+In the genome-GFF output file, the `name` tag of each protein is "ORF". This can be changed with the `change_transdecoder_names.py` script to give a more informative name. 
+
+```
+contig_001_length_2062630	transdecoder	gene	7072	9993	.	-	.	ID=stringtie.1;Name=stringtie.1
+contig_001_length_2062630	transdecoder	mRNA	7072	9993	.	-	.	ID=stringtie.1.1|m.290;Parent=stringtie.1;Name=stringtie.1.1_m.290
+contig_001_length_2062630	transdecoder	five_prime_UTR	9894	9993	.	-	.	ID=stringtie.1.1|m.290.utr5p1;Parent=stringtie.1.1|m.290
+contig_001_length_2062630	transdecoder	five_prime_UTR	9745	9746	.	-	.	ID=stringtie.1.1|m.290.utr5p2;Parent=stringtie.1.1|m.290
+contig_001_length_2062630	transdecoder	exon	9894	9993	.	-	.	ID=stringtie.1.1|m.290.exon1;Parent=stringtie.1.1|m.290
+...
+```
+
+The `label` tag then needs to be updated in the `trackList.json` file. Additionally, the UTR color can be changed in the style category as well. By default, it is a dark purple, here changed to a light blue.
+
+```
+ "style" : {
+    "className" : "feature",
+    "color" : "#005824",
+    "label" : "name",
+    "utrColor" : "#a6bddb"
+ },
+```
+
 ### Coloring by strand ###
-For analysing things like anti-sense transcription (as can be done here, since the RNANseq libraries were strand-specific), it is sometimes useful to color transcripts by strand, with forward and reverse as different colors.
+For analysing things like anti-sense transcription (as can be done here, since the RNAseq libraries were strand-specific), it is sometimes useful to color transcripts by strand, with forward and reverse as different colors.
 
 The color of features can be changed for [CanvasFeatures](https://jbrowse.org/docs/canvas_features.html) by editing the `trackList.json` file. The `color` tag is a sub-tag of `style`, and here is [given a function](http://gmod.org/wiki/JBrowse_FAQ#How_do_I_customize_feature_colors_.28with_CanvasFeatures.29), which returns `#4658c3` (blue) if the `strand` is 1 (forward strand), and `#46c385` (teal) for all other cases, 0 (no strand given) or -1 (reverse strand). The single line starting with `"color"` is added inside of the `style` tag, and contains a function.
 
 ```
-"style" : {
-    "className" : "feature",
-    "color" : "function(feature) { return feature.get('strand')==1 ?'#4658c3':'#46c385'; }"
-},
+ "style" : {
+     "className" : "feature",
+     "color" : "function(feature) { return feature.get('strand')==1 ?'#4658c3':'#46c385'; }"
+ },
 ```
 
 Like `strand`, features can be colored by score, or [any other parameter from the GFF](http://gmod.org/wiki/JBrowse_FAQ#How_do_I_access_data_about_my_features_in_my_callback_or_plugin).
+
+Some of the histogram parameters can also be changed, to match color schemes. Here, the histogram color is changed to match the darker features in this track.
+
+```
+ "histograms" : {
+    "color" : "#005824",
+ },
+```
 
 ### Using AUGUSTUS or BRAKER ###
 The output of AUGUSTUS is also not a standard GFF format, therefore needs to be modified.
