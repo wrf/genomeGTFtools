@@ -5,19 +5,27 @@
 # for SOFA terms:
 # https://github.com/The-Sequence-Ontology/SO-Ontologies/blob/master/subsets/SOFA.obo
 
-"""repeat2gtf.py  last modified 2017-09-20
+"""repeat2gtf.py  last modified 2018-11-16
+    generates a GFF3 format file of repeats, typically Ns as gaps
+  the script only searches the FORWARD strand, meaning would need
+  to be run twice for non-palindromic sequences (e.g. CACA vs GTGT)
     Requires Bio library (biopython)
 
-repeat2gtf.py scaffolds.fasta > scaffolds_gaps.gtf
+repeat2gtf.py scaffolds.fasta > scaffolds_gaps.gff
 
     for non-gap repeats (anything other than N)
     change -t to direct_repeat
 
-    GTF output contains 9 tab-separated columns for:
+    GFF output contains 9 tab-separated columns for:
 contig  program  type  start  end  score (length)  strand  phase  attributes
-    where attributes are composed of identifier.repeat.unique-number.length
+    where attributes are composed of:
+
+  identifier.repeat.unique-number.length
+
     a typical line will appear as:
 scaffold123  assembler  gap  2001  2105  105  .  .  ID=gap.N.1.105
+
+    meaning gap (default name), of N, number 1, length is 105
 """
 
 import sys
@@ -69,7 +77,7 @@ def main(argv, wayout):
 				lrepcontig = contig
 			repcounter += 1
 			seqsum += replen
-			print >> sys.stdout, "{}\t{}\t{}\t{}\t{}\t{}\t.\t.\t{}={}.{}.{}.{}".format(contig, args.program, args.type, rep.start()+1, rep.end()+1, replen, args.attribute, args.identifier, args.repeat, repcounter, replen)
+			print >> sys.stdout, "{}\t{}\t{}\t{}\t{}\t{}\t.\t.\t{}={}.{}.{}.{}".format(contig, args.program, args.type, rep.start()+1, rep.end(), replen, args.attribute, args.identifier, args.repeat, repcounter, replen)
 		if args.lowercase:
 			for rep in lcregex.finditer(str(seqrec.seq)): # iterate through lowercase repeats
 				replen = rep.end() - rep.start()
@@ -77,7 +85,7 @@ def main(argv, wayout):
 					continue
 				repcounter += 1
 				seqsum += replen
-				print >> sys.stdout, "{}\t{}\t{}\t{}\t{}\t{}\t.\t.\t{}={}.{}.{}.{}".format(contig, args.program, args.type, rep.start()+1, rep.end()+1, replen, args.attribute, args.identifier, lowerrepeat, repcounter, replen)
+				print >> sys.stdout, "{}\t{}\t{}\t{}\t{}\t{}\t.\t.\t{}={}.{}.{}.{}".format(contig, args.program, args.type, rep.start()+1, rep.end(), replen, args.attribute, args.identifier, lowerrepeat, repcounter, replen)
 	print >> sys.stderr, "# Counted {} sequences".format(seqcount), time.asctime()
 	print >> sys.stderr, "# Counted {} repeats of {} total bases".format(repcounter, seqsum), time.asctime()
 	print >> sys.stderr, "# Longest repeat was {} bases on {}".format(longestrepeat, lrepcontig), time.asctime()
