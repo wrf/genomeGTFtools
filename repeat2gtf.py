@@ -5,7 +5,7 @@
 # for SOFA terms:
 # https://github.com/The-Sequence-Ontology/SO-Ontologies/blob/master/subsets/SOFA.obo
 
-"""repeat2gtf.py  last modified 2018-11-16
+"""repeat2gtf.py  last modified 2018-11-20
     generates a GFF3 format file of repeats, typically Ns as gaps
   the script only searches the FORWARD strand, meaning would need
   to be run twice for non-palindromic sequences (e.g. CACA vs GTGT)
@@ -63,11 +63,15 @@ def main(argv, wayout):
 	if args.lowercase: # lowercase version of the same repeat
 		lowerrepeat = args.repeat.lower()
 		lcregex = re.compile("({0})+".format(lowerrepeat) )
+		print >> sys.stderr, "# Parsing repeats of {} and {} from {}".format(args.repeat, lowerrepeat, args.input_file.name), time.asctime()
+	else:
+		print >> sys.stderr, "# Parsing repeats of {} from {}".format(args.repeat, args.input_file.name), time.asctime()
 
-	print >> sys.stderr, "# Parsing repeats of {} from {}".format(args.repeat, args.input_file.name), time.asctime()
+	# begin iterating through sequences, then search the regular expression
 	for seqrec in SeqIO.parse(args.input_file, args.format):
 		seqcount += 1
 		contig = seqrec.id
+		reptracker = {} # key is position, value is list of start, end, length
 		for rep in repeatregex.finditer(str(seqrec.seq)): # iterate through normal repeats
 			replen = rep.end() - rep.start()
 			if replen < args.above or replen > args.below:
@@ -75,17 +79,23 @@ def main(argv, wayout):
 			if replen > longestrepeat:
 				longestrepeat = replen
 				lrepcontig = contig
-			repcounter += 1
 			seqsum += replen
-			print >> sys.stdout, "{}\t{}\t{}\t{}\t{}\t{}\t.\t.\t{}={}.{}.{}.{}".format(contig, args.program, args.type, rep.start()+1, rep.end(), replen, args.attribute, args.identifier, args.repeat, repcounter, replen)
+			repstart = rep.start()+1
+			repend = rep.end()
+			reptracker[repstart] = [repstart, repend, replen, args.repeat]
 		if args.lowercase:
 			for rep in lcregex.finditer(str(seqrec.seq)): # iterate through lowercase repeats
 				replen = rep.end() - rep.start()
 				if replen < args.above or replen > args.below:
 					continue
-				repcounter += 1
 				seqsum += replen
-				print >> sys.stdout, "{}\t{}\t{}\t{}\t{}\t{}\t.\t.\t{}={}.{}.{}.{}".format(contig, args.program, args.type, rep.start()+1, rep.end(), replen, args.attribute, args.identifier, lowerrepeat, repcounter, replen)
+				repstart = rep.start()+1
+				repend = rep.end()
+				reptracker[repstart] = [repstart, repend, replen, lowerrepeat]
+		for startpos in sorted(reptracker.keys()):
+			repcounter += 1
+			print >> sys.stdout, "{}\t{}\t{}\t{}\t{}\t{}\t.\t.\t{}={}.{}.{}.{}".format(contig, args.program, args.type, reptracker[startpos][0], reptracker[startpos][1], reptracker[startpos][2], args.attribute, args.identifier, reptracker[startpos][3], repcounter, reptracker[startpos][2])
+
 	print >> sys.stderr, "# Counted {} sequences".format(seqcount), time.asctime()
 	print >> sys.stderr, "# Counted {} repeats of {} total bases".format(repcounter, seqsum), time.asctime()
 	print >> sys.stderr, "# Longest repeat was {} bases on {}".format(longestrepeat, lrepcontig), time.asctime()
