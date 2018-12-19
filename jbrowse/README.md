@@ -20,6 +20,8 @@ prepare-refseqs.pl --fasta Hhon_final_contigs_unmasked.fasta --out ./
 ```
 
 ### Adding StringTie and TransDecoder ###
+![screenshot_01_stringtie.png](https://github.com/wrf/genomeGTFtools/blob/master/jbrowse/screenshot_01_stringtie.png)
+
 Because of issues with parsing the GTF format of [StringTie](https://ccb.jhu.edu/software/stringtie/index.shtml), this needs to be converted to a GFF file with a Parent-Child feature, here simply as mRNA-exon. By default, each transcript and exon will be a standalone feature, rather than a transcript composed of exons as subfeatures.
 
 ```
@@ -87,11 +89,14 @@ Some of the histogram parameters can also be changed, to match color schemes. He
 ```
 
 ### Using AUGUSTUS or BRAKER ###
-The output of AUGUSTUS is also not a standard GFF format, therefore needs to be modified.
+![screenshot_02_braker.png](https://github.com/wrf/genomeGTFtools/blob/master/jbrowse/screenshot_02_braker.png)
+
+The output of AUGUSTUS is also not a standard GFF format, therefore needs to be modified. By default, `transcript` features need to be renamed as `mRNA`, which can be easily substituted with `sed`.
 
 `flatfile-to-json.pl --gff PlacoH13_BRAKER1_augustus_no_comment.gff --trackType CanvasFeatures  --trackLabel AUGUSTUS --out ./ `
 
 ### Adding protein matches and domains ###
+![screenshot_03_pfam.png](https://github.com/wrf/genomeGTFtools/blob/master/jbrowse/screenshot_03_pfam.png)
 
 ```
 blast2genomegff.py -b hoilungia_vs_hsapiens_blastp_e-3.tab -p blastp -S -g ../tracks/Hhon_BRAKER1_CDS.gff3 -d ~/db/human_uniprot.fasta -x -G > hoilungia_vs_hsapiens_blastp_braker_cds.gff
@@ -99,6 +104,8 @@ flatfile-to-json.pl --gff hoilungia_vs_hsapiens_blastp_braker_cds.gff --trackTyp
 ```
 
 ### Adding synteny blocks ###
+![screenshot_04_microsynteny.png](https://github.com/wrf/genomeGTFtools/blob/master/jbrowse/screenshot_04_microsynteny.png)
+
 Synteny blocks spanning multiple genes can be displayed. First, blast the two protein sets (query species against target species). Here, for simplicity, only the first transcript model (called `t1`) is used. This simplifies the downstream processing.
 
 `blastp -query Hhon_BRAKER1_proteins.fasta -db triad_augustus_t1_only.prot.fasta -outfmt 6 -evalue 1e-3 -num_threads 4 > hoilungia_vs_trichoplax_blastp_e-3.tab`
@@ -112,6 +119,8 @@ This is then converted to `CanvasFeatures`, as above. Name fields should appear 
 `flatfile-to-json.pl --gff hoilungia_vs_trichoplax_microsynteny_v2.gff --trackType CanvasFeatures --trackLabel Triad_microsynteny --out ./`
 
 ### Raw read alignment and coverage ###
+![screenshot_05_coverage.png](https://github.com/wrf/genomeGTFtools/blob/master/jbrowse/screenshot_05_coverage.png)
+
 As [per the instructions](https://jbrowse.org/docs/tutorial_classic.html#next-gen-reads-bam), `BAM` files can be used directly, as long as the index file is there. Otherwise, the index can be regenerated with `samtools index`.
 
 `~/samtools-1.8/samtools index PlacoH13_final_contigs_bowtie2.bam.sorted.bam`
@@ -160,6 +169,40 @@ The above procedure is then done again for the RNAseq reads, using the options `
 Then convert to BigWig exactly as above:
 
 `bedGraphToBigWig PlacoH13_hardmasked_tophat2.bam.cov Hhon_final_contigs_unmasked.fasta.sizes PlacoH13_hardmasked_tophat2.bw`
+
+This BigWig file can also be used as the histogram in the alignment track, rather than having a wiggle track itself. This likely also requires changing the scale that it converts between directly viewing the alignment and showing the histogram.
+
+```
+[tracks.bowtie2dna]
+category = NGS
+storeClass = JBrowse/Store/SeqFeature/BAM
+urlTemplate = PlacoH13_final_contigs_bowtie2.bam.sorted.bam
+type = JBrowse/View/Track/Alignments2
+key = bowtie2 DNA reads
+```
+
+### VCF of alleles from raw reads ###
+Following the [instructions on preparing a VCF file](https://jbrowse.org/docs/variants.html), the SNPs called from the DNA reads mapped back to the assembly can be viewed as a variant track. [BCFtools](https://github.com/samtools/bcftools/releases) are needed to prepare the tabix file (tabular-index).
+
+`~/bcftools-1.9/htslib-1.9/bgzip Hhon_FREEBAYES_DNA_SNPs.vcf`
+
+`~/bcftools-1.9/htslib-1.9/tabix -p vcf Hhon_FREEBAYES_DNA_SNPs.vcf.gz`
+
+This can be directly added to the `trackList.json` file. Various style parameters can be changed as above, such as changing the defualt color.
+
+```
+      {
+         "category"      : "NGS",
+         "label"         : "DNA SNPs",
+         "key"           : "DNA SNPs",
+         "style": {
+             "color" : "#1c9099",
+         },
+         "storeClass"    : "JBrowse/Store/SeqFeature/VCFTabix",
+         "urlTemplate"   : "Hhon_FREEBAYES_DNA_SNPs.vcf.gz",
+         "type"          : "JBrowse/View/Track/CanvasVariants"
+      }
+```
 
 ## Some configuration notes for JBrowse ##
 It is sometimes useful or convenient to [set up multiple genomes on a single JBrowse instance](http://gmod.org/wiki/JBrowse_FAQ#How_do_I_set_up_multiple_genomes_in_a_single_jbrowse_instance.3F).
