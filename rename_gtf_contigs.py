@@ -1,14 +1,16 @@
 #!/usr/bin/env python
 # v1.0 created 2016-05-16
 
-'''rename_gtf_contigs.py    last modified 2016-05-16
+'''rename_gtf_contigs.py    last modified 2018-12-21
 
     rename scaffolds/contigs in a GTF/GFF based on a conversion vector
 
 rename_gtf_contigs.py -c conversions.txt -g genes.gtf > renamed_genes.gtf
 
-    conversion vector must be in format of oldgene tab newgene, such as:
+    conversion vector should be in format of oldgene tab newgene, such as:
 oldnamecontig123    newnamecontig001
+
+    or can be in reversed order using -R, as newname tab oldname
 
     contigs not included in vector are kept as is unless -n is used
     a note is added to the attributes "Rename=false" for removal by grep
@@ -21,14 +23,17 @@ import sys
 import time
 import argparse
 
-def make_conversion_dict(conversionfile):
+def make_conversion_dict(conversionfile, do_reverse):
 	'''return dict where keys are old contig names and values are new contig names'''
 	conversiondict = {}
 	print >> sys.stderr, "# Reading conversion file {}".format(conversionfile)
 	for line in open(conversionfile,'r').readlines():
 		line = line.strip()
 		if line:
-			conversiondict.update(dict([(line.split('\t'))]))
+			if do_reverse:
+				conversiondict.update( dict( [(line.split('\t'))[::-1]] ) )
+			else:
+				conversiondict.update( dict( [(line.split('\t'))] ) )
 	print >> sys.stderr, "# Found names for {} contigs".format(len(conversiondict))
 	return conversiondict
 
@@ -51,9 +56,10 @@ def main(argv, wayout):
 	parser.add_argument('-E','--exclude', help="file of list of bad contigs")
 	parser.add_argument('-g','--gtf', help="gtf or gff format file", required=True)
 	parser.add_argument('-n','--nomatch', action="store_true", help="exclude features with no conversion")
+	parser.add_argument('-R','--reversed', action="store_true", help="conversion vector is in reversed order, as newname--oldname")
 	args = parser.parse_args(argv)
 
-	conversiondict = make_conversion_dict(args.conversion)
+	conversiondict = make_conversion_dict(args.conversion, args.reversed)
 
 	exclusiondict = make_exclude_dict(args.exclude) if args.exclude else None
 
