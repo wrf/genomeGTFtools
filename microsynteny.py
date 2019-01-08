@@ -222,7 +222,7 @@ def synteny_walk(querydict, blastdict, refdict, min_block, max_span, max_distanc
 
 				if i < genesonscaff - 1: # this allows for 2 genes left
 					if is_verbose:
-						print >> sys.stderr, "# Starting walk from gene {}".format(startingtrans)
+						print >> sys.stderr, "# Starting walk from gene {} on scaffold {} against {}".format(startingtrans, scaffold, blast_refgene)
 					# get scaffold and position of matched gene
 					refscaffold = refdict[blast_refgene].scaffold
 					subjectpos = (refdict[blast_refgene].start, refdict[blast_refgene].end)
@@ -259,6 +259,8 @@ def synteny_walk(querydict, blastdict, refdict, min_block, max_span, max_distanc
 									dist_to_prev_ref = subjectpos[0] - next_ref_pos[1]
 									# if either are greater than max distance, then gene is too far
 									if dist_to_next_ref > max_distance or dist_to_prev_ref > max_distance:
+										if is_verbose:
+											print >> sys.stderr, "# {} match to {} is too far, {}bp, ignoring match".format(next_gene, next_match, max([dist_to_next_ref,dist_to_prev_ref]) )
 										continue
 									if is_verbose:
 										print >> sys.stderr, "# Match {} found for {}".format(next_match, next_gene)
@@ -269,7 +271,7 @@ def synteny_walk(querydict, blastdict, refdict, min_block, max_span, max_distanc
 									break
 								else:
 									if is_verbose:
-										print >> sys.stderr, "# {} matches {} on wrong contig {}, skipping gene".format(next_gene, next_match, next_ref_scaf)
+										print >> sys.stderr, "# {} matches {} on wrong contig {}, ignoring match".format(next_gene, next_match, next_ref_scaf)
 							else:
 								walksteps -= 1 # then skip to next walk step and decrement
 						else: # if walksteps is 0, then break out of for loop
@@ -280,7 +282,7 @@ def synteny_walk(querydict, blastdict, refdict, min_block, max_span, max_distanc
 					blocklen = len(syntenylist)
 					if blocklen >= min_block:
 						if is_verbose:
-							print >> sys.stderr, "# Found block of {0} genes starting from {1}".format(blocklen, startingtrans)
+							print >> sys.stderr, "# Found block of {0} genes starting from {1} on {2}".format(blocklen, startingtrans, scaffold)
 						try:
 							if blocklen > max(blocklengths.keys()):
 								print >> sys.stderr, "New longest block blk-{} of {} on {}".format(blocknum, blocklen, scaffold)
