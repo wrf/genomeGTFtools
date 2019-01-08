@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # v1.0 created 2016-05-16
 
-'''rename_gtf_contigs.py    last modified 2018-12-21
+'''rename_gtf_contigs.py    last modified 2019-01-09
 
     rename scaffolds/contigs in a GTF/GFF based on a conversion vector
 
@@ -27,7 +27,7 @@ def make_conversion_dict(conversionfile, do_reverse):
 	'''return dict where keys are old contig names and values are new contig names'''
 	conversiondict = {}
 	print >> sys.stderr, "# Reading conversion file {}".format(conversionfile)
-	for line in open(conversionfile,'r').readlines():
+	for line in open(conversionfile,'r'):
 		line = line.strip()
 		if line:
 			if do_reverse:
@@ -40,7 +40,7 @@ def make_conversion_dict(conversionfile, do_reverse):
 def make_exclude_dict(excludefile):
 	print >> sys.stderr, "# Reading exclusion list {}".format(excludefile), time.asctime()
 	exclusion_dict = {}
-	for term in open(excludefile,'r').readlines():
+	for term in open(excludefile,'r'):
 		term = term.rstrip()
 		if term[0] == ">":
 			term = term[1:]
@@ -67,7 +67,7 @@ def main(argv, wayout):
 	conversions = 0
 	noconvertfeatures = 0
 	print >> sys.stderr, "# Reading features from {}".format(args.gtf), time.asctime()
-	for line in open(args.gtf,'r').readlines():
+	for line in open(args.gtf,'r'):
 		line = line.strip()
 		if line: # remove empty lines
 			if line[0]=="#": # write out any comment lines with no change
