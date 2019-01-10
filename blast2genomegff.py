@@ -8,7 +8,7 @@
 # for SOFA terms:
 # https://github.com/The-Sequence-Ontology/SO-Ontologies/blob/master/subsets/SOFA.obo
 
-'''blast2genomegff.py  last modified 2018-10-26
+'''blast2genomegff.py  last modified 2019-01-10
     convert blast output to gff format for genome annotation
     blastx of a transcriptome (genome guided or de novo) against a protein DB:
 
@@ -38,6 +38,7 @@ import sys
 import argparse
 import time
 import re
+import gzip
 from collections import defaultdict
 from itertools import chain
 from Bio import SeqIO
@@ -61,13 +62,18 @@ def gtf_to_intervals(gtffile, keepcds, transdecoder, nogenemode, genesplit):
 	linecounter = 0
 	transcounter = 0
 	exoncounter = 0
-	print >> sys.stderr, "# Parsing gff from {}".format(gtffile), time.asctime()
+	if gtffile.rsplit('.',1)[-1]=="gz": # autodetect gzip format
+		opentype = gzip.open
+		print >> sys.stderr, "# Parsing gff from {} as gzipped".format(gtffile), time.asctime()
+	else: # otherwise assume normal open for fasta format
+		opentype = open
+		print >> sys.stderr, "# Parsing gff from {}".format(gtffile), time.asctime()
 	if keepcds: # alert user to the flags that have been set
 		print >> sys.stderr, "# CDS features WILL BE USED as exons"
 	if nogenemode:
 		print >> sys.stderr, "# gene name and strand will be read for each exon"
 	# begin parsing file
-	for line in open(gtffile).readlines():
+	for line in opentype(gtffile):
 		line = line.strip()
 		if line: # ignore empty lines
 			if line[0]=="#": # count comment lines, just in case
@@ -135,8 +141,14 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxta
 
 	hitDictCounter = defaultdict(int)
 	linecounter = 0
-	print >> sys.stderr, "# Starting BLAST parsing on %s" % (blastfile), time.asctime()
-	for line in open(blastfile, 'r').readlines():
+
+	if blastfile.rsplit('.',1)[-1]=="gz": # autodetect gzip format
+		opentype = gzip.open
+		print >> sys.stderr, "# Starting BLAST parsing on {} as gzipped".format(blastfile), time.asctime()
+	else: # otherwise assume normal open for fasta format
+		opentype = open
+		print >> sys.stderr, "# Starting BLAST parsing on {}".format(blastfile), time.asctime()
+	for line in opentype(blastfile, 'r'):
 		line = line.strip()
 		if not line or line[0]=="#": # skip comment lines
 			continue # also catch for empty line, which would cause IndexError
@@ -152,7 +164,7 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxta
 		hitstart = int(lsplits[6])
 		hitend = int(lsplits[7])
 		hitlength = abs(hitend - hitstart) + 1 # bases 1 to 6 should have length 6
-		fractioncov = alignlength/seqlengthdict[sseqid]
+		fractioncov = alignlength / seqlengthdict.get(sseqid,1000000.0)
 		bitslength = bitscore/alignlength
 		if fractioncov < lengthcutoff: # skip domains that are too short
 			shortRemovals += 1
@@ -195,7 +207,9 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxta
 			missingscaffolds += 1
 			if missingscaffolds < 10:
 				print >> sys.stderr, "WARNING: cannot get scaffold for {}".format( qseqid )
-
+			elif missingscaffolds == 10:
+				print >> sys.stderr, "WARNING: cannot get scaffold for {}, will not print further warnings".format( qseqid )
+			continue
 		strand = genestrand.get(qseqid, None)
 		genomeintervals = [] # to have empty iterable
 		if backframe: # reassign strand if match is backwards
@@ -208,7 +222,7 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxta
 		else: # strand is None
 			# strand could not be found
 			# meaning mismatch between query ID in blast and query ID in the GFF
-			print >> sys.stderr, "WARNING: cannot retrieve strand for {}".format(qseqid)
+			print >> sys.stderr, "WARNING: cannot retrieve strand for {} on {}".format(qseqid, scaffold)
 			continue
 
 		intervalcounts += len(genomeintervals)
@@ -233,8 +247,10 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxta
 		print >> sys.stderr, "# {} hits are antisense".format(backframecounts), time.asctime()
 	if intervalcounts:
 		print >> sys.stderr, "# Wrote {} domain intervals".format(intervalcounts), time.asctime()
+	if missingscaffolds:
+		print >> sys.stderr, "# WARNING: could not find scaffold for {} hits".format(missingscaffolds), time.asctime()
 	if intervalproblems:
-		print >> sys.stderr, "# {} genes have hits extending beyond gene bounds".format(intervalproblems), time.asctime()
+		print >> sys.stderr, "# WARNING: {} matches have hits extending beyond gene bounds".format(intervalproblems), time.asctime()
 	# NO RETURN
 
 def get_intervals(intervals, domstart, domlength, doreverse=True):
@@ -291,9 +307,9 @@ def main(argv, wayout):
 	if not len(argv):
 		argv.append("-h")
 	parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description=__doc__)
-	parser.add_argument('-b','--blast', help="tabular blast results file")
+	parser.add_argument('-b','--blast', help="tabular blast results file, can be .gz")
 	parser.add_argument('-d','--database', help="db (reference/subject) proteins in fasta format")
-	parser.add_argument('-g','--genes', help="query genes or proteins in gff format")
+	parser.add_argument('-g','--genes', help="query genes or proteins in gff format, can be .gz")
 	parser.add_argument('-p','--program', help="blast program for 2nd column in output [BLASTX]", default="BLASTX")
 	parser.add_argument('-t','--type', help="gff type or method [protein_match]", default="protein_match")
 	parser.add_argument('-D','--delimiter', help="optional delimiter for protein names, cuts off end split")
