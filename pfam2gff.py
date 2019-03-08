@@ -51,7 +51,7 @@ def cds_to_intervals(gtffile, keepexons, transdecoder, jgimode, nogenemode):
 	linecounter = 0
 	transcounter = 0
 	exoncounter = 0
-	sys.stderr.write("# Parsing gff from {}".format(gtffile)+" "+time.asctime())
+	sys.stderr.write("# Parsing gff from {}".format(gtffile)+" "+time.asctime()+os.linesep)
 	for line in open(gtffile).readlines():
 		line = line.strip()
 		if line: # ignore empty lines
