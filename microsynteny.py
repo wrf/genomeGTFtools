@@ -2,7 +2,7 @@
 # microsynteny.py
 # v1.0 2015-10-09
 
-'''microsynteny.py v1.3 last modified 2019-03-26
+'''microsynteny.py v1.3 last modified 2019-03-27
 
 microsynteny.py -q query.gtf -d ref_species.gtf -b query_vs_ref_blast.tab -E ../bad_contigs -g -D '_' --blast-query-delimiter '.' > query_vs_ref_microsynteny.tab
 
@@ -18,9 +18,9 @@ blastx -query query.fasta -db ref_prots.fasta -outfmt 6 -evalue 1e-5 > query_vs_
     set --blast-query-delimiter '.'
 
     TWO OUTPUT OPTIONS:
-    tab delimited text file of 11 columns, consisting of:
+    tab delimited text file of 12 columns, consisting of:
 query-scaffold  ref-scaffold  block-number
-  query-gene  start  end  strand  ref-gene  start  end  strand
+  query-gene  start  end  strand  ref-gene  start  end  strand  score
 
     OR GFF format file (use --make-gff flag)
     for Parent feature:
@@ -117,10 +117,10 @@ def parse_tabular_blast(blasttabfile, evaluecutoff, querydelimiter, refdelimiter
 	'''read tabular blast file, return a dict where key is query ID and value is subject ID'''
 	if blasttabfile.rsplit('.',1)[1]=="gz": # autodetect gzip format
 		opentype = gzip.open
-		print >> sys.stderr, "# Parsing tabular blastx output {} as gzipped".format(blasttabfile), time.asctime()
+		print >> sys.stderr, "# Parsing tabular blast output {} as gzipped".format(blasttabfile), time.asctime()
 	else: # otherwise assume normal open for fasta format
 		opentype = open
-		print >> sys.stderr, "# Parsing tabular blastx output {}".format(blasttabfile), time.asctime()
+		print >> sys.stderr, "# Parsing tabular blast output {}".format(blasttabfile), time.asctime()
 	query_to_sub_dict = defaultdict(dict)
 	query_hits = defaultdict(int) # counter of hits
 	evalueRemovals = 0
@@ -316,7 +316,7 @@ def synteny_walk(querydict, blastdict, refdict, min_block, max_span, max_distanc
 						# otherwise use output of v1
 						else:
 							for pair in syntenylist:
-								outline = "{}\t{}\tblk-{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}".format(scaffold, refscaffold, blocknum, pair[0], transdict[pair[0]].start, transdict[pair[0]].end, transdict[pair[0]].strand, pair[1], refdict[pair[1]].start, refdict[pair[1]].end, refdict[pair[1]].strand)
+								outline = "{}\t{}\tblk-{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}".format(scaffold, refscaffold, blocknum, pair[0], transdict[pair[0]].start, transdict[pair[0]].end, transdict[pair[0]].strand, pair[1], refdict[pair[1]].start, refdict[pair[1]].end, refdict[pair[1]].strand, blastdict[pair[0]][pair[1]])
 								print >> wayout, outline
 						blocknum += 1
 					else:
