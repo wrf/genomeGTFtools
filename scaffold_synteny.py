@@ -3,7 +3,7 @@
 # scaffold_synteny.py created 2019-03-27
 
 '''
-scaffold_synteny.py  v1 last modified 2019-04-01
+scaffold_synteny.py  v1 last modified 2019-04-03
     makes a table of gene matches between two genomes, to detect synteny
     these can be converted into a dotplot of gene matches
 
@@ -42,6 +42,7 @@ import argparse
 import time
 import re
 import gzip
+import random
 from collections import defaultdict
 from Bio import SeqIO
 
@@ -187,6 +188,27 @@ def generate_synteny_points(queryScafOffset, dbScafOffset, queryPos, dbPos, blas
 	else:
 		print >> sys.stderr, "# WARNING: NO MATCHES FOUND, CHECK -Q AND -D"
 
+def randomize_genes(refdict):
+	'''take the gtf dict and randomize the gene names for all genes, return a similar dict of dicts'''
+	genepositions = {} # store gene positions as tuples
+	randomgenelist = []
+	print >> sys.stderr, "# Randomizing query gene positions", time.asctime()
+	for scaffold, genedict in refdict.iteritems(): # iterate first to get list of all genes
+		for genename in genedict.keys():
+			randomgenelist.append(genename)
+			genepositions[genename] = genedict[genename]
+	# randomize the list
+	random.shuffle(randomgenelist)
+	# reiterate in same order, but store random gene names at the same position
+	genecounter = 0
+	randomgenesbyscaf = defaultdict(dict) # scaffolds as key, then gene name, then genemapping tuple
+	for scaffold, genedict in refdict.iteritems(): # iterate again to reassign genes to each scaffold
+		for genename, bounds in genedict.iteritems():
+			randomgenesbyscaf[scaffold][randomgenelist[genecounter]] = genepositions[genename]
+			genecounter += 1
+	print >> sys.stderr, "# Randomized {} genes".format(genecounter), time.asctime()
+	return randomgenesbyscaf
+
 def make_exclude_dict(excludefile):
 	'''read file of list of contigs, and return a dict where keys are contig names to exclude'''
 	print >> sys.stderr, "# Reading exclusion list {}".format(excludefile), time.asctime()
@@ -217,6 +239,7 @@ def main(argv, wayout):
 	parser.add_argument('-c','--coverage', default=0.8, type=int, help="minimum alignment coverage [0.8]")
 	parser.add_argument('-l','--query-genome-len', type=int, default=100, help="length of query scaffolds, in Mbp [100]")
 	parser.add_argument('-L','--db-genome-len', type=int, default=100, help="length of reference scaffolds, in Mbp [100]")
+	parser.add_argument('-R','--randomize', help="randomize positions of query GFF", action="store_true")
 	args = parser.parse_args(argv)
 
 	exclusiondict = make_exclude_dict(args.exclude) if args.exclude else {}
@@ -224,8 +247,12 @@ def main(argv, wayout):
 	query_scaf_lengths = make_seq_length_dict(args.query_fasta, args.query_genome_len, exclusiondict, wayout, False)
 	db_scaf_lengths = make_seq_length_dict(args.db_fasta, args.db_genome_len, exclusiondict, wayout, True)
 
-	query_gene_pos = parse_gtf(args.query_gtf, exclusiondict, args.query_delimiter, False)
-	db_gene_pos = parse_gtf(args.db_gtf, exclusiondict, args.db_delimiter, True)
+	query_gene_pos = parse_gtf(args.query_gff, exclusiondict, args.query_delimiter, False)
+	db_gene_pos = parse_gtf(args.db_gff, exclusiondict, args.db_delimiter, True)
+
+	### IF DOING RANDOMIZATION ###
+	if args.randomize:
+		query_gene_pos = randomize_genes(query_gene_pos)
 
 	blastdict = parse_tabular_blast(args.blast, args.evalue, args.blast_query_delimiter, args.blast_db_delimiter)
 
