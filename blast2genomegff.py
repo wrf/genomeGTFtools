@@ -8,7 +8,7 @@
 # for SOFA terms:
 # https://github.com/The-Sequence-Ontology/SO-Ontologies/blob/master/subsets/SOFA.obo
 
-'''blast2genomegff.py  last modified 2019-01-10
+'''blast2genomegff.py  last modified 2019-09-15
     convert blast output to gff format for genome annotation
     blastx of a transcriptome (genome guided or de novo) against a protein DB:
 
@@ -86,11 +86,11 @@ def gtf_to_intervals(gtffile, keepcds, transdecoder, nogenemode, genesplit):
 				strand = lsplits[6]
 				attributes = lsplits[8]
 
-				if attributes.find("ID")==0: # indicates gff3 format
+				if attributes.find("ID")>-1: # indicates gff3 format
 					geneid = re.search('ID=([\w.|-]+)', attributes).group(1)
-				elif attributes.find("Parent")==0: # gff3 format but no ID
+				elif attributes.find("Parent")>-1: # gff3 format but no ID
 					geneid = re.search('Parent=([\w.|-]+)', attributes).group(1)
-				elif attributes.find("gene_id")==0: # indicates gtf format
+				elif attributes.find("gene_id")>-1: # indicates gtf format
 					geneid = re.search('transcript_id "([\w.|-]+)";', attributes).group(1)
 				# clean up transdecoder IDs
 				if transdecoder: # meaning CDS IDs will start with cds.gene.123|m.1
@@ -135,8 +135,10 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxta
 	# set up parameters by blast program
 	blastprogram = programname.lower()
 	if blastprogram=="blastn" or blastprogram=="blastx" or blastprogram=="tblastx":
+		print >> sys.stderr, "# blast program is {}, assuming coordinates are nucleotides".format(blastprogram)
 		multiplier = 1
 	else: # meaning blastp or tblastn
+		print >> sys.stderr, "# blast program is {}, multiplying coordinates by 3".format(blastprogram)
 		multiplier = 3
 
 	hitDictCounter = defaultdict(int)
@@ -163,7 +165,7 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxta
 		alignlength = float(lsplits[3])
 		hitstart = int(lsplits[6])
 		hitend = int(lsplits[7])
-		hitlength = abs(hitend - hitstart) + 1 # bases 1 to 6 should have length 6
+
 		fractioncov = alignlength / seqlengthdict.get(sseqid,1000000.0)
 		bitslength = bitscore/alignlength
 		if fractioncov < lengthcutoff: # skip domains that are too short
@@ -202,6 +204,7 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxta
 		# protein position 1 becomes nucleotide position 1, position 2 becomes nucleotide 4, 3 to 7
 		hitstart = (hitstart - 1) * multiplier + 1
 		hitend = hitend * multiplier # end is necessarily the end of a codon
+		hitlength = abs(hitend - hitstart) + 1 # bases 1 to 6 should have length 6
 		scaffold = genescaffold.get(qseqid, None)
 		if scaffold is None:
 			missingscaffolds += 1
@@ -312,7 +315,7 @@ def main(argv, wayout):
 	parser.add_argument('-g','--genes', help="query genes or proteins in gff format, can be .gz")
 	parser.add_argument('-p','--program', help="blast program for 2nd column in output [BLASTX]", default="BLASTX")
 	parser.add_argument('-t','--type', help="gff type or method [protein_match]", default="protein_match")
-	parser.add_argument('-D','--delimiter', help="optional delimiter for protein names, cuts off end split")
+	parser.add_argument('-D','--delimiter', help="optional delimiter for query protein names in blast table, cuts off end split")
 	parser.add_argument('--gff-delimiter', help="optional delimiter for GFF gene IDs, cuts off end split")
 	parser.add_argument('-c','--coverage-cutoff', type=float, help="query coverage cutoff for filtering [0.1]", default=0.1)
 	parser.add_argument('-e','--evalue-cutoff', type=float, help="evalue cutoff [1e-3]", default=1e-3)
@@ -320,7 +323,7 @@ def main(argv, wayout):
 	parser.add_argument('-M','--max-targets', type=int, help="most targets to allow per query [10]", default=10)
 	parser.add_argument('-F','--filter', action="store_true", help="filter low quality matches")
 	parser.add_argument('-G','--no-genes', action="store_true", help="genes are not defined, get gene ID for each exon")
-	parser.add_argument('-S','--swissprot', action="store_true", help="db sequences have swissprot headers")
+	parser.add_argument('-S','--swissprot', action="store_true", help="subject db sequences have swissprot headers in blast table")
 	parser.add_argument('-T','--transdecoder', action="store_true", help="use presets for TransDecoder genome gff")
 	parser.add_argument('-x','--exons', action="store_true", help="use CDS features as exons")
 	parser.add_argument('-v','--verbose', action="store_true", help="extra output")
