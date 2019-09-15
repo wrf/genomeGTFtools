@@ -2,7 +2,7 @@
 # microsynteny.py
 # v1.0 2015-10-09
 
-'''microsynteny.py v1.3 last modified 2019-03-27
+'''microsynteny.py v1.3 last modified 2019-04-30
 
 microsynteny.py -q query.gtf -d ref_species.gtf -b query_vs_ref_blast.tab -E ../bad_contigs -g -D '_' --blast-query-delimiter '.' > query_vs_ref_microsynteny.tab
 
@@ -50,7 +50,13 @@ refgene = namedtuple("refgene", "scaffold start end strand")
 
 def parse_gtf(gtffile, exonstogenes, excludedict, delimiter, isref=False):
 	'''from a gtf, return a dict of dicts where keys are scaffold names, then gene names, and values are gene info as a tuple of start end and strand direction'''
-	print >> sys.stderr, "# Parsing {}".format(gtffile), time.asctime()
+	if gtffile.rsplit('.',1)[-1]=="gz": # autodetect gzip format
+		opentype = gzip.open
+		print >> sys.stderr, "# Parsing {} as gzipped".format(gtffile), time.asctime()
+	else: # otherwise assume normal open for fasta format
+		opentype = open
+		print >> sys.stderr, "# Parsing {}".format(gtffile), time.asctime()
+
 	if isref: # meaning is db/subject, thus get normal dictionary
 		genesbyscaffold = {}
 	else:
@@ -59,7 +65,7 @@ def parse_gtf(gtffile, exonstogenes, excludedict, delimiter, isref=False):
 		nametoscaffold = {} # in order to get transcript boundaries, store names to scaffolds
 		nametostrand = {} # store strand by gene ID
 		exonboundaries = defaultdict(list) # make list of tuples of exons by transcript, to determine genes
-	for line in open(gtffile).readlines():
+	for line in opentype(gtffile).readlines():
 		line = line.strip()
 		if line and not line[0]=="#": # ignore empty lines and comments
 			lsplits = line.split("\t")
@@ -115,7 +121,7 @@ def parse_gtf(gtffile, exonstogenes, excludedict, delimiter, isref=False):
 
 def parse_tabular_blast(blasttabfile, evaluecutoff, querydelimiter, refdelimiter, switchquery=False, maxhits=100):
 	'''read tabular blast file, return a dict where key is query ID and value is subject ID'''
-	if blasttabfile.rsplit('.',1)[1]=="gz": # autodetect gzip format
+	if blasttabfile.rsplit('.',1)[-1]=="gz": # autodetect gzip format
 		opentype = gzip.open
 		print >> sys.stderr, "# Parsing tabular blast output {} as gzipped".format(blasttabfile), time.asctime()
 	else: # otherwise assume normal open for fasta format
