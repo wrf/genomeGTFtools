@@ -97,11 +97,16 @@ barpos_x = rep(c( ymax*-0.01, ymax*-0.02),round(nscafs_x)/2)
 segments( longscafs_x[1:(nscafs_x-1)], barpos_x[1:(nscafs_x-1)], longscafs_x[2:nscafs_x], barpos_x[0:(nscafs_x-1)], lwd=3)
 segments(longscafs_x, 0, longscafs_x, longscafs_y[nscafs_y], lwd=0.1, col="#777777")
 
+
 tickpoints = pretty(c(0,ymax_mb))
-axis(2, at=tickpoints*1000000, labels=tickpoints, cex.axis=1.3)
+axis(2, at=tickpoints*1000000, labels=tickpoints, cex.axis=1.3, line=0.5)
 barpos_y = rep(c( xmax*-0.01, xmax*-0.02),round(nscafs_y)/2)
 segments( barpos_y[1:(nscafs_y-1)], longscafs_y[1:(nscafs_y-1)], barpos_y[0:(nscafs_y-1)], longscafs_y[2:nscafs_y], lwd=3)
 segments( 0, longscafs_y, longscafs_x[nscafs_x], longscafs_y, lwd=0.1, col="#777777")
+
+#textpos_y = rep(c( xmax*-0.02, xmax*-0.01 ),round(24)/2)
+#textmidbar = as.numeric(scafdata1[1:24,6]) - as.numeric(scafdata1[1:24,4])/2
+#text(textpos_y, textmidbar, 1:24, cex=0.5)
 
 dev.off()
 

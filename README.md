@@ -204,6 +204,23 @@ The other potential problem occurs in the case of tandem duplications. If a tand
 
   `microsynteny.py -b acropora_vs_styllophora_blastp.tab -q test_data/adi_aug101220_pasa_mrna_t1_only.gff -d test_data/Spis.genome.annotation.mrna_only.gff -D "|" > test_data/acropora_vs_styllophora_microsynteny.gff`
 
+## scaffold_synteny
+Generate a PDF of a [dot plot](https://en.wikipedia.org/wiki/Dot_plot_(bioinformatics)), similar to what was done in [Srivistava 2008](https://doi.org/10.1038/nature07191) and [Simakov 2013](https://doi.org/10.1038/nature11696). This requires unidirectional blast results (not reciprocal) as duplicated blocks can be identified this way.
+
+`scaffold_synteny.py -b hoilungia_vs_trichoplax_blastp_e-3.tab -q Hhon_BRAKER1_genes.gff3 -d Trichoplax_scaffolds_JGI_AUGUSTUS_transcript_only.gff -f Hhon_final_contigs_unmasked.fasta -F Triad1_genomic_scaffolds.fasta --blast-query-delimiter . --blast-db-delimiter __ -l 80 -L 100 > hoilungia_vs_trichoplax_scaffold2d_points.tab`
+
+Then, the R script is run to generate the dot plot. Synteny is clearly evident for major sections of chromosomes, indicated by the diagonals formed by the points. For instance, the longest *H. hongkongensis* contig maps completely to scaffold 7 in *Trichoplax*. This is mostly the case for the first 5 contigs in *H. hongkongensis*.
+
+`Rscript synteny_2d_plot.R hoilungia_vs_trichoplax_scaffold2d_points.tab Hoilungia-hongkongensis Trichoplax-adhaerens`
+
+The same can be generated for more distant species. Here two choanoflagellates are used, *Monosiga brevicollis* ([using the AUGUSTUS reannotation](https://bitbucket.org/wrf/genome-reannotations/downloads/Monbr1_augustus_v1.prots.fasta.gz)) and *Salpingoeca rosetta* ([at Ensembl](http://jul2018-protists.ensembl.org/Salpingoeca_rosetta/Info/Index)).
+
+`blastp -query Monbr1_augustus_v1.prot_no_rename.fasta -db Salpingoeca_rosetta.Proterospongia_sp_ATCC50818.pep.all.fa -outfmt 6 -num_threads 6 -evalue 1e-3 -max_target_seqs 100 > monbr1_vs_srosetta_blastp.tab`
+
+`scaffold_synteny.py -b monbr1_vs_srosetta_blastp.tab -q Monbr1_augustus_v1_no_comment.gff -d ~/genomes/salpingoeca_rosetta/srosetta_mrna_only_ID_renamed.gff -f Monbr1_scaffolds.fasta -F ~/genomes/salpingoeca_rosetta/Salpingoeca_rosetta.Proterospongia_sp_ATCC50818.dna.toplevel.fa.gz -l 40 -L 50 > monbr1_vs_srosetta_scaffold2d_points.tab`
+
+`Rscript ~/git/genomeGTFtools/synteny_2d_plot.R monbr1_vs_srosetta_scaffold2d_points.tab Monosiga-brevicollis Salpingoeca-rosetta`
+
 ## repeat2gtf
 From scaffolds or masked contigs, generate a feature for each long repeat of N's or n's (or any other arbitrary letter or pattern). The most obvious application is to make a track for gaps, which is the default behavior. The search is a regular expression, so could be any other simple repeat as well - CACA, CAG (glutamine repeats).
 
