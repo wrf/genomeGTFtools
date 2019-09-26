@@ -5,7 +5,7 @@
 # for SOFA terms:
 # https://github.com/The-Sequence-Ontology/SO-Ontologies/blob/master/subsets/SOFA.obo
 
-"""repeat2gtf.py  last modified 2018-11-20
+"""repeat2gtf.py  last modified 2019-09-26
     generates a GFF3 format file of repeats, typically Ns as gaps
   the script only searches the FORWARD strand, meaning would need
   to be run twice for non-palindromic sequences (e.g. CACA vs GTGT)
@@ -31,6 +31,7 @@ scaffold123  assembler  gap  2001  2105  105  .  .  ID=gap.N.1.105
 import sys
 import argparse
 import time
+import os
 import re
 from Bio import SeqIO
 
@@ -63,9 +64,9 @@ def main(argv, wayout):
 	if args.lowercase: # lowercase version of the same repeat
 		lowerrepeat = args.repeat.lower()
 		lcregex = re.compile("({0})+".format(lowerrepeat) )
-		print >> sys.stderr, "# Parsing repeats of {} and {} from {}".format(args.repeat, lowerrepeat, args.input_file.name), time.asctime()
+		sys.stderr.write("# Parsing repeats of {} and {} from {}  ".format(args.repeat, lowerrepeat, args.input_file.name) + time.asctime() + os.linesep)
 	else:
-		print >> sys.stderr, "# Parsing repeats of {} from {}".format(args.repeat, args.input_file.name), time.asctime()
+		sys.stderr.write("# Parsing repeats of {} from {}  ".format(args.repeat, args.input_file.name) + time.asctime() + os.linesep)
 
 	# begin iterating through sequences, then search the regular expression
 	for seqrec in SeqIO.parse(args.input_file, args.format):
@@ -94,11 +95,11 @@ def main(argv, wayout):
 				reptracker[repstart] = [repstart, repend, replen, lowerrepeat]
 		for startpos in sorted(reptracker.keys()):
 			repcounter += 1
-			print >> sys.stdout, "{}\t{}\t{}\t{}\t{}\t{}\t.\t.\t{}={}.{}.{}.{}".format(contig, args.program, args.type, reptracker[startpos][0], reptracker[startpos][1], reptracker[startpos][2], args.attribute, args.identifier, reptracker[startpos][3], repcounter, reptracker[startpos][2])
+			sys.stdout.write("{}\t{}\t{}\t{}\t{}\t{}\t.\t.\t{}={}.{}.{}.{}\n".format(contig, args.program, args.type, reptracker[startpos][0], reptracker[startpos][1], reptracker[startpos][2], args.attribute, args.identifier, reptracker[startpos][3], repcounter, reptracker[startpos][2]) )
 
-	print >> sys.stderr, "# Counted {} sequences".format(seqcount), time.asctime()
-	print >> sys.stderr, "# Counted {} repeats of {} total bases".format(repcounter, seqsum), time.asctime()
-	print >> sys.stderr, "# Longest repeat was {} bases on {}".format(longestrepeat, lrepcontig), time.asctime()
+	sys.stderr.write("# Counted {} sequences  ".format(seqcount) + time.asctime() + os.linesep)
+	sys.stderr.write("# Counted {} repeats of {} total bases\n".format(repcounter, seqsum) )
+	sys.stderr.write("# Longest repeat was {} bases on {}\n".format(longestrepeat, lrepcontig) )
 
 if __name__ == "__main__":
 	main(sys.argv[1:],sys.stdout)

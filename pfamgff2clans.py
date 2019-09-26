@@ -3,7 +3,7 @@
 # pfamgff2clans.py v1.0 created 2016-04-19
 
 '''
-pfamgff2clans.py  last modified 2017-08-24
+pfamgff2clans.py  last modified 2019-09-26
 
 pfamgff2clans.py -i proteins.pfam.gtf -c Pfam-A.clans.tsv > proteins.clan.gtf
 
@@ -18,6 +18,7 @@ import sys
 import time
 import argparse
 import re
+import os
 from collections import defaultdict,OrderedDict
 from Bio import SeqIO
 
@@ -26,7 +27,7 @@ def parse_clan_links(clanlinks):
     # The columns are: Pfam accession, clan accession, clan ID, Pfam ID, Pfam description.
 	pfamtoclan = {}
 	pfamannotation = {}
-	print >> sys.stderr, "# Parsing clan links from {}".format(clanlinks), time.asctime()
+	sys.stderr.write("# Parsing clan links from {}  ".format(clanlinks) + time.asctime() + os.linesep)
 	for line in open(clanlinks, 'r').readlines():
 		line = line.strip()
 		if line:
@@ -41,14 +42,14 @@ def parse_clan_links(clanlinks):
 				pfamannotation[pfamacc] = clanname
 			else:
 				pfamannotation[pfamacc] = pfamname
-	print >> sys.stderr, "# Found {} clan links".format(len(pfamtoclan)), time.asctime()
+	sys.stderr.write("# Found {} clan links  ".format(len(pfamtoclan)) + time.asctime() + os.linesep)
 	return pfamtoclan, pfamannotation
 
 def parse_pfam_gtf(pfamgtf, overlaplimit, verbose=False):
 	'''read PFAM GTF, merge identical annotations, and print the domain-merged GTF'''
 	gtfbyprot = defaultdict(list) # keys are protein IDs and 
 	domcount = 0
-	print >> sys.stderr, "# Parsing GTF from {}".format(pfamgtf), time.asctime()
+	sys.stderr.write("# Parsing GTF from {}  ".format(pfamgtf) + time.asctime() + os.linesep)
 	for line in open(pfamgtf,'r').readlines():
 		line = line.strip()
 		if line and not line[0]=="#":
@@ -66,7 +67,7 @@ def parse_pfam_gtf(pfamgtf, overlaplimit, verbose=False):
 				else: # some overlap possible
 					overlap = min(send, domend) - max(sstart, domstart) + 1
 					if verbose:
-						print >> sys.stderr, "{} {} overlap from ({},{}) to ({},{})".format(protid, overlap, domstart, domend, sstart, send)
+						sys.stderr.write("{} {} overlap from ({},{}) to ({},{})\n".format(protid, overlap, domstart, domend, sstart, send) )
 					slength = send - sstart + 1
 					qoverlap = overlap * 1.0 / domlength
 					soverlap = overlap * 1.0 / slength
@@ -81,11 +82,11 @@ def parse_pfam_gtf(pfamgtf, overlaplimit, verbose=False):
 				lsplits[4] = domend
 				lsplits[5] = qscore
 				gtfbyprot[protid].append(lsplits)
-	print >> sys.stderr, "# Found {} domains for {} proteins".format(domcount, len(gtfbyprot) ), time.asctime()
+	sys.stderr.write("# Found {} domains for {} proteins".format(domcount, len(gtfbyprot) ) + time.asctime() + os.linesep)
 	return gtfbyprot
 
 def convert_domains(domainsbyprot, programname, outputtype, wayout, pfamtoclandict, annotdict, fastalendict=None):
-	print >> sys.stderr, "# Coverting domains to clans", time.asctime()
+	sys.stderr.write("# Coverting domains to clans" + time.asctime() + os.linesep)
 	writecount = 0
 
 	if fastalendict: # if original fasta file is there, use that order
@@ -97,7 +98,7 @@ def convert_domains(domainsbyprot, programname, outputtype, wayout, pfamtoclandi
 		if fastalendict: # if length is available
 			# print one entry for each protein
 			# this could also be id: SO:0000104 polypeptide
-			print >> wayout, "{0}\t{1}\tprotein\t1\t{2}\t.\t.\t.\tID={0}".format(protid, programname, fastalendict[protid])
+			wayout.write("{0}\t{1}\tprotein\t1\t{2}\t.\t.\t.\tID={0}\n".format(protid, programname, fastalendict[protid]) )
 		domaincounter = defaultdict(int)
 		for domainstats in domainsbyprot[protid]:
 			attributes = domainstats[8]
@@ -107,14 +108,14 @@ def convert_domains(domainsbyprot, programname, outputtype, wayout, pfamtoclandi
 			domaincounter[cldomain] += 1
 			writecount += 1
 			domainstats[8] = "ID={}.{}.{}".format(cldomain, annotdict.get(pfamid,"None"), domaincounter[cldomain])
-			print >> wayout, "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}".format(*domainstats)
-	print >> sys.stderr, "# Wrote {} domains".format(writecount), time.asctime()
+			wayout.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}\n".format(*domainstats) )
+	sys.stderr.write("# Wrote {} domains".format(writecount) + time.asctime() + os.linesep)
 	# NO RETURN
 
 def get_prot_lengths(sequences):
 	'''from a fasta file, return a dictionary where protein ID is the key and length is the value'''
 	seqlendict = OrderedDict()
-	print >> sys.stderr, "# Parsing proteins from {}".format(sequences), time.asctime()
+	sys.stderr.write("# Parsing proteins from {}".format(sequences) + time.asctime() + os.linesep)
 	for seqrec in SeqIO.parse(sequences,'fasta'):
 		seqlendict[seqrec.id] = len(seqrec.seq)
 	return seqlendict

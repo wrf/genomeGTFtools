@@ -2,7 +2,7 @@
 #
 # pfampipeline.py
 
-'''pfampipeline.py  last modified 2018-09-29
+'''pfampipeline.py  last modified 2019-09-26
 
     USAGE requires only a fasta file of proteins
 pfampipeline.py proteins.fasta
@@ -38,15 +38,15 @@ def call_hmmscan(inputfasta, threadcount, pfamhmms):
 	outfile = "{}.pfam.tab".format(os.path.splitext(inputfasta)[0])
 	hmmscan_args = ["hmmscan","--cpu", threadcount, "--domtblout", outfile, pfamhmms, inputfasta]
 	DEVNULL = open(os.devnull, 'w')
-	print >> sys.stderr, "# Searching PFAM against {}".format(inputfasta), time.asctime()
-	print >> sys.stderr, "Calling:\n{}".format(' '.join(hmmscan_args))
+	sys.stderr.write("# Searching PFAM against {}  ".format(inputfasta) + time.asctime() + os.linesep)
+	sys.stderr.write("Calling:\n{}\n".format(' '.join(hmmscan_args)) )
 	subprocess.call(hmmscan_args, stdout=DEVNULL)
 	return outfile
 
 def call_pfamgff(hmmtable, evalue):
 	outfile = "{}.gff".format(os.path.splitext(hmmtable)[0])
 	pfam2gff_args = ["pfam2gff.py", "-i", hmmtable, "-e", str(evalue)]
-	print >> sys.stderr, "Calling:\n{}".format(' '.join(pfam2gff_args))
+	sys.stderr.write("Calling:\n{}\n".format(' '.join(pfam2gff_args)) )
 	with open(outfile, 'w') as pfamgff:
 		subprocess.call(pfam2gff_args, stdout=pfamgff)
 	return outfile
@@ -54,19 +54,19 @@ def call_pfamgff(hmmtable, evalue):
 def call_pfamcdd(pfamgff, clanlinks, inputprots):
 	outfile = pfamgff.replace("pfam","clan")
 	pfam2cdd_args = ["pfamgff2clans.py", "-i", pfamgff, "-c", clanlinks, "-s", inputprots]
-	print >> sys.stderr, "Calling:\n{}".format(' '.join(pfam2cdd_args))
+	sys.stderr.write("Calling:\n{}\n".format(' '.join(pfam2cdd_args)) )
 	with open(outfile, 'w') as pfamcdd:
 		subprocess.call(pfam2cdd_args, stdout=pfamcdd)
 	return outfile
 
 def call_signalp(signalp, inputfasta, gfftype, cddgff, dscorecutoff):
 	if not os.path.exists(signalp):
-		print >> sys.stderr, "# Cannot find {}, skipping...".format(signalp), time.asctime()
+		sys.stderr.write("# Cannot find {}, skipping...  ".format(signalp) + time.asctime() + os.linesep)
 		return 1
 	signalp_args = [signalp, inputfasta]
-	print >> sys.stderr, "Calling:\n{}".format(' '.join(signalp_args))
+	sys.stderr.write("Calling:\n{}\n".format(' '.join(signalp_args)) )
 	spcall = subprocess.Popen(signalp_args, stdout=subprocess.PIPE)
-	spstdoutlines = spcall.communicate()[0]
+	spstdoutlines = spcall.communicate()[0].decode()
 	# name                     Cmax  pos  Ymax  pos  Smax  pos  Smean   D     ?  Dmaxcut    Networks-used
 	# scict1.028757.1_0          0.229  41  0.371  41  0.814  34  0.381   0.375 N  0.500      SignalP-TM
 	# 0                     1        2     3        4     5        6     7        8        9    10       11
@@ -80,12 +80,12 @@ def call_signalp(signalp, inputfasta, gfftype, cddgff, dscorecutoff):
 				dscore = float(lsplits[8]) # has problems with headers ###TODO convert to try
 				if dscore >= dscorecutoff: # default for SignalP is 0.5
 					cutpos = int(lsplits[4]) - 1
-					print >> cdo, "{0}\tSignalP\t{3}\t1\t{1}\t{2}\t.\t.\tID={0}.sp".format(protid, cutpos, dscore, gfftype)
+					cdo.write( "{0}\tSignalP\t{3}\t1\t{1}\t{2}\t.\t.\tID={0}.sp\n".format(protid, cutpos, dscore, gfftype) )
 	return 0
 
 def call_draw_domains(drawdomains, cddgff):
 	drawdomain_args = ["Rscript", drawdomains, cddgff]
-	print >> sys.stderr, "Calling:\n{}".format(' '.join(drawdomain_args))
+	sys.stderr.write("Calling:\n{}\n".format(' '.join(drawdomain_args)) )
 	subprocess.call(drawdomain_args)
 
 def main(argv, wayout):
@@ -104,6 +104,8 @@ def main(argv, wayout):
 	args = parser.parse_args(argv)
 
 	if not os.path.isfile(args.input):
+		sys.exit("ERROR: CANNOT FIND FILE {}".format(args.input))
+	if not os.path.isfile(args.clans):
 		sys.exit("ERROR: CANNOT FIND FILE {}".format(args.input))
 
 	hmmtblout = call_hmmscan(args.input, args.processors, args.PFAM)

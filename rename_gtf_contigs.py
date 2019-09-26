@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # v1.0 created 2016-05-16
 
-'''rename_gtf_contigs.py    last modified 2019-01-09
+'''rename_gtf_contigs.py    last modified 2019-09-26
 
     rename scaffolds/contigs in a GTF/GFF based on a conversion vector
 
@@ -20,13 +20,14 @@ number_contigs_by_length.py -c conversions.txt contigs.fasta > renamed_contigs.f
 '''
 
 import sys
+import os
 import time
 import argparse
 
 def make_conversion_dict(conversionfile, do_reverse):
 	'''return dict where keys are old contig names and values are new contig names'''
 	conversiondict = {}
-	print >> sys.stderr, "# Reading conversion file {}".format(conversionfile)
+	sys.stderr.write("# Reading conversion file {}\n".format(conversionfile) )
 	for line in open(conversionfile,'r'):
 		line = line.strip()
 		if line:
@@ -34,18 +35,18 @@ def make_conversion_dict(conversionfile, do_reverse):
 				conversiondict.update( dict( [(line.split('\t'))[::-1]] ) )
 			else:
 				conversiondict.update( dict( [(line.split('\t'))] ) )
-	print >> sys.stderr, "# Found names for {} contigs".format(len(conversiondict))
+	sys.stderr.write("# Found names for {} contigs\n".format(len(conversiondict)) )
 	return conversiondict
 
 def make_exclude_dict(excludefile):
-	print >> sys.stderr, "# Reading exclusion list {}".format(excludefile), time.asctime()
+	sys.stderr.write("# Reading exclusion list {}  ".format(excludefile) + time.asctime() + os.linesep)
 	exclusion_dict = {}
 	for term in open(excludefile,'r'):
 		term = term.rstrip()
 		if term[0] == ">":
 			term = term[1:]
 		exclusion_dict[term] = True
-	print >> sys.stderr, "# Found {} contigs to exclude".format(len(exclusion_dict) ), time.asctime()
+	sys.stderr.write("# Found {} contigs to exclude  ".format(len(exclusion_dict) ) + time.asctime() + os.linesep)
 	return exclusion_dict
 
 def main(argv, wayout):
@@ -66,12 +67,12 @@ def main(argv, wayout):
 	linecounter = 0
 	conversions = 0
 	noconvertfeatures = 0
-	print >> sys.stderr, "# Reading features from {}".format(args.gtf), time.asctime()
+	sys.stderr.write("# Reading features from {}  ".format(args.gtf) + time.asctime() + os.linesep)
 	for line in open(args.gtf,'r'):
 		line = line.strip()
 		if line: # remove empty lines
 			if line[0]=="#": # write out any comment lines with no change
-				print >> wayout, line
+				wayout.write(line + os.linesep)
 			else:
 				linecounter += 1
 				lsplits = line.split("\t")
@@ -84,14 +85,14 @@ def main(argv, wayout):
 					if args.nomatch: # no match, so skip
 						continue
 					else:
-						print >> sys.stderr, "WARNING: NO CONVERSION FOR {}".format(scaffold)
+						sys.stderr.write("WARNING: NO CONVERSION FOR {}\n".format(scaffold) )
 						lsplits[8] = "{};Rename=false".format(lsplits[8])
 				else:
 					conversions += 1
 					lsplits[0] = newscaffold
-				print >> wayout, "\t".join(lsplits)
-	print >> sys.stderr, "# Counted {} lines".format(linecounter), time.asctime()
-	print >> sys.stderr, "# Converted {} lines and could not change {}".format(conversions, noconvertfeatures), time.asctime()
+				wayout.write("\t".join(lsplits) + os.linesep)
+	sys.stderr.write("# Counted {} lines  ".format(linecounter) + time.asctime() + os.linesep)
+	sys.stderr.write("# Converted {} lines and could not change {}\n".format(conversions, noconvertfeatures) )
 
 if __name__ == "__main__":
 	main(sys.argv[1:], sys.stdout)

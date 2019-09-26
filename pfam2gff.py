@@ -6,7 +6,7 @@
 # https://github.com/The-Sequence-Ontology/SO-Ontologies/blob/master/subsets/SOFA.obo
 
 '''
-pfam2gff.py  last modified 2018-10-28
+pfam2gff.py  last modified 2019-03-18
 
     EXAMPLE USAGE:
     to convert to protein gff, where domains are protein coordinates
@@ -51,8 +51,8 @@ def cds_to_intervals(gtffile, keepexons, transdecoder, jgimode, nogenemode):
 	linecounter = 0
 	transcounter = 0
 	exoncounter = 0
-	sys.stderr.write("# Parsing gff from {}".format(gtffile)+" "+time.asctime()+os.linesep)
-	for line in open(gtffile).readlines():
+	sys.stderr.write("# Parsing gff from {}  ".format(gtffile) + time.asctime() + os.linesep)
+	for line in open(gtffile,'r'):
 		line = line.strip()
 		if line: # ignore empty lines
 			if line[0]=="#": # count comment lines, just in case
@@ -89,13 +89,13 @@ def cds_to_intervals(gtffile, keepexons, transdecoder, jgimode, nogenemode):
 						genestrand[geneid] = strand
 						genescaffold[geneid] = scaffold
 					geneintervals[geneid].append(boundaries)
-	sys.stderr.write("# Counted {} lines and {} comments".format(linecounter, commentlines)+" "+time.asctime()+os.linesep)
-	sys.stderr.write("# Counted {} exons for {} transcripts".format(exoncounter, transcounter)+" "+time.asctime()+os.linesep)
+	sys.stderr.write("# Counted {} lines and {} comments  ".format(linecounter, commentlines) + time.asctime() + os.linesep)
+	sys.stderr.write("# Counted {} exons for {} transcripts  ".format(exoncounter, transcounter) + time.asctime() + os.linesep)
 	return geneintervals, genestrand, genescaffold
 
 def parse_pfam_domains(pfamtabular, evaluecutoff, lengthcutoff, programname, outputtype, donamechop, debugmode=False, jgimode=False, geneintervals=None, genestrand=None, genescaffold=None):
 	'''parse domains from hmm domtblout and write to stdout as protein gff or genome gff'''
-	sys.stderr.write("# Parsing hmmscan PFAM tabular {}".format(pfamtabular)+" "+time.asctime()+os.linesep)
+	sys.stderr.write("# Parsing hmmscan PFAM tabular {}  ".format(pfamtabular) + time.asctime() + os.linesep)
 	domaincounter = 0
 	protnamedict = {}
 	evalueRemovals = 0
@@ -104,7 +104,7 @@ def parse_pfam_domains(pfamtabular, evaluecutoff, lengthcutoff, programname, out
 	intervalcounts = 0
 	# for protein GFF, keep domains in dict for later sorting by position
 	protboundstoline = defaultdict(dict)
-	for line in open(pfamtabular, 'r').readlines():
+	for line in open(pfamtabular, 'r'):
 		line = line.strip()
 		if not line or line[0]=="#": # skip comment lines
 			continue # also catch for empty line, which would cause IndexError
@@ -153,12 +153,15 @@ def parse_pfam_domains(pfamtabular, evaluecutoff, lengthcutoff, programname, out
 				genomeintervals = get_intervals(geneintervals[queryid], domstart, domainlength, doreverse=False)
 			elif strand=='-': # implies '-'
 				genomeintervals = get_intervals(geneintervals[queryid], domstart, domainlength, doreverse=True)
-			else: # strand is None
-				sys.stderr.write("WARNING: cannot retrieve strand for {}".format(queryid)+os.linesep)
+			elif strand=='.': # strand is specified as '.'
+				sys.stderr.write("WARNING: no strand given for {}, using forward\n".format(queryid) )
+				genomeintervals = get_intervals(geneintervals[queryid], domstart, domainlength, doreverse=False)
+			else: # strand is None, meaning queryid is not in genestrand dict
+				sys.stderr.write("WARNING: cannot retrieve strand for {}\n".format(queryid) )
 				continue
 			intervalcounts += len(genomeintervals)
 			if not len(genomeintervals):
-				sys.stderr.write("WARNING: no intervals for {} in {}".format(targetname, queryid)+os.linesep)
+				sys.stderr.write("WARNING: no intervals for {} in {}\n".format(targetname, queryid) )
 				intervalproblems += 1
 				continue
 
@@ -170,37 +173,38 @@ def parse_pfam_domains(pfamtabular, evaluecutoff, lengthcutoff, programname, out
 			# ID=g1.t1.VWA.1
 			# Name consists of: PFAM accession, target name, target description
 			# Name=PF00092.VWA.von_Willebrand_factor_type_A_domain
-			outline = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t.\tID={10}.{8}.{9};Name={7}.{8}.{11}".format(scaffold, programname, outputtype, parentstart, parentend, domscore, strand, pfamacc, targetname, domnumber, queryid, targetdescription)
+			outline = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t.\tID={10}.{8}.{9};Name={7}.{8}.{11}\n".format(scaffold, programname, outputtype, parentstart, parentend, domscore, strand, pfamacc, targetname, domnumber, queryid, targetdescription)
 			sys.stdout.write(outline+os.linesep)
 			# make child features for each interval
 			for interval in genomeintervals:
 				# thus ID appears as protein.targetname.number,
 				# so avic1234.G2F.1, and uses ID in most browsers
-				outline = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t.\tParent={10}.{8}.{9};Name={7}.{8}.{11}".format(scaffold, programname, outputtype, interval[0], interval[1], domscore, strand, pfamacc, targetname, domnumber, queryid, targetdescription)
-				sys.stdout.write(outline+os.linesep)
+				outline = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t.\tParent={10}.{8}.{9};Name={7}.{8}.{11}\n".format(scaffold, programname, outputtype, interval[0], interval[1], domscore, strand, pfamacc, targetname, domnumber, queryid, targetdescription)
+				sys.stdout.write(outline)
 
 		### FOR PROTEIN GFF ###
 		else: # for protein GFF, make outline for later sorting
 			boundaries = (domstart,domend)
 			if debugmode:
 				bitlength = float(lsplits[13])/domainlength
-				outline = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{9:.3f}\t{10:.3f}\tID={6}.{7}.{8};Name={6}.{7}.{8}".format(queryid, programname, outputtype, domstart, domend, domscore, pfamacc, targetname, domnumber, bitlength, fractioncov)
+				outline = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{9:.3f}\t{10:.3f}\tID={6}.{7}.{8};Name={6}.{7}.{8}\n".format(queryid, programname, outputtype, domstart, domend, domscore, pfamacc, targetname, domnumber, bitlength, fractioncov)
 			else:
-				outline = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t.\t.\tID={6}.{7}.{8};Name={6}.{7}.{8}".format(queryid, programname, outputtype, domstart, domend, domscore, pfamacc, targetname, domnumber)
+				outline = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t.\t.\tID={6}.{7}.{8};Name={6}.{7}.{8}\n".format(queryid, programname, outputtype, domstart, domend, domscore, pfamacc, targetname, domnumber)
 			protboundstoline[queryid][boundaries] = outline
-	sys.stderr.write("# Found {} domains for {} proteins".format(domaincounter, len(protnamedict) )+" "+time.asctime()+os.linesep)
-	if intervalcounts:
-		sys.stderr.write("# Wrote {} domain intervals".format(intervalcounts)+" "+time.asctime()+os.linesep)
-	else:
-		sys.stderr.write("WARNING: NO DOMAINS WRITTEN, CHECK OPTIONS"+os.linesep)
-	sys.stderr.write("# Removed {} domain hits by shortness".format(shortRemovals)+" "+time.asctime()+os.linesep)
-	sys.stderr.write("# Removed {} domain hits by evalue".format(evalueRemovals)+" "+time.asctime()+os.linesep)
+	sys.stderr.write("# Found {} domains for {} proteins  ".format(domaincounter, len(protnamedict) ) + time.asctime() + os.linesep)
+	if geneintervals: # in genome GFF mode, check if any CDS intervals were actually collected
+		if intervalcounts:
+			sys.stderr.write("# Wrote {} domain intervals\n".format(intervalcounts) )
+		else:
+			sys.stderr.write("WARNING: NO DOMAINS WRITTEN, CHECK OPTIONS\n")
+	sys.stderr.write("# Removed {} domain hits by shortness\n".format(shortRemovals) )
+	sys.stderr.write("# Removed {} domain hits by evalue\n".format(evalueRemovals) )
 	if intervalproblems:
-		sys.stderr.write("# {} genes have domains extending beyond gene bounds".format(intervalproblems)+" "+time.asctime()+os.linesep)
+		sys.stderr.write("# {} genes have domains extending beyond gene bounds\n".format(intervalproblems) )
 	if protboundstoline: # should be empty unless in protein GFF mode, meaning no genomic intervals
 		for protid, boundlines in protboundstoline.iteritems(): # sort proteins by start position
 			for bounds in sorted(boundlines.keys()):
-				sys.stdout.write(boundlines[bounds]+os.linesep)
+				sys.stdout.write(boundlines[bounds])
 	# NO RETURN
 
 def get_intervals(intervals, domstart, domlength, doreverse=True):
@@ -257,7 +261,7 @@ def get_intervals(intervals, domstart, domlength, doreverse=True):
 			if domlength < 1: # catch for if all domain length is accounted for
 				return genomeintervals
 	else:
-		sys.stderr.write("WARNING: cannot finish domain at {} for {} in {}".format(domstart, domlength, intervals)+os.linesep)
+		sys.stderr.write("WARNING: cannot finish domain at {} for {} in {}\n".format(domstart, domlength, intervals) )
 		return genomeintervals
 
 def main(argv, wayout):

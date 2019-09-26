@@ -8,7 +8,7 @@
 # for SOFA terms:
 # https://github.com/The-Sequence-Ontology/SO-Ontologies/blob/master/subsets/SOFA.obo
 
-'''blast2genomegff.py  last modified 2019-09-15
+'''blast2genomegff.py  last modified 2019-09-26
     convert blast output to gff format for genome annotation
     blastx of a transcriptome (genome guided or de novo) against a protein DB:
 
@@ -38,17 +38,18 @@ import sys
 import argparse
 import time
 import re
+import os
 import gzip
 from collections import defaultdict
 from itertools import chain
 from Bio import SeqIO
 
 def make_seq_length_dict(sequencefile):
-	print >> sys.stderr, "# Parsing target sequences from {}".format(sequencefile), time.asctime()
+	sys.stderr.write("# Parsing target sequences from {}".format(sequencefile) + time.asctime() + os.linesep)
 	lengthdict = {}
 	for seqrec in SeqIO.parse(sequencefile,'fasta'):
 		lengthdict[seqrec.id] = len(seqrec.seq)
-	print >> sys.stderr, "# Found {} sequences".format(len(lengthdict)), time.asctime()
+	sys.stderr.write("# Found {} sequences".format(len(lengthdict)) + time.asctime() + os.linesep)
 	return lengthdict
 
 def gtf_to_intervals(gtffile, keepcds, transdecoder, nogenemode, genesplit):
@@ -64,16 +65,16 @@ def gtf_to_intervals(gtffile, keepcds, transdecoder, nogenemode, genesplit):
 	exoncounter = 0
 	if gtffile.rsplit('.',1)[-1]=="gz": # autodetect gzip format
 		opentype = gzip.open
-		print >> sys.stderr, "# Parsing gff from {} as gzipped".format(gtffile), time.asctime()
+		sys.stderr.write("# Parsing gff from {} as gzipped".format(gtffile) + time.asctime() + os.linesep)
 	else: # otherwise assume normal open for fasta format
 		opentype = open
-		print >> sys.stderr, "# Parsing gff from {}".format(gtffile), time.asctime()
+		sys.stderr.write("# Parsing gff from {}".format(gtffile) + time.asctime() + os.linesep)
 	if keepcds: # alert user to the flags that have been set
-		print >> sys.stderr, "# CDS features WILL BE USED as exons"
+		sys.stderr.write("# CDS features WILL BE USED as exons\n")
 	if nogenemode:
-		print >> sys.stderr, "# gene name and strand will be read for each exon"
+		sys.stderr.write("# gene name and strand will be read for each exon\n")
 	# begin parsing file
-	for line in opentype(gtffile):
+	for line in opentype(gtffile,'rt'):
 		line = line.strip()
 		if line: # ignore empty lines
 			if line[0]=="#": # count comment lines, just in case
@@ -112,12 +113,12 @@ def gtf_to_intervals(gtffile, keepcds, transdecoder, nogenemode, genesplit):
 						genestrand[geneid] = strand
 						genescaffold[geneid] = scaffold
 					geneintervals[geneid].append(boundaries)
-	print >> sys.stderr, "# Counted {} lines and {} comments".format(linecounter, commentlines), time.asctime()
+	sys.stderr.write("# Counted {} lines and {} comments".format(linecounter, commentlines) + time.asctime() + os.linesep)
 	if transcounter:
-		print >> sys.stderr, "# Counted {} exons for {} inferred transcripts".format(exoncounter, transcounter), time.asctime()
+		sys.stderr.write("# Counted {} exons for {} inferred transcripts\n".format(exoncounter, transcounter) )
 	else: # no mRNA or transcript features were given, count was 0
 		transcounter = len(genescaffold)
-		print >> sys.stderr, "# Counted {} exons for {} inferred transcripts".format(exoncounter, transcounter), time.asctime()
+		sys.stderr.write("# Counted {} exons for {} inferred transcripts\n".format(exoncounter, transcounter) )
 	return geneintervals, genestrand, genescaffold
 
 def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxtargets, programname, outputtype, donamechop, is_swissprot, seqlengthdict, geneintervals, genestrand, genescaffold, debugmode=False):
@@ -135,10 +136,10 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxta
 	# set up parameters by blast program
 	blastprogram = programname.lower()
 	if blastprogram=="blastn" or blastprogram=="blastx" or blastprogram=="tblastx":
-		print >> sys.stderr, "# blast program is {}, assuming coordinates are nucleotides".format(blastprogram)
+		sys.stderr.write("# blast program is {}, assuming coordinates are nucleotides\n".format(blastprogram) )
 		multiplier = 1
 	else: # meaning blastp or tblastn
-		print >> sys.stderr, "# blast program is {}, multiplying coordinates by 3".format(blastprogram)
+		sys.stderr.write("# blast program is {}, multiplying coordinates by 3\n".format(blastprogram) )
 		multiplier = 3
 
 	hitDictCounter = defaultdict(int)
@@ -146,10 +147,10 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxta
 
 	if blastfile.rsplit('.',1)[-1]=="gz": # autodetect gzip format
 		opentype = gzip.open
-		print >> sys.stderr, "# Starting BLAST parsing on {} as gzipped".format(blastfile), time.asctime()
+		sys.stderr.write("# Starting BLAST parsing on {} as gzipped  ".format(blastfile) + time.asctime() + os.linesep)
 	else: # otherwise assume normal open for fasta format
 		opentype = open
-		print >> sys.stderr, "# Starting BLAST parsing on {}".format(blastfile), time.asctime()
+		sys.stderr.write("# Starting BLAST parsing on {}  ".format(blastfile) + time.asctime() + os.linesep)
 	for line in opentype(blastfile, 'r'):
 		line = line.strip()
 		if not line or line[0]=="#": # skip comment lines
@@ -209,9 +210,9 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxta
 		if scaffold is None:
 			missingscaffolds += 1
 			if missingscaffolds < 10:
-				print >> sys.stderr, "WARNING: cannot get scaffold for {}".format( qseqid )
+				sys.stderr.write("WARNING: cannot get scaffold for {}".format( qseqid ) )
 			elif missingscaffolds == 10:
-				print >> sys.stderr, "WARNING: cannot get scaffold for {}, will not print further warnings".format( qseqid )
+				sys.stderr.write("WARNING: cannot get scaffold for {}, will not print further warnings".format( qseqid ) )
 			continue
 		strand = genestrand.get(qseqid, None)
 		genomeintervals = [] # to have empty iterable
@@ -225,35 +226,35 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxta
 		else: # strand is None
 			# strand could not be found
 			# meaning mismatch between query ID in blast and query ID in the GFF
-			print >> sys.stderr, "WARNING: cannot retrieve strand for {} on {}".format(qseqid, scaffold)
+			sys.stderr.write("WARNING: cannot retrieve strand for {} on {}\n".format(qseqid, scaffold) )
 			continue
 
 		intervalcounts += len(genomeintervals)
 		if not len(genomeintervals):
-			print >> sys.stderr, "WARNING: no intervals for {} in {}".format(sseqid, qseqid)
+			sys.stderr.write("WARNING: no intervals for {} in {}\n".format(sseqid, qseqid) )
 			intervalproblems += 1
 			continue
 		# make Parent feature
 		allpositions = list(chain(*genomeintervals))
 		parentstart = min(allpositions)
 		parentend = max(allpositions)
-		print >> sys.stdout, "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t.\tID={7}.{8}.{9};Target={8} {10} {11} {12};same_sense={13}".format(scaffold, programname, outputtype, parentstart, parentend, bitscore, strand, qseqid, sseqid, hitDictCounter[sseqid], lsplits[8], lsplits[9], "-" if backframe else "+", "0" if backframe else "1")
+		sys.stdout.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t.\tID={7}.{8}.{9};Target={8} {10} {11} {12};same_sense={13}\n".format(scaffold, programname, outputtype, parentstart, parentend, bitscore, strand, qseqid, sseqid, hitDictCounter[sseqid], lsplits[8], lsplits[9], "-" if backframe else "+", "0" if backframe else "1") )
 		# make child features for each interval
 		for interval in genomeintervals:
 		# thus ID appears as qseqid.sseqid.number, so avic1234.avGFP.1, and uses ID in most browsers
-			print >> sys.stdout, "{0}\t{1}\tmatch_part\t{3}\t{4}\t{5}\t{6}\t.\tParent={7}.{8}.{9}".format(scaffold, programname, outputtype, interval[0], interval[1], bitscore, strand, qseqid, sseqid, hitDictCounter[sseqid] )
-	print >> sys.stderr, "# Removed {} hits by shortness".format(shortRemovals)
-	print >> sys.stderr, "# Removed {} hits by bitscore".format(bitsRemovals)
-	print >> sys.stderr, "# Removed {} hits by evalue".format(evalueRemovals)
-	print >> sys.stderr, "# Found {} hits for {} queries".format(sum(hitDictCounter.values()), len(querynamedict) ), time.asctime()
+			sys.stdout.write("{0}\t{1}\tmatch_part\t{3}\t{4}\t{5}\t{6}\t.\tParent={7}.{8}.{9}\n".format(scaffold, programname, outputtype, interval[0], interval[1], bitscore, strand, qseqid, sseqid, hitDictCounter[sseqid] ) )
+	sys.stderr.write("# Removed {} hits by shortness\n".format(shortRemovals) )
+	sys.stderr.write("# Removed {} hits by bitscore\n".format(bitsRemovals) )
+	sys.stderr.write("# Removed {} hits by evalue\n".format(evalueRemovals) )
+	sys.stderr.write("# Found {} hits for {} queries".format(sum(hitDictCounter.values()), len(querynamedict) ) + time.asctime() + os.linesep)
 	if backframecounts:
-		print >> sys.stderr, "# {} hits are antisense".format(backframecounts), time.asctime()
+		sys.stderr.write("# {} hits are antisense  ".format(backframecounts) + time.asctime() + os.linesep)
 	if intervalcounts:
-		print >> sys.stderr, "# Wrote {} domain intervals".format(intervalcounts), time.asctime()
+		sys.stderr.write("# Wrote {} domain intervals  ".format(intervalcounts) + time.asctime() + os.linesep)
 	if missingscaffolds:
-		print >> sys.stderr, "# WARNING: could not find scaffold for {} hits".format(missingscaffolds), time.asctime()
+		sys.stderr.write("# WARNING: could not find scaffold for {} hits  ".format(missingscaffolds) + time.asctime() + os.linesep)
 	if intervalproblems:
-		print >> sys.stderr, "# WARNING: {} matches have hits extending beyond gene bounds".format(intervalproblems), time.asctime()
+		sys.stderr.write("# WARNING: {} matches have hits extending beyond gene bounds  ".format(intervalproblems) + time.asctime() + os.linesep)
 	# NO RETURN
 
 def get_intervals(intervals, domstart, domlength, doreverse=True):
@@ -271,7 +272,7 @@ def get_intervals(intervals, domstart, domlength, doreverse=True):
 	for interval in sorted(intervals, key=lambda x: x[0], reverse=doreverse):
 		intervallength = interval[1]-interval[0]+1 # corrected number of bases
 		if basestostart >= intervallength: # ignore intervals before the start of the domain
-		#	print >> sys.stderr, interval, domstart, basestostart, domlength, intervallength
+		#	sys.stderr.write(" ".join([interval, domstart, basestostart, domlength, intervallength]))
 			basestostart -= intervallength
 		# in example, 101-50+1 = 52, 22 < 52, so else
 		else: # bases to start is fewer than length of the interval, meaning domain must start here
@@ -303,7 +304,7 @@ def get_intervals(intervals, domstart, domlength, doreverse=True):
 			if domlength < 1: # catch for if all domain length is accounted for
 				return genomeintervals
 	else:
-		print >> sys.stderr, "WARNING: cannot finish protein at {} for {} in {}".format(domstart, domlength, intervals)
+		sys.stderr.write("WARNING: cannot finish protein at {} for {} in {}\n".format(domstart, domlength, intervals) )
 		return genomeintervals
 
 def main(argv, wayout):

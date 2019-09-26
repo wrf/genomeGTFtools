@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 # cleangff.py modified from reformatgmapgff.py
 
-'''clean_gff.py  last modified 2016-03-30
+'''clean_gff.py  last modified 2019-09-26
 
   operation will:
     remove comment lines
@@ -15,12 +15,14 @@ clean_gff.py gmap.gff > new.gff
 
 import sys
 
-if len(sys.argv) > 1:
+if len(sys.argv) < 2:
+	sys.stderr.write( __doc__ )
+else:
 	infile = sys.argv[1]
 	mode = "n"
 	if len(sys.argv) > 2:
 		mode = sys.argv[2].replace("-","")
-	print >> sys.stderr, "# Reformatting {}".format(infile)
+	sys.stderr.write("# Reformatting {}\n".format(infile) )
 	with open(infile) as go:
 		for line in go:
 			line = line.strip()
@@ -35,7 +37,7 @@ if len(sys.argv) > 1:
 					lsplits[2] = "three_prime_UTR"
 				elif lsplits[2]=="cds":
 					lsplits[2] = "CDS"
-				print >> sys.stdout, "\t".join(lsplits)
+				sys.stdout.write("{}\n".format( "\t".join(lsplits) ) )
 					# Name=comp12345 is always second position from gmap
 				#	trans_name = splits[8].split(";")[1].split("=")[1]
 				#	contig = splits[0]
@@ -43,6 +45,5 @@ if len(sys.argv) > 1:
 				#	tc = [contig, trans_name]
 				#	tc.extend(splits[2:])
 				#	print >> sys.stdout, "{};{}".format(line.rstrip(), target)
-	print >> sys.stderr, "# Done reformatting {}".format(infile)
-else:
-	print >> sys.stderr, __doc__
+	sys.stderr.write("# Done reformatting {}\n".format(infile) )
+
