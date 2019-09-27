@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # v1.0 created 2016-03-16
 
-'''number_contigs_by_length.py    last modified 2016-11-16
+'''number_contigs_by_length.py    last modified 2019-09-27
 
 number_contigs_by_length.py contigs.fasta > renumbered_contigs.fasta
 
@@ -32,7 +32,6 @@ from Bio import SeqIO
 def main(argv, wayout):
 	if not len(argv):
 		argv.append("-h")
-
 	parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description=__doc__)
 	parser.add_argument('input_file', help="contigs file, by default in fasta format")
 	parser.add_argument('-c','--conversion', help="optional output file for naming conversions")
@@ -71,10 +70,10 @@ def main(argv, wayout):
 
 	# make conversion vector file
 	if args.conversion:
-		print >> sys.stderr, "Writing conversion file {}".format(args.conversion)
+		sys.stderr.write("Writing conversion file {}\n".format(args.conversion) )
 		with open(args.conversion,'w') as cf:
-			for k,v in conversiondict.iteritems():
-				print >> cf, "{}\t{}".format(k,v)
+			for k,v in conversiondict.items():
+				cf.write("{}\t{}\n".format(k,v) )
 
 if __name__ == "__main__":
 	main(sys.argv[1:], sys.stdout)
