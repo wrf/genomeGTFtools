@@ -28,9 +28,9 @@ Many of these tools were used in [our analysis of the genome of the sponge *Teth
 By convention, the longest chromosomes are numbered first. This naturally applies to scaffolds as well. Contigs/scaffolds can be renumbered and reordered with `number_contigs_by_length.py` script. Use the option `-c` to specify an additional output file of the conversion vector, that can be used to rename the scaffold column in any GFF file with the `rename_gtf_contigs.py` script.
 
 ## pfam2gff
-This has two modes: one will convert the "tabular" hmmscan output (generated using PFAM-A (`Pfam-A.hmm`), which can be found in [the FTP section of PFAM](http://pfam.xfam.org/) as the database) into a protein GFF with domains at the protein positions.
+This has two modes: one will convert the "tabular" hmmscan output (generated using PFAM-A (`Pfam-A.hmm`), which can be found in [the FTP section of PFAM](http://pfam.xfam.org/) as the hmm database, or direct download from `ftp://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.hmm.gz`) into a protein GFF with domains at the protein positions.
 
-  `hmmscan --cpu 4 --domtblout stringtie.pfam.tab ~/PfamScan/data/Pfam-A.hmm stringtie_transdecoder_prots.fasta > stringtie.pfam.log`
+  `hmmscan --domE 0.1 --cpu 4 --domtblout stringtie.pfam.tab ~/PfamScan/data/Pfam-A.hmm stringtie_transdecoder_prots.fasta > stringtie.pfam.log`
 
   `pfam2gff.py -i stringtie.pfam.tab > stringtie.pfam.gff`
 
@@ -43,7 +43,7 @@ The other output will convert the domain positions into genomic coordinates for 
 
 For `AUGUSTUS` proteins (using [extract_features.py](https://bitbucket.org/wrf/sequences/src/master/extract_features.py) or translated nucleotides), this would be run as:
 
-  `hmmscan --cpu 4 --domtblout renilla_test_prots.pfam.tab ~/db/Pfam-A.hmm renilla_test_prots.fasta > /dev/null`
+  `hmmscan --domE 0.1 --cpu 4 --domtblout renilla_test_prots.pfam.tab ~/db/Pfam-A.hmm renilla_test_prots.fasta > /dev/null`
 
 Then run with the `AUGUSTUS` GFF (ensure this is GFF format and not GTF), instructing to use CDS features as exons with `-x`. Depending on version, the `AUGUSTUS` output might appear as below, where ID is not explicitly given in the attributes of the gene or transcripts (it just says `g1`), but is given for the introns or CDS. This makes it difficult to parse in a standarized way.
 
@@ -149,6 +149,11 @@ If proteins were used, set `-p` to `blastp`. If nucleotide CDS was used, the def
 
 ## microsynteny
 Blocks of colinear genes between two species can be identified using `blast` and GFF files of the gene positions for each species.
+
+#### Required terms are: ####
+   * `-b` tabular blast or diamond results, of the query proteins or genes against some database
+   * `-q` GFF file of the query genes. **The results are sensitive to presence of multiple features at the same locus. It is advisable to include only features that would match the blast results, either gene or mRNA.** i.e. `grep gene annotation.gff > genes_features_only.gff`
+   * `-d` GFF of the genes of the target genome
 
 #### Common options are: ####
    * `-m` minimum length of a block, 3 is usually sufficient for true synteny, as determined by randomized gene order (with `-R`)

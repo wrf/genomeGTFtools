@@ -2,7 +2,7 @@
 # microsynteny.py
 # v1.0 2015-10-09
 
-'''microsynteny.py v1.3 last modified 2019-04-30
+'''microsynteny.py v1.3 last modified 2019-09-27
 
 microsynteny.py -q query.gtf -d ref_species.gtf -b query_vs_ref_blast.tab -E ../bad_contigs -g -D '_' --blast-query-delimiter '.' > query_vs_ref_microsynteny.tab
 
@@ -39,6 +39,7 @@ query-scaffold  ref-scaffold  block-number
 
 import sys
 import re
+import os
 import time
 import argparse
 import random
@@ -52,10 +53,10 @@ def parse_gtf(gtffile, exonstogenes, excludedict, delimiter, isref=False):
 	'''from a gtf, return a dict of dicts where keys are scaffold names, then gene names, and values are gene info as a tuple of start end and strand direction'''
 	if gtffile.rsplit('.',1)[-1]=="gz": # autodetect gzip format
 		opentype = gzip.open
-		print >> sys.stderr, "# Parsing {} as gzipped".format(gtffile), time.asctime()
+		sys.stderr.write("# Parsing {} as gzipped  ".format(gtffile) + time.asctime() + os.linesep)
 	else: # otherwise assume normal open for fasta format
 		opentype = open
-		print >> sys.stderr, "# Parsing {}".format(gtffile), time.asctime()
+		sys.stderr.write("# Parsing {}  ".format(gtffile) + time.asctime() + os.linesep)
 
 	if isref: # meaning is db/subject, thus get normal dictionary
 		genesbyscaffold = {}
@@ -65,7 +66,7 @@ def parse_gtf(gtffile, exonstogenes, excludedict, delimiter, isref=False):
 		nametoscaffold = {} # in order to get transcript boundaries, store names to scaffolds
 		nametostrand = {} # store strand by gene ID
 		exonboundaries = defaultdict(list) # make list of tuples of exons by transcript, to determine genes
-	for line in opentype(gtffile).readlines():
+	for line in opentype(gtffile,'rt'):
 		line = line.strip()
 		if line and not line[0]=="#": # ignore empty lines and comments
 			lsplits = line.split("\t")
@@ -103,34 +104,34 @@ def parse_gtf(gtffile, exonstogenes, excludedict, delimiter, isref=False):
 
 	if len(genesbyscaffold) > 0: # even if no-genes was set, this should be more than 0 if genes were in one gtf
 		if isref:
-			print >> sys.stderr, "# Found {} genes".format( len(genesbyscaffold) ), time.asctime()
+			sys.stderr.write("# Found {} genes  ".format( len(genesbyscaffold) ) + time.asctime() + os.linesep)
 		else:
-			print >> sys.stderr, "# Found {} genes".format(sum( map( len,genesbyscaffold.values()) ) ), time.asctime()
+			sys.stderr.write("# Found {} genes  ".format(sum( list(map( len,genesbyscaffold.values())) ) ) + time.asctime() + os.linesep)
 		return genesbyscaffold
 	else: # generate gene boundaries by scaffold
-		print >> sys.stderr, "# Estimated {} genes from {} exons".format(len(exonboundaries), sum(len(x) for x in exonboundaries.values() ) ), time.asctime()
-		for gene,exons in exonboundaries.iteritems():
+		sys.stderr.write("# Estimated {} genes from {} exons  ".format(len(exonboundaries), sum(len(x) for x in exonboundaries.values() ) ) + time.asctime() + os.linesep)
+		for gene,exons in exonboundaries.items():
 			if isref: # make different tuple for reference genes, since they are indexed by name, not scaffold
 				refbounds = refgene(scaffold=nametoscaffold[gene], start=min(x[0] for x in exons), end=max(x[1] for x in exons), strand=nametostrand[gene] )
 				genesbyscaffold[gene] = refbounds
 			else:
 				boundstrand = querygene(start=min(x[0] for x in exons), end=max(x[1] for x in exons), strand=nametostrand[gene] )
 				genesbyscaffold[nametoscaffold[gene]][gene] = boundstrand
-		print >> sys.stderr, "# Found {} genes".format(len(genesbyscaffold) ), time.asctime() # uses len here
+		sys.stderr.write("# Found {} genes  ".format(len(genesbyscaffold) ) + time.asctime() + os.linesep) # uses len here
 		return genesbyscaffold
 
 def parse_tabular_blast(blasttabfile, evaluecutoff, querydelimiter, refdelimiter, switchquery=False, maxhits=100):
 	'''read tabular blast file, return a dict where key is query ID and value is subject ID'''
 	if blasttabfile.rsplit('.',1)[-1]=="gz": # autodetect gzip format
 		opentype = gzip.open
-		print >> sys.stderr, "# Parsing tabular blast output {} as gzipped".format(blasttabfile), time.asctime()
+		sys.stderr.write("# Parsing tabular blast output {} as gzipped  ".format(blasttabfile) + time.asctime() + os.linesep)
 	else: # otherwise assume normal open for fasta format
 		opentype = open
-		print >> sys.stderr, "# Parsing tabular blast output {}".format(blasttabfile), time.asctime()
+		sys.stderr.write("# Parsing tabular blast output {}  ".format(blasttabfile) + time.asctime() + os.linesep)
 	query_to_sub_dict = defaultdict(dict)
 	query_hits = defaultdict(int) # counter of hits
 	evalueRemovals = 0
-	for line in opentype(blasttabfile, 'r').readlines():
+	for line in opentype(blasttabfile, 'rt'):
 		line = line.strip()
 		lsplits = line.split("\t")
 		# qseqid, sseqid, pident, length, mismatch, gapopen, qstart, qend, sstart, send, evalue, bitscore
@@ -146,23 +147,23 @@ def parse_tabular_blast(blasttabfile, evaluecutoff, querydelimiter, refdelimiter
 			evalueRemovals += 1
 			continue
 		# filter by number of hits
-		if query_hits.get(queryseq) >= maxhits: # too many hits already, skip
+		if query_hits.get(queryseq,0) >= maxhits: # too many hits already, skip
 			continue
 		# otherwise add the entry
 		bitscore = float(lsplits[11])
 		query_to_sub_dict[queryseq][subjectid] = bitscore
 		query_hits[queryseq] += 1
-	print >> sys.stderr, "# Found blast hits for {} query sequences".format( len(query_to_sub_dict) ), time.asctime()
-	print >> sys.stderr, "# Removed {} hits by evalue, kept {} hits".format( evalueRemovals, sum(query_hits.values()) )
-	print >> sys.stderr, "# Names parsed as {} from {}, and {} from {}".format( queryseq,lsplits[0], subjectid,lsplits[1] )
+	sys.stderr.write("# Found blast hits for {} query sequences  ".format( len(query_to_sub_dict) ) + time.asctime() + os.linesep)
+	sys.stderr.write("# Removed {} hits by evalue, kept {} hits\n".format( evalueRemovals, sum(query_hits.values()) ) )
+	sys.stderr.write("# Names parsed as {} from {}, and {} from {}\n".format( queryseq,lsplits[0], subjectid,lsplits[1] ) )
 	return query_to_sub_dict
 
 def randomize_genes(refdict):
 	'''take the gtf dict and randomize the gene names for all genes, return a similar dict of dicts'''
 	genepositions = {} # store gene positions as tuples
 	randomgenelist = []
-	print >> sys.stderr, "# Randomizing query gene positions", time.asctime()
-	for scaffold, genedict in refdict.iteritems(): # iterate first to get list of all genes
+	sys.stderr.write("# Randomizing query gene positions  " + time.asctime() + os.linesep)
+	for scaffold, genedict in refdict.items(): # iterate first to get list of all genes
 		for genename in genedict.keys():
 			randomgenelist.append(genename)
 			genepositions[genename] = genedict[genename]
@@ -171,11 +172,11 @@ def randomize_genes(refdict):
 	# reiterate in same order, but store random gene names at the same position
 	genecounter = 0
 	randomgenesbyscaf = defaultdict(dict) # scaffolds as key, then gene name, then genemapping tuple
-	for scaffold, genedict in refdict.iteritems(): # iterate again to reassign genes to each scaffold
-		for genename, bounds in genedict.iteritems():
+	for scaffold, genedict in refdict.items(): # iterate again to reassign genes to each scaffold
+		for genename, bounds in genedict.items():
 			randomgenesbyscaf[scaffold][randomgenelist[genecounter]] = genepositions[genename]
 			genecounter += 1
-	print >> sys.stderr, "# Randomized {} genes".format(genecounter), time.asctime()
+	sys.stderr.write("# Randomized {} genes  ".format(genecounter) + time.asctime() + os.linesep)
 	return randomgenesbyscaf
 
 def synteny_walk(querydict, blastdict, refdict, min_block, max_span, max_distance, is_verbose, wayout, make_gff):
@@ -192,16 +193,16 @@ def synteny_walk(querydict, blastdict, refdict, min_block, max_span, max_distanc
 	querypos = (0,1) # position of first gene on query scaffold
 	subjectpos = (0,1) # position of first gene on ref scaffold
 
-	print >> sys.stderr, "# searching for colinear blocks of at least {} genes, with up to {} intervening genes".format( min_block, max_span )
-	for scaffold, transdict in querydict.iteritems():
+	sys.stderr.write("# searching for colinear blocks of at least {} genes, with up to {} intervening genes\n".format( min_block, max_span ) )
+	for scaffold, transdict in sorted(querydict.items(), key=lambda x: x[0]):
 		orderedtranslist = sorted(transdict.items(), key=lambda x: x[1].start) # sort by start position
 		genesonscaff = len(orderedtranslist) # keeping track of number of genes by scaffold, for scale
 		scaffoldgenecounts[genesonscaff] += 1
 		if is_verbose:
-			print >> sys.stderr, "#1 Scanning scaffold {0} with {1} genes".format(scaffold, genesonscaff)
+			sys.stderr.write("#1 Scanning scaffold {0} with {1} genes\n".format(scaffold, genesonscaff) )
 		if genesonscaff < min_block: # not enough genes, thus no synteny would be found
 			if is_verbose:
-				print >> sys.stderr, "#1 Only {1} genes on scaffold {0}, skipping scaffold".format(scaffold, genesonscaff)
+				sys.stderr.write("#1 Only {1} genes on scaffold {0}, skipping scaffold\n".format(scaffold, genesonscaff) )
 			continue
 		accounted_query_genes = [] # list of genes already in synteny blocks on this contig
 		for i, querygene_tuple in enumerate(orderedtranslist):
@@ -214,7 +215,7 @@ def synteny_walk(querydict, blastdict, refdict, min_block, max_span, max_distanc
 			blastrefmatch_dict = blastdict.get(startingtrans,None) 
 			if blastrefmatch_dict==None: # if no blast match, then skip to next gene
 				if is_verbose:
-					print >> sys.stderr, "#2 No blast matches for {}, skipping walk".format(startingtrans)
+					sys.stderr.write("#2 No blast matches for {}, skipping walk\n".format(startingtrans) )
 				continue
 			# otherwise start iterating through all blast hits of that gene
 			for blast_refgene, bitscore1 in sorted(blastrefmatch_dict.items(), key=lambda x: x[1], reverse=True):
@@ -224,14 +225,14 @@ def synteny_walk(querydict, blastdict, refdict, min_block, max_span, max_distanc
 				# due to multiple hits within the same protein, e.g. multidomain proteins
 				if startingtrans in accounted_query_genes:
 					if is_verbose:
-						print >> sys.stderr, "#2 Gene {} already has match on {}, skipping".format(startingtrans, scaffold)
+						sys.stderr.write("#2 Gene {} already has match on {}, skipping\n".format(startingtrans, scaffold) )
 					continue
 				# renew synteny list for each query gene
 				syntenylist = [ (startingtrans,blast_refgene) ]
 
 				if i < genesonscaff - 1: # this allows for 2 genes left
 					if is_verbose:
-						print >> sys.stderr, "#3 Starting walk from gene {} on scaffold {} against {}".format(startingtrans, scaffold, blast_refgene)
+						sys.stderr.write("#3 Starting walk from gene {} on scaffold {} against {}\n".format(startingtrans, scaffold, blast_refgene) )
 					# get scaffold and position of matched gene
 					refscaffold = refdict[blast_refgene].scaffold
 					subjectpos = (refdict[blast_refgene].start, refdict[blast_refgene].end)
@@ -242,7 +243,7 @@ def synteny_walk(querydict, blastdict, refdict, min_block, max_span, max_distanc
 							dist_to_next_query = next_gene_info.start-querypos[1]
 							if dist_to_next_query > max_distance: # next gene is too far
 								if is_verbose:
-									print >> sys.stderr, "#4 Next gene {} bases away from {}, stopping walk".format(dist_to_next_query, next_gene)
+									sys.stderr.write("#4 Next gene {} bases away from {}, stopping walk\n".format(dist_to_next_query, next_gene) )
 								break # end gene block
 							# update query positions
 							querypos = (next_gene_info.start, next_gene_info.end)
@@ -250,7 +251,7 @@ def synteny_walk(querydict, blastdict, refdict, min_block, max_span, max_distanc
 							# if no blast match, then skip to next walk step, and decrement
 							if next_match_dict==None:
 								if is_verbose:
-									print >> sys.stderr, "#4 No blast matches for {}, skipping gene".format(next_gene)
+									sys.stderr.write("#4 No blast matches for {}, skipping gene\n".format(next_gene) )
 								walksteps -= 1
 								continue
 							# otherwise iterate through matches, finding one within range
@@ -269,10 +270,10 @@ def synteny_walk(querydict, blastdict, refdict, min_block, max_span, max_distanc
 									# if either are greater than max distance, then gene is too far
 									if dist_to_next_ref > max_distance or dist_to_prev_ref > max_distance:
 										if is_verbose:
-											print >> sys.stderr, "#4 {} match to {} is too far, {}bp, ignoring match".format(next_gene, next_match, max([dist_to_next_ref,dist_to_prev_ref]) )
+											sys.stderr.write("#4 {} match to {} is too far, {}bp, ignoring match\n".format(next_gene, next_match, max([dist_to_next_ref,dist_to_prev_ref]) ) )
 										continue
 									if is_verbose:
-										print >> sys.stderr, "#5 Match {} found for {} on {}".format(next_match, next_gene, scaffold )
+										sys.stderr.write("#5 Match {} found for {} on {}\n".format(next_match, next_gene, scaffold ) )
 									walksteps = max_span # if a gene is found, reset steps
 									subjectpos = next_ref_pos
 									accounted_query_genes.append(next_gene)
@@ -280,23 +281,23 @@ def synteny_walk(querydict, blastdict, refdict, min_block, max_span, max_distanc
 									break
 								else:
 									if is_verbose:
-										print >> sys.stderr, "#4 {} matches {} on wrong contig {}, skipping gene".format(next_gene, next_match, next_ref_scaf)
+										sys.stderr.write("#4 {} matches {} on wrong contig {}, skipping gene\n".format(next_gene, next_match, next_ref_scaf) )
 							else:
 								walksteps -= 1 # then skip to next walk step and decrement
 						else: # if walksteps is 0, then break out of for loop
 							if is_verbose:
-								print >> sys.stderr, "#3 Limit reached for {}, stopping walk".format(next_gene)
+								sys.stderr.write("#3 Limit reached at {}, stopping walk for {}\n".format(next_gene, startingtrans) )
 							break # no more searching for genes after walksteps is 0
 					### WRITE LONGEST MATCH
 					blocklen = len(syntenylist)
 					if blocklen >= min_block:
 						if is_verbose:
-							print >> sys.stderr, "# Found block of {0} genes starting from {1} on {2}".format(blocklen, startingtrans, scaffold)
+							sys.stderr.write("# Found block of {0} genes starting from {1} on {2}\n".format(blocklen, startingtrans, scaffold) )
 						try:
 							if blocklen > max(blocklengths.keys()):
-								print >> sys.stderr, "New longest block blk-{} of {} on {}".format(blocknum, blocklen, scaffold)
+								sys.stderr.write("New longest block blk-{} of {} on {}\n".format(blocknum, blocklen, scaffold) )
 						except ValueError: # for first check where blocklengths is empty
-							print >> sys.stderr, "New longest block blk-{} of {} on {}".format(blocknum, blocklen, scaffold)
+							sys.stderr.write("New longest block blk-{} of {} on {}\n".format(blocknum, blocklen, scaffold) )
 						qblockstart = transdict[syntenylist[0][0]].start
 						qblockend = transdict[syntenylist[-1][0]].end
 						sblockstart = refdict[syntenylist[0][1]].start
@@ -312,38 +313,38 @@ def synteny_walk(querydict, blastdict, refdict, min_block, max_span, max_distanc
 						# generate GFF for entire block
 						if make_gff:
 							# could also be "cross_genome_match"
-							blockline = "{0}\tmicrosynteny\tmatch\t{1}\t{2}\t{3}\t{4}\t.\tID=blk-{5};Name=blk-{5}_to_{6};Target={6} {7} {8}".format( scaffold, qblockstart, qblockend, blocklen, strand, blocknum, refscaffold, sblockstart, sblockend)
-							print >> wayout, blockline
+							blockline = "{0}\tmicrosynteny\tmatch\t{1}\t{2}\t{3}\t{4}\t.\tID=blk-{5};Name=blk-{5}_to_{6};Target={6} {7} {8}\n".format( scaffold, qblockstart, qblockend, blocklen, strand, blocknum, refscaffold, sblockstart, sblockend)
+							wayout.write(blockline)
 							# make GFF line for each match
 							for j,pair in enumerate(syntenylist):
-								outline = "{0}\tmicrosynteny\tmatch_part\t{1}\t{2}\t{3}\t{4}\t.\tID=blk-{5}.{10}.{11};Parent=blk-{5};Target={6} {7} {8} {9}".format( scaffold, transdict[pair[0]].start, transdict[pair[0]].end, blastdict[pair[0]][pair[1]], transdict[pair[0]].strand, blocknum, pair[1], refdict[pair[1]].start, refdict[pair[1]].end, refdict[pair[1]].strand, j+1, pair[0])
-								print >> wayout, outline
+								outline = "{0}\tmicrosynteny\tmatch_part\t{1}\t{2}\t{3}\t{4}\t.\tID=blk-{5}.{10}.{11};Parent=blk-{5};Target={6} {7} {8} {9}\n".format( scaffold, transdict[pair[0]].start, transdict[pair[0]].end, blastdict[pair[0]][pair[1]], transdict[pair[0]].strand, blocknum, pair[1], refdict[pair[1]].start, refdict[pair[1]].end, refdict[pair[1]].strand, j+1, pair[0])
+								wayout.write(outline)
 						############################
 						# otherwise use output of v1
 						else:
 							for pair in syntenylist:
-								outline = "{}\t{}\tblk-{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}".format(scaffold, refscaffold, blocknum, pair[0], transdict[pair[0]].start, transdict[pair[0]].end, transdict[pair[0]].strand, pair[1], refdict[pair[1]].start, refdict[pair[1]].end, refdict[pair[1]].strand, blastdict[pair[0]][pair[1]])
-								print >> wayout, outline
+								outline = "{}\t{}\tblk-{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format(scaffold, refscaffold, blocknum, pair[0], transdict[pair[0]].start, transdict[pair[0]].end, transdict[pair[0]].strand, pair[1], refdict[pair[1]].start, refdict[pair[1]].end, refdict[pair[1]].strand, blastdict[pair[0]][pair[1]])
+								wayout.write(outline)
 						blocknum += 1
 					else:
 						if is_verbose:
-							print >> sys.stderr, "# Block only contained {0} genes, ignoring block".format(blocklen)
+							sys.stderr.write("# Block only contained {0} genes, ignoring block\n".format(blocklen) )
 				else:
 					if is_verbose:
-						print >> sys.stderr, "# Too few genes left from {} on scaffold {}, skipping walk".format(startingtrans, scaffold)
+						sys.stderr.write("# Too few genes left from {} on scaffold {}, skipping walk\n".format(startingtrans, scaffold) )
 				lastmatch = str(blast_refgene)
-	print >> sys.stderr, "# Found {} possible split genes".format(splitgenes), time.asctime()
-	print >> sys.stderr, "# Most genes on a query scaffold was {}".format(max(scaffoldgenecounts.keys())), time.asctime() 
+	sys.stderr.write("# Found {} possible split genes  ".format(splitgenes) + time.asctime() + os.linesep)
+	sys.stderr.write("# Most genes on a query scaffold was {}  ".format(max(list(scaffoldgenecounts.keys()))) + time.asctime() + os.linesep)
 	genetotal = sum(x*y for x,y in blocklengths.items())
-	print >> sys.stderr, "# Found {} total putative synteny blocks for {} genes".format(sum(blocklengths.values()), genetotal), time.asctime()
+	sys.stderr.write("# Found {} total putative synteny blocks for {} genes  ".format(sum(list(blocklengths.values())), genetotal) + time.asctime() + os.linesep)
 	if len(blocklengths)==0: # if no blocks are found
 		sys.exit("### NO SYNTENY DETECTED, CHECK GENE ID FORMAT PARAMTERS -Q -D")
-	print >> sys.stderr, "# Average block is {:.2f}, longest block was {} genes".format( 1.0*genetotal/sum(blocklengths.values()), max(blocklengths.keys()) ), time.asctime()
-	print >> sys.stderr, "# Total block span was {} bases".format(basetotal), time.asctime()
+	sys.stderr.write("# Average block is {:.2f}, longest block was {} genes  ".format( 1.0*genetotal/sum(list(blocklengths.values())), max(list(blocklengths.keys())) ) + time.asctime() + os.linesep)
+	sys.stderr.write("# Total block span was {} bases  ".format(basetotal) + time.asctime() + os.linesep)
 
 	### MAKE BLOCK HISTOGRAM
 	for k,v in sorted(blocklengths.items(),key=lambda x: x[0]):
-		print >> sys.stderr, k, v
+		sys.stderr.write("{} {}\n".format(k, v) )
 	# no return
 
 def main(argv, wayout):
@@ -369,22 +370,22 @@ def main(argv, wayout):
 	parser.add_argument('-v','--verbose', help="verbose output", action="store_true")
 	args = parser.parse_args(argv)
 
-	print >> sys.stderr, "# Running command:\n{}".format( ' '.join(sys.argv) )
+	sys.stderr.write("# Running command:\n{}\n".format( ' '.join(sys.argv) ) )
 
 	if args.minimum < 2:
-		print >> sys.stderr, "WARNING: MINIMUM COLINEARITY -m MUST BE GREATER THAN 1, {} GIVEN".format(args.minimum)
-		print >> sys.stderr, "SETTING MINIMUM COLINEARITY TO 2"
+		sys.stderr.write("WARNING: MINIMUM COLINEARITY -m MUST BE GREATER THAN 1, {} GIVEN\n".format(args.minimum) )
+		sys.stderr.write("SETTING MINIMUM COLINEARITY TO 2\n")
 		args.minimum = 2
 
 	if args.exclude:
-		print >> sys.stderr, "# Reading exclusion list {}".format(args.exclude), time.asctime()
+		sys.stderr.write("# Reading exclusion list {}  ".format(args.exclude) + time.asctime() + os.linesep)
 		exclusionDict = {}
 		for term in open(args.exclude,'r').readlines():
 			term = term.strip()
 			if term[0] == ">":
 				term = term[1:]
 			exclusionDict[term] = True
-		print >> sys.stderr, "# Found {} contigs to exclude".format(len(exclusionDict) ), time.asctime()
+		sys.stderr.write("# Found {} contigs to exclude  ".format(len(exclusionDict) ) + time.asctime() + os.linesep)
 	else:
 		exclusionDict = None
 
@@ -403,7 +404,7 @@ def main(argv, wayout):
 		querydict = randomize_genes(querydict)
 
 	if args.make_gff:
-		print >> sys.stderr, "# make GFF output: {}".format( args.make_gff )
+		sys.stderr.write("# make GFF output: {}\n".format( args.make_gff ) )
 	### START SYNTENY WALKING ###
 	synteny_walk(querydict, blastdict, refdict, args.minimum, args.span, args.distance,  args.verbose, wayout, args.make_gff)
 
