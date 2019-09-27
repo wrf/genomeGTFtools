@@ -6,7 +6,7 @@
 # https://github.com/The-Sequence-Ontology/SO-Ontologies/blob/master/subsets/SOFA.obo
 
 '''
-pfam2gff.py  last modified 2019-03-18
+pfam2gff.py  last modified 2019-09-27
 
     EXAMPLE USAGE:
     to convert to protein gff, where domains are protein coordinates
@@ -37,10 +37,11 @@ import sys
 import time
 import argparse
 import re
+import gzip
 from collections import defaultdict
 from itertools import chain
 
-def cds_to_intervals(gtffile, keepexons, transdecoder, jgimode, nogenemode):
+def cds_to_intervals(gtffile, genesplit, keepexons, transdecoder, jgimode, nogenemode):
 	'''convert protein or gene intervals from gff to dictionary where mrna IDs are keys and lists of intervals are values'''
 	# this should probably be a class
 	geneintervals = defaultdict(list)
@@ -51,8 +52,16 @@ def cds_to_intervals(gtffile, keepexons, transdecoder, jgimode, nogenemode):
 	linecounter = 0
 	transcounter = 0
 	exoncounter = 0
-	sys.stderr.write("# Parsing gff from {}  ".format(gtffile) + time.asctime() + os.linesep)
-	for line in open(gtffile,'r'):
+	# allow gzipped files
+	if gtffile.rsplit('.',1)[-1]=="gz": # autodetect gzip format
+		opentype = gzip.open
+		sys.stderr.write("# Parsing gff from {} as gzipped  ".format(gtffile) + time.asctime() + os.linesep)
+	else: # otherwise assume normal open for fasta format
+		opentype = open
+		sys.stderr.write("# Parsing gff from {}  ".format(gtffile) + time.asctime() + os.linesep)
+
+	# extract gene or CDS information
+	for line in opentype(gtffile,'r'):
 		line = line.strip()
 		if line: # ignore empty lines
 			if line[0]=="#": # count comment lines, just in case
@@ -76,6 +85,8 @@ def cds_to_intervals(gtffile, keepexons, transdecoder, jgimode, nogenemode):
 				if transdecoder: # meaning CDS IDs will start with cds.gene.123|m.1
 					geneid = geneid.replace("cds.","") # simply remove the cds.
 					geneid = geneid.replace(".cds","") # also works for AUGUSTUS
+				if genesplit: # if splitting, split all gene IDs
+					geneid = geneid.split(genesplit,1)[0]
 				if feature=="transcript" or feature=="mRNA":
 					transcounter += 1
 					genestrand[geneid] = strand
@@ -89,13 +100,14 @@ def cds_to_intervals(gtffile, keepexons, transdecoder, jgimode, nogenemode):
 						genestrand[geneid] = strand
 						genescaffold[geneid] = scaffold
 					geneintervals[geneid].append(boundaries)
+			#		sys.stderr.write("{} {} {}\n".format(geneid, scaffold, boundaries) )
 	sys.stderr.write("# Counted {} lines and {} comments  ".format(linecounter, commentlines) + time.asctime() + os.linesep)
 	sys.stderr.write("# Counted {} exons for {} transcripts  ".format(exoncounter, transcounter) + time.asctime() + os.linesep)
+	sys.stderr.write("# Gene IDs taken as {} from {}\n".format(geneid, attributes) )
 	return geneintervals, genestrand, genescaffold
 
 def parse_pfam_domains(pfamtabular, evaluecutoff, lengthcutoff, programname, outputtype, donamechop, debugmode=False, jgimode=False, geneintervals=None, genestrand=None, genescaffold=None):
 	'''parse domains from hmm domtblout and write to stdout as protein gff or genome gff'''
-	sys.stderr.write("# Parsing hmmscan PFAM tabular {}  ".format(pfamtabular) + time.asctime() + os.linesep)
 	domaincounter = 0
 	protnamedict = {}
 	evalueRemovals = 0
@@ -104,7 +116,16 @@ def parse_pfam_domains(pfamtabular, evaluecutoff, lengthcutoff, programname, out
 	intervalcounts = 0
 	# for protein GFF, keep domains in dict for later sorting by position
 	protboundstoline = defaultdict(dict)
-	for line in open(pfamtabular, 'r'):
+
+	# allow gzipped files
+	if pfamtabular.rsplit('.',1)[-1]=="gz": # autodetect gzip format
+		opentype = gzip.open
+		sys.stderr.write("# Parsing hmmscan PFAM tabular {} as gzipped  ".format(pfamtabular) + time.asctime() + os.linesep)
+	else: # otherwise assume normal open for fasta format
+		opentype = open
+		sys.stderr.write("# Parsing hmmscan PFAM tabular {}  ".format(pfamtabular) + time.asctime() + os.linesep)
+
+	for line in opentype(pfamtabular, 'rt'):
 		line = line.strip()
 		if not line or line[0]=="#": # skip comment lines
 			continue # also catch for empty line, which would cause IndexError
@@ -269,7 +290,8 @@ def main(argv, wayout):
 		argv.append("-h")
 	parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description=__doc__)
 	parser.add_argument('-i','--input', help="PFAM domain information as hmmscan tabular")
-	parser.add_argument('-d','--delimiter', help="optional delimiter for protein names, cuts off end split")
+	parser.add_argument('-d','--gene-delimiter', help="optional delimiter for gene names in GFF, cuts off end split")
+	parser.add_argument('-D','--prot-delimiter', help="optional delimiter for protein names in PFAM table, cuts off end split")
 	parser.add_argument('-e','--evalue', type=float, default=1e-1, help="evalue cutoff for domain filtering [1e-1]")
 	parser.add_argument('-g','--genes', help="genes or proteins in gff format")
 	parser.add_argument('-J','--JGI', action="store_true", help="use presets for JGI format files")
@@ -284,10 +306,10 @@ def main(argv, wayout):
 	args = parser.parse_args(argv)
 
 	if args.genes:
-		geneintervals, genestrand, genescaffold = cds_to_intervals(args.genes, args.exons, args.transdecoder, args.JGI, args.no_genes)
-		parse_pfam_domains(args.input, args.evalue, args.length_cutoff, args.program, args.type, args.delimiter, args.debug, args.JGI, geneintervals, genestrand, genescaffold)
+		geneintervals, genestrand, genescaffold = cds_to_intervals(args.genes, args.gene_delimiter, args.exons, args.transdecoder, args.JGI, args.no_genes)
+		parse_pfam_domains(args.input, args.evalue, args.length_cutoff, args.program, args.type, args.prot_delimiter, args.debug, args.JGI, geneintervals, genestrand, genescaffold)
 	else: # assume protein gff
-		parse_pfam_domains(args.input, args.evalue, args.length_cutoff, args.program, args.type, args.delimiter, args.debug)
+		parse_pfam_domains(args.input, args.evalue, args.length_cutoff, args.program, args.type, args.prot_delimiter, args.debug)
 
 if __name__ == "__main__":
 	main(sys.argv[1:],sys.stdout)
