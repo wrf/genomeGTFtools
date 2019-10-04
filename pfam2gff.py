@@ -6,7 +6,7 @@
 # https://github.com/The-Sequence-Ontology/SO-Ontologies/blob/master/subsets/SOFA.obo
 
 '''
-pfam2gff.py  last modified 2019-09-27
+pfam2gff.py  last modified 2019-10-04
 
     EXAMPLE USAGE:
     to convert to protein gff, where domains are protein coordinates
@@ -167,16 +167,17 @@ def parse_pfam_domains(pfamtabular, evaluecutoff, lengthcutoff, programname, out
 			# protein position 1 becomes nucleotide position 1, position 2 becomes nucleotide 4, 3 to 7
 			domstart = (domstart - 1) * 3 + 1
 			domend = domend * 3 # end is necessarily the end of a codon
+			domainlength_nucl = domend - domstart + 1 # recalculate for nucleotide coordinates
 			scaffold = genescaffold.get(queryid, None)
 			strand = genestrand.get(queryid, None)
 			# convert transcript nucleotide to genomic nucleotide, and split at exon bounds
 			if strand=='+':
-				genomeintervals = get_intervals(geneintervals[queryid], domstart, domainlength, doreverse=False)
+				genomeintervals = get_intervals(geneintervals[queryid], domstart, domainlength_nucl, doreverse=False)
 			elif strand=='-': # implies '-'
-				genomeintervals = get_intervals(geneintervals[queryid], domstart, domainlength, doreverse=True)
+				genomeintervals = get_intervals(geneintervals[queryid], domstart, domainlength_nucl, doreverse=True)
 			elif strand=='.': # strand is specified as '.'
 				sys.stderr.write("WARNING: no strand given for {}, using forward\n".format(queryid) )
-				genomeintervals = get_intervals(geneintervals[queryid], domstart, domainlength, doreverse=False)
+				genomeintervals = get_intervals(geneintervals[queryid], domstart, domainlength_nucl, doreverse=False)
 			else: # strand is None, meaning queryid is not in genestrand dict
 				sys.stderr.write("WARNING: cannot retrieve strand for {}\n".format(queryid) )
 				continue
