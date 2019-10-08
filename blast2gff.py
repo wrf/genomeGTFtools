@@ -11,7 +11,7 @@
 # https://www.sanger.ac.uk/resources/software/gff/spec.html
 # http://www.sequenceontology.org/gff3.shtml
 
-'''blast2gff.py last modified 2018-07-09
+'''blast2gff.py last modified 2019-10-04
 
 blast2gff.py -b tblastn_output.tab > output.gff3
 
@@ -31,6 +31,7 @@ tblastn -query refprots.fa -db target_genome.fa -outfmt 6 > tblastn_output.tab
 
 #
 import sys
+import os
 import argparse
 import time
 from collections import defaultdict
@@ -74,8 +75,8 @@ from collections import defaultdict
 # however on ncbi it is calculated as identities / subject length
 
 def write_line(outlist, wayout):
-	outline = "\t".join(outlist)
-	print >> wayout, outline
+	outline = "{}\n".format( "\t".join(outlist) )
+	wayout.write(outline)
 
 def main(argv, wayout):
 	if not len(argv):
@@ -86,9 +87,10 @@ def main(argv, wayout):
 	parser.add_argument('-p','--program', help="blast program for 2nd column in output [TBLASTN]", default="TBLASTN")
 	parser.add_argument('-t','--type', help="gff type or method [match_part]", default="match_part")
 	parser.add_argument('-e','--evalue-cutoff', type=float, help="evalue cutoff [1]", default=1.0)
-	parser.add_argument('-s','--score-cutoff', type=float, help="bitscore/length cutoff for filtering [0.1]", default=0.1)
+	parser.add_argument('-s','--score-cutoff', type=float, help="bitscore/length cutoff for filtering [0.1], use with -f", default=0.1)
+	parser.add_argument('-l','--length-cutoff', type=int, help="minimum match length cutoff for filtering [1]", default=1)
 	parser.add_argument('-A','--augustus', action="store_true", help="print source information for AUGUSTUS hints")
-	parser.add_argument('-F','--filter', action="store_true", help="filter low quality matches")
+	parser.add_argument('-F','--filter', action="store_true", help="filter low quality matches, set value with -s")
 	parser.add_argument('-S','--swissprot', action="store_true", help="query sequences have swissprot headers")
 	parser.add_argument('-v','--verbose', action="store_true", help="extra output")
 	args = parser.parse_args(argv)
@@ -98,11 +100,15 @@ def main(argv, wayout):
 	plusstrand, minusstrand = 0,0
 	# counter for number of hits that are filtered
 	badhits = 0
+	shorthits = 0
 
 	hitDictCounter = defaultdict(int)
-	print >> sys.stderr, "Starting BLAST parsing on %s" % (args.blast), time.asctime()
+	sys.stderr.write("# Starting BLAST parsing on {}  ".format(args.blast) + time.asctime() + os.linesep)
 	for line in open(args.blast, 'r'):
 		linecounter += 1
+		line = line.strip()
+		lsplits = line.split("\t")
+		# 0       1       2       3       4         5        6       7     8       9     10      11
 		qseqid, sseqid, pident, length, mismatch, gapopen, qstart, qend, sstart, send, evalue, bitscore = line.rstrip().split("\t")
 
 		# remove stray characters
@@ -121,7 +127,7 @@ def main(argv, wayout):
 			attributes = "ID={0}.{1}{2};Target={0} {3} {4}".format(qseqid, args.type, hitDictCounter[qseqid], qstart, qend)
 		# if verbose, display the current attributes format for debugging
 		if args.verbose and linecounter == 1:
-			print >> sys.stderr, attributes
+			sys.stderr.write( "{}\n".format(attributes) )
 
 		# convert strings of start and end to integers for calculations
 		isend = int(send)
@@ -147,13 +153,20 @@ def main(argv, wayout):
 		if float(evalue) > args.evalue_cutoff:
 			badhits += 1
 			continue
+		# check for short matches
+		matchlength = int(length)
+		if matchlength < args.length_cutoff:
+			shorthits += 1
+			continue
 		writecounter += 1
 		write_line(outlist, wayout)
-	print >> sys.stderr, "Parsed %d lines" % (linecounter), time.asctime()
-	print >> sys.stderr, "Found %d forward and %d reverse hits" % (plusstrand, minusstrand), time.asctime()
+	sys.stderr.write("# Parsed {} lines  ".format( linecounter ) + time.asctime() + os.linesep)
+	sys.stderr.write("# Found {} forward and {} reverse hits\n".format(plusstrand, minusstrand) )
+	if shorthits:
+		sys.stderr.write("# Removed {} short matches\n".format(shorthits) )
 	if badhits:
-		print >> sys.stderr, "Removed %d weak matches" % (badhits), time.asctime()
-	print >> sys.stderr, "Wrote %d matches" % (writecounter), time.asctime()
+		sys.stderr.write("# Removed {} weak matches\n".format(badhits) )
+	sys.stderr.write("# Wrote {} matches  ".format(writecounter) + time.asctime() + os.linesep)
 
 if __name__ == "__main__":
 	main(sys.argv[1:],sys.stdout)
