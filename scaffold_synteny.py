@@ -3,7 +3,7 @@
 # scaffold_synteny.py created 2019-03-27
 
 '''
-scaffold_synteny.py  v1 last modified 2019-09-26
+scaffold_synteny.py  v1.1 last modified 2019-10-08
     makes a table of gene matches between two genomes, to detect synteny
     these can be converted into a dotplot of gene matches
 
@@ -89,7 +89,7 @@ def make_seq_length_dict(contigsfile, maxlength, exclusiondict, wayout, isref=Fa
 def parse_gtf(gtffile, excludedict, delimiter, isref=False):
 	'''from a gtf, return a dict of dicts where keys are scaffold names, then gene names, and values are gene info as a tuple of start end and strand direction'''
 	if isref:
-		genesbyscaffold = {} # key is reference gene ID, value is scaffold and gene midpoint position
+		genesbyscaffold = {} # key is reference gene ID, value is list of scaffold and gene midpoint position
 	else:
 		genesbyscaffold = defaultdict(dict) # scaffolds as key, then gene name, then gene position integer
 
@@ -164,9 +164,12 @@ def parse_tabular_blast(blasttabfile, evaluecutoff, querydelimiter, refdelimiter
 def generate_synteny_points(queryScafOffset, dbScafOffset, queryPos, dbPos, blastdict, wayout):
 	'''combine all datasets and for each gene on the query scaffolds, print tab delimited data'''
 	printcount = 0
+	scaffoldtotals = defaultdict(int) # counts of total genes for each scaffold
 	sys.stderr.write("# Determining match positions  " + time.asctime() + os.linesep)
 	for scaffold, genedict in queryPos.items():
+		scaffoldcounts = defaultdict(int) # counts of hits to each reference scaffold
 		for gene, localposition in genedict.items():
+			scaffoldtotals[scaffold] += 1
 			queryoffset = queryScafOffset.get(scaffold,None)
 			if queryoffset is None:
 				continue
@@ -182,6 +185,7 @@ def generate_synteny_points(queryScafOffset, dbScafOffset, queryPos, dbPos, blas
 				if matchoffset is None:
 					continue
 				overallmatchpos = matchposition + matchoffset
+				scaffoldcounts[matchscaf] += 1
 				printcount += 1
 				wayout.write("g\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format(gene, scaffold, matchgene, matchscaf, overallposition, overallmatchpos, bitscore) )
 	if printcount:
@@ -189,11 +193,11 @@ def generate_synteny_points(queryScafOffset, dbScafOffset, queryPos, dbPos, blas
 	else:
 		sys.stderr.write("# WARNING: NO MATCHES FOUND, CHECK -Q AND -D\n")
 
-def randomize_genes(refdict):
-	'''take the gtf dict and randomize the gene names for all genes, return a similar dict of dicts'''
-	genepositions = {} # store gene positions as tuples
+def randomize_genes_globally(refdict):
+	'''take the query gtf dict and randomize the gene names for all genes on all scaffolds, return a similar dict of dicts'''
+	genepositions = {} # store gene positions
 	randomgenelist = []
-	sys.stderr.write("# Randomizing query gene positions  " + time.asctime() + os.linesep)
+	sys.stderr.write("# Globally randomizing query gene positions  " + time.asctime() + os.linesep)
 	for scaffold, genedict in refdict.items(): # iterate first to get list of all genes
 		for genename in genedict.keys():
 			randomgenelist.append(genename)
@@ -208,6 +212,52 @@ def randomize_genes(refdict):
 			randomgenesbyscaf[scaffold][randomgenelist[genecounter]] = genepositions[genename]
 			genecounter += 1
 	sys.stderr.write("# Randomized {} genes  ".format(genecounter) + time.asctime() + os.linesep)
+	return randomgenesbyscaf
+
+def randomize_genes_locally(refdict):
+	'''take the query gtf dict and randomize the gene names for genes within each scaffold, return a similar dict of dicts'''
+	genepositions = {} # store gene positions
+	scaffoldcount = 0
+	total_genes = 0
+	randomgenesbyscaf = defaultdict(dict) # scaffolds as key, then gene name, then genemapping tuple
+	sys.stderr.write("# Randomizing query gene positions by scaffold  " + time.asctime() + os.linesep)
+	for scaffold, genedict in refdict.items(): # iterate first to get list of all genes
+		scaffoldcount += 1
+		randomgenelist = [] # generate new list to randomize for each scaffold
+		for genename in genedict.keys():
+			randomgenelist.append(genename)
+			genepositions[genename] = genedict[genename]
+		# randomize the list
+		random.shuffle(randomgenelist)
+		# reiterate in same order, but store random gene names at the same position
+		genecounter = 0
+		for genename, bounds in genedict.items(): # iterate again to reassign genes to each scaffold
+			randomgenesbyscaf[scaffold][randomgenelist[genecounter]] = genepositions[genename]
+			genecounter += 1
+			total_genes += 1
+	sys.stderr.write("# Randomized {} genes on {} scaffolds  ".format(total_genes,scaffoldcount) + time.asctime() + os.linesep)
+	return randomgenesbyscaf
+
+def randomize_db_locally(refdict):
+	'''take the ref gtf dict and randomize the gene positions for genes within each scaffold, return a similar dict of lists'''
+	scaffoldcount = 0
+	total_genes = 0
+	randomgenesbyscaf = {} # key is reference gene ID, value is list of scaffold and gene midpoint position
+	sys.stderr.write("# Randomizing reference gene positions by scaffold  " + time.asctime() + os.linesep)
+	for scaffold, genedict in refdict.items(): # iterate first to get list of all genes
+		scaffoldcount += 1
+		randomposlist = [] # generate new list of the gene positions to randomize for each scaffold
+		for genename in genedict.keys():
+			randomposlist.append( genedict[genename] )
+		# randomize the list
+		random.shuffle(randomposlist)
+		# reiterate in same order, but store random positions for each gene
+		genecounter = 0
+		for genename, bounds in genedict.items(): # iterate again to reassign genes to each scaffold
+			randomgenesbyscaf[genename] = [scaffold, randomposlist[genecounter]]
+			genecounter += 1
+			total_genes += 1
+	sys.stderr.write("# Randomized {} genes on {} scaffolds  ".format(total_genes,scaffoldcount) + time.asctime() + os.linesep)
 	return randomgenesbyscaf
 
 def make_exclude_dict(excludefile):
@@ -240,23 +290,37 @@ def main(argv, wayout):
 	parser.add_argument('-c','--coverage', default=0.8, type=int, help="minimum alignment coverage [0.8]")
 	parser.add_argument('-l','--query-genome-len', type=int, default=100, help="length of query scaffolds, in Mbp [100]")
 	parser.add_argument('-L','--db-genome-len', type=int, default=100, help="length of reference scaffolds, in Mbp [100]")
-	parser.add_argument('-R','--randomize', help="randomize positions of query GFF", action="store_true")
+	parser.add_argument('-R','--global-randomize', help="globally randomize gene positions of query GFF, cannot use with -S", action="store_true")
+	parser.add_argument('-S','--scaffold-randomize', help="randomize gene positions of query GFF within each scaffold, cannot use with -R", action="store_true")
+	parser.add_argument('--double-randomize', help="randomize gene positions of db, use with -S", action="store_true")
 	args = parser.parse_args(argv)
 
 	exclusiondict = make_exclude_dict(args.exclude) if args.exclude else {}
 
+	# read both sets of scaffolds
 	query_scaf_lengths = make_seq_length_dict(args.query_fasta, args.query_genome_len, exclusiondict, wayout, False)
 	db_scaf_lengths = make_seq_length_dict(args.db_fasta, args.db_genome_len, exclusiondict, wayout, True)
 
+	# read query as normal
 	query_gene_pos = parse_gtf(args.query_gff, exclusiondict, args.query_delimiter, False)
-	db_gene_pos = parse_gtf(args.db_gff, exclusiondict, args.db_delimiter, True)
-
 	### IF DOING RANDOMIZATION ###
-	if args.randomize:
-		query_gene_pos = randomize_genes(query_gene_pos)
+	if args.global_randomize:
+		query_gene_pos = randomize_genes_globally(query_gene_pos)
+	elif args.scaffold_randomize:
+		query_gene_pos = randomize_genes_locally(query_gene_pos)
 
+	### IF DOING DOUBLE RANDOMIZE ###
+	if args.double_randomize: # read db first as query format, randomize and generate the dict in the ref format
+		db_gene_pos = parse_gtf(args.db_gff, exclusiondict, args.db_delimiter, False)
+		db_gene_pos = randomize_db_locally(db_gene_pos)
+	# if NOT RANDOMIZING REFERENCE #
+	else: # otherwise read as normal into the ref format
+		db_gene_pos = parse_gtf(args.db_gff, exclusiondict, args.db_delimiter, True)
+
+	# read blast hits
 	blastdict = parse_tabular_blast(args.blast, args.evalue, args.blast_query_delimiter, args.blast_db_delimiter)
 
+	# write output
 	generate_synteny_points( query_scaf_lengths, db_scaf_lengths, query_gene_pos, db_gene_pos, blastdict, wayout)
 
 if __name__ == "__main__":
