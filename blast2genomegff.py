@@ -8,7 +8,7 @@
 # for SOFA terms:
 # https://github.com/The-Sequence-Ontology/SO-Ontologies/blob/master/subsets/SOFA.obo
 
-'''blast2genomegff.py  last modified 2019-09-26
+'''blast2genomegff.py  last modified 2019-10-14
     convert blast output to gff format for genome annotation
     blastx of a transcriptome (genome guided or de novo) against a protein DB:
 
@@ -40,7 +40,7 @@ import time
 import re
 import os
 import gzip
-from collections import defaultdict
+from collections import defaultdict,Counter
 from itertools import chain
 from Bio import SeqIO
 
@@ -52,7 +52,12 @@ def make_seq_length_dict(sequencefile):
 	sys.stderr.write("# Found {} sequences".format(len(lengthdict)) + time.asctime() + os.linesep)
 	return lengthdict
 
-def gtf_to_intervals(gtffile, keepcds, transdecoder, nogenemode, genesplit):
+def get_max_frequency(intervals):
+	interval_counts = Counter(intervals)
+	max_counts = max(interval_counts.values())
+	return max_counts
+
+def gtf_to_intervals(gtffile, keepcds, skipexons, transdecoder, nogenemode, genesplit):
 	'''convert protein or gene intervals from gff to dictionary where mrna IDs are keys and lists of intervals are values'''
 	# this should probably be a class
 	geneintervals = defaultdict(list)
@@ -65,10 +70,12 @@ def gtf_to_intervals(gtffile, keepcds, transdecoder, nogenemode, genesplit):
 	exoncounter = 0
 	if gtffile.rsplit('.',1)[-1]=="gz": # autodetect gzip format
 		opentype = gzip.open
-		sys.stderr.write("# Parsing gff from {} as gzipped".format(gtffile) + time.asctime() + os.linesep)
+		sys.stderr.write("# Parsing gff from {} as gzipped  ".format(gtffile) + time.asctime() + os.linesep)
 	else: # otherwise assume normal open for fasta format
 		opentype = open
-		sys.stderr.write("# Parsing gff from {}".format(gtffile) + time.asctime() + os.linesep)
+		sys.stderr.write("# Parsing gff from {}  ".format(gtffile) + time.asctime() + os.linesep)
+	if skipexons: #
+		sys.stderr.write("# exon features WILL BE IGNORED\n")
 	if keepcds: # alert user to the flags that have been set
 		sys.stderr.write("# CDS features WILL BE USED as exons\n")
 	if nogenemode:
@@ -105,7 +112,7 @@ def gtf_to_intervals(gtffile, keepcds, transdecoder, nogenemode, genesplit):
 					transcounter += 1
 					genestrand[geneid] = strand
 					genescaffold[geneid] = scaffold
-				elif feature=="exon" or (keepcds and feature=="CDS"):
+				elif (feature=="exon" and not skipexons) or (keepcds and feature=="CDS"):
 					exoncounter += 1
 					boundaries = ( int(lsplits[3]), int(lsplits[4]) )
 					if nogenemode: # gtf contains only exon and CDS, so get gene info from each CDS
@@ -113,7 +120,7 @@ def gtf_to_intervals(gtffile, keepcds, transdecoder, nogenemode, genesplit):
 						genestrand[geneid] = strand
 						genescaffold[geneid] = scaffold
 					geneintervals[geneid].append(boundaries)
-	sys.stderr.write("# Counted {} lines and {} comments".format(linecounter, commentlines) + time.asctime() + os.linesep)
+	sys.stderr.write("# Counted {} lines and {} comments  ".format(linecounter, commentlines) + time.asctime() + os.linesep)
 	if transcounter:
 		sys.stderr.write("# Counted {} exons for {} inferred transcripts\n".format(exoncounter, transcounter) )
 	else: # no mRNA or transcript features were given, count was 0
@@ -131,6 +138,7 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxta
 
 	missingscaffolds = 0 # count if scaffold cannot be found, suggesting naming problem
 	intervalproblems = 0 # counter if no intervals are found for some sequence
+	duplicateintervals = 0 # counter if any queries have duplicate intervals
 	intervalcounts = 0
 	backframecounts = 0
 	# set up parameters by blast program
@@ -210,9 +218,9 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxta
 		if scaffold is None:
 			missingscaffolds += 1
 			if missingscaffolds < 10:
-				sys.stderr.write("WARNING: cannot get scaffold for {}".format( qseqid ) )
+				sys.stderr.write("WARNING: cannot get scaffold for {}\n".format( qseqid ) )
 			elif missingscaffolds == 10:
-				sys.stderr.write("WARNING: cannot get scaffold for {}, will not print further warnings".format( qseqid ) )
+				sys.stderr.write("WARNING: cannot get scaffold for {}, will not print further warnings\n".format( qseqid ) )
 			continue
 		strand = genestrand.get(qseqid, None)
 		genomeintervals = [] # to have empty iterable
@@ -234,15 +242,26 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxta
 			sys.stderr.write("WARNING: no intervals for {} in {}\n".format(sseqid, qseqid) )
 			intervalproblems += 1
 			continue
+
+		# check for duplicate intervals, often due to reading both exon and CDS features
+		if get_max_frequency(genomeintervals) > 1:
+			duplicateintervals += 1
+			if duplicateintervals < 10:
+				sys.stderr.write("WARNING: duplicate intervals found for {}, check option -x\n".format( qseqid ) )
+			elif duplicateintervals == 10:
+				sys.stderr.write("WARNING: duplicate intervals found for {}, will not print further warnings\n".format( qseqid ) )
+
 		# make Parent feature
 		allpositions = list(chain(*genomeintervals))
 		parentstart = min(allpositions)
 		parentend = max(allpositions)
-		sys.stdout.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t.\tID={7}.{8}.{9};Target={8} {10} {11} {12};same_sense={13}\n".format(scaffold, programname, outputtype, parentstart, parentend, bitscore, strand, qseqid, sseqid, hitDictCounter[sseqid], lsplits[8], lsplits[9], "-" if backframe else "+", "0" if backframe else "1") )
+		outline = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t.\tID={7}.{8}.{9};Target={8} {10} {11} {12};same_sense={13}\n".format(scaffold, programname, outputtype, parentstart, parentend, bitscore, strand, qseqid, sseqid, hitDictCounter[sseqid], lsplits[8], lsplits[9], "-" if backframe else "+", "0" if backframe else "1")
+		sys.stdout.write( outline )
 		# make child features for each interval
 		for interval in genomeintervals:
 		# thus ID appears as qseqid.sseqid.number, so avic1234.avGFP.1, and uses ID in most browsers
-			sys.stdout.write("{0}\t{1}\tmatch_part\t{3}\t{4}\t{5}\t{6}\t.\tParent={7}.{8}.{9}\n".format(scaffold, programname, outputtype, interval[0], interval[1], bitscore, strand, qseqid, sseqid, hitDictCounter[sseqid] ) )
+			outline = "{0}\t{1}\tmatch_part\t{3}\t{4}\t{5}\t{6}\t.\tParent={7}.{8}.{9}\n".format(scaffold, programname, outputtype, interval[0], interval[1], bitscore, strand, qseqid, sseqid, hitDictCounter[sseqid] )
+			sys.stdout.write( outline )
 	sys.stderr.write("# Removed {} hits by shortness\n".format(shortRemovals) )
 	sys.stderr.write("# Removed {} hits by bitscore\n".format(bitsRemovals) )
 	sys.stderr.write("# Removed {} hits by evalue\n".format(evalueRemovals) )
@@ -255,6 +274,8 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxta
 		sys.stderr.write("# WARNING: could not find scaffold for {} hits  ".format(missingscaffolds) + time.asctime() + os.linesep)
 	if intervalproblems:
 		sys.stderr.write("# WARNING: {} matches have hits extending beyond gene bounds  ".format(intervalproblems) + time.asctime() + os.linesep)
+	if duplicateintervals:
+		sys.stderr.write("# WARNING: {} matches have duplicate intervals  ".format(duplicateintervals) + time.asctime() + os.linesep)
 	# NO RETURN
 
 def get_intervals(intervals, domstart, domlength, doreverse=True):
@@ -327,11 +348,12 @@ def main(argv, wayout):
 	parser.add_argument('-S','--swissprot', action="store_true", help="subject db sequences have swissprot headers in blast table")
 	parser.add_argument('-T','--transdecoder', action="store_true", help="use presets for TransDecoder genome gff")
 	parser.add_argument('-x','--exons', action="store_true", help="use CDS features as exons")
+	parser.add_argument('--skip-exons', action="store_true", help="skip exon features if exon and CDS are in the same file")
 	parser.add_argument('-v','--verbose', action="store_true", help="extra output")
 	args = parser.parse_args(argv)
 
 	protlendb = make_seq_length_dict(args.database)
-	geneintervals, genestrand, genescaffold =  gtf_to_intervals(args.genes, args.exons, args.transdecoder, args.no_genes, args.gff_delimiter)
+	geneintervals, genestrand, genescaffold =  gtf_to_intervals(args.genes, args.exons, args.skip_exons, args.transdecoder, args.no_genes, args.gff_delimiter)
 
 	parse_tabular_blast(args.blast, args.coverage_cutoff, args.evalue_cutoff, args.score_cutoff, args.max_targets, args.program, args.type, args.delimiter, args.swissprot, protlendb, geneintervals, genestrand, genescaffold)
 
