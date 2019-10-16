@@ -3,7 +3,7 @@
 # scaffold_synteny.py created 2019-03-27
 
 '''
-scaffold_synteny.py  v1.1 last modified 2019-10-08
+scaffold_synteny.py  v1.1 last modified 2019-10-14
     makes a table of gene matches between two genomes, to detect synteny
     these can be converted into a dotplot of gene matches
 
@@ -127,7 +127,7 @@ def parse_gtf(gtffile, excludedict, delimiter, isref=False):
 	else:
 		sys.stderr.write("# WARNING: NO GENES FOUND\n")
 
-def parse_tabular_blast(blasttabfile, evaluecutoff, querydelimiter, refdelimiter, maxhits=1):
+def parse_tabular_blast(blasttabfile, evaluecutoff, querydelimiter, refdelimiter, maxhits, group_removal_max):
 	'''read tabular blast file, return a dict where key is query ID and value is dict of subject ID and bitscore'''
 	if blasttabfile.rsplit('.',1)[1]=="gz": # autodetect gzip format
 		opentype = gzip.open
@@ -136,8 +136,8 @@ def parse_tabular_blast(blasttabfile, evaluecutoff, querydelimiter, refdelimiter
 		opentype = open
 		sys.stderr.write("# Parsing tabular blast output {}  ".format(blasttabfile) + time.asctime() + os.linesep)
 	query_to_sub_dict = defaultdict( lambda: defaultdict(int) )
-	query_hits = defaultdict(int) # counter of hits
 	evalueRemovals = 0
+	subjectcounter = defaultdict(int)
 	for line in opentype(blasttabfile, 'rt'):
 		line = line.strip()
 		lsplits = line.split("\t")
@@ -149,17 +149,35 @@ def parse_tabular_blast(blasttabfile, evaluecutoff, querydelimiter, refdelimiter
 		if float(lsplits[10]) > evaluecutoff:
 			evalueRemovals += 1
 			continue
-		# filter by number of hits
-		if query_hits.get(queryseq,0) >= maxhits: # too many hits already, skip
-			continue
-		# otherwise add the entry
+		# otherwise add the entry to first dict
 		bitscore = float(lsplits[11])
 		query_to_sub_dict[queryseq][subjectid] += bitscore
-		query_hits[queryseq] += 1
-	sys.stderr.write("# Found blast hits for {} query sequences  ".format( len(query_to_sub_dict) ) + time.asctime() + os.linesep)
-	sys.stderr.write("# Removed {} hits by evalue, kept {} hits".format( evalueRemovals, sum( list(query_hits.values())) ) + os.linesep)
-	sys.stderr.write("# Names parsed as {} from {}, and {} from {}".format( queryseq,lsplits[0], subjectid,lsplits[1] ) + os.linesep)
-	return query_to_sub_dict
+		subjectcounter[subjectid] += 1
+	sys.stderr.write("# Found blast hits for {} query sequences, removed {} hits by evalue  ".format( len(query_to_sub_dict), evalueRemovals ) + time.asctime() + os.linesep)
+	# filter by number of hits
+	total_kept = 0
+	large_group_removals_qu = {} # to prevent multiple counting, store keys
+	large_group_removals_sb = {} # or possibly to later check what was removed
+	filtered_hit_dict = defaultdict( lambda: defaultdict(int) )
+	for queryseq, subdict in query_to_sub_dict.items():
+		num_hits = len(subdict)
+		if num_hits >= group_removal_max: # remove proteins with many hits, as large protein families likely lead to spurious synteny
+			large_group_removals_qu[queryseq] = True
+			continue
+		hit_counter = 0 # reset for each query, to take no more than maxhits
+		for subseq, bits in sorted(subdict.items(), key=lambda x: x[1], reverse=True):
+			if subjectcounter.get(subseq, 0) >= group_removal_max:
+				large_group_removals_sb[subseq] = True
+				continue
+			if hit_counter >= maxhits:
+				continue
+			filtered_hit_dict[queryseq][subseq] = bits
+			hit_counter += 1 # should never get above maxhits
+		total_kept += hit_counter
+	sys.stderr.write("# Removed {} queries and {} subjects with {} or more hits\n".format( len(large_group_removals_qu), len(large_group_removals_sb), group_removal_max ) )
+	sys.stderr.write("# Names parsed as {} from {}, and {} from {}\n".format( queryseq,lsplits[0], subjectid,lsplits[1] ))
+	sys.stderr.write("# Kept {} blast hits\n".format( total_kept ) )
+	return filtered_hit_dict
 
 def generate_synteny_points(queryScafOffset, dbScafOffset, queryPos, dbPos, blastdict, wayout):
 	'''combine all datasets and for each gene on the query scaffolds, print tab delimited data'''
@@ -290,6 +308,8 @@ def main(argv, wayout):
 	parser.add_argument('-c','--coverage', default=0.8, type=int, help="minimum alignment coverage [0.8]")
 	parser.add_argument('-l','--query-genome-len', type=int, default=100, help="length of query scaffolds, in Mbp [100]")
 	parser.add_argument('-L','--db-genome-len', type=int, default=100, help="length of reference scaffolds, in Mbp [100]")
+	parser.add_argument('-M','--maximum-hits', metavar="N", type=int, default=1, help="keep maximum of N hits per query [1]")
+	parser.add_argument('-G','--group-size-maximum', metavar="N", type=int, default=250, help="remove queries with more than N hits [250]")
 	parser.add_argument('-R','--global-randomize', help="globally randomize gene positions of query GFF, cannot use with -S", action="store_true")
 	parser.add_argument('-S','--scaffold-randomize', help="randomize gene positions of query GFF within each scaffold, cannot use with -R", action="store_true")
 	parser.add_argument('--double-randomize', help="randomize gene positions of db, use with -S", action="store_true")
@@ -318,7 +338,7 @@ def main(argv, wayout):
 		db_gene_pos = parse_gtf(args.db_gff, exclusiondict, args.db_delimiter, True)
 
 	# read blast hits
-	blastdict = parse_tabular_blast(args.blast, args.evalue, args.blast_query_delimiter, args.blast_db_delimiter)
+	blastdict = parse_tabular_blast(args.blast, args.evalue, args.blast_query_delimiter, args.blast_db_delimiter, args.maximum_hits, args.group_size_maximum)
 
 	# write output
 	generate_synteny_points( query_scaf_lengths, db_scaf_lengths, query_gene_pos, db_gene_pos, blastdict, wayout)
