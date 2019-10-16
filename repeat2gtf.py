@@ -5,7 +5,7 @@
 # for SOFA terms:
 # https://github.com/The-Sequence-Ontology/SO-Ontologies/blob/master/subsets/SOFA.obo
 
-"""repeat2gtf.py  last modified 2019-09-26
+"""repeat2gtf.py  last modified 2019-10-10
     generates a GFF3 format file of repeats, typically Ns as gaps
   the script only searches the FORWARD strand, meaning would need
   to be run twice for non-palindromic sequences (e.g. CACA vs GTGT)
@@ -39,9 +39,9 @@ def main(argv, wayout):
 	if not len(argv):
 		argv.append("-h")
 	parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description=__doc__)
-	parser.add_argument('input_file', type = argparse.FileType('rU'), default = '-', help="fasta format file")
-	parser.add_argument('-a', '--above', type=int, metavar='N', default=2, help="only print repeats/gaps longer than N [2]")
-	parser.add_argument('-b', '--below', type=int, metavar='N', default=1000000000, help="only print sequences repeats/gaps shorter than N")
+	parser.add_argument('input_file', type = argparse.FileType('rU'), default = '-', help="fasta format file, or stdin as -")
+	parser.add_argument('-a', '--above', type=int, metavar='N', default=2, help="only print repeats/gaps longer than N, in letters [2]")
+	parser.add_argument('-b', '--below', type=int, metavar='N', default=1000000000, help="only print sequences repeats/gaps shorter than N, in letters")
 	parser.add_argument('--format', metavar='fastq', default='fasta', help="import fastq format sequences")
 	parser.add_argument('-i','--identifier', help="tag for ID attribute [gap]", default="gap")
 	parser.add_argument('-l','--lowercase', action="store_true", help="search for lowercase letters as well")
@@ -98,8 +98,9 @@ def main(argv, wayout):
 			sys.stdout.write("{}\t{}\t{}\t{}\t{}\t{}\t.\t.\t{}={}.{}.{}.{}\n".format(contig, args.program, args.type, reptracker[startpos][0], reptracker[startpos][1], reptracker[startpos][2], args.attribute, args.identifier, reptracker[startpos][3], repcounter, reptracker[startpos][2]) )
 
 	sys.stderr.write("# Counted {} sequences  ".format(seqcount) + time.asctime() + os.linesep)
-	sys.stderr.write("# Counted {} repeats of {} total bases\n".format(repcounter, seqsum) )
-	sys.stderr.write("# Longest repeat was {} bases on {}\n".format(longestrepeat, lrepcontig) )
+	sys.stderr.write("# Counted {} repeats of {} total bases, average {:.2f}\n".format(repcounter, seqsum, seqsum*1.0/repcounter) )
+	if longestrepeat:
+		sys.stderr.write("# Longest repeat was {} bases on {}\n".format(longestrepeat, lrepcontig) )
 
 if __name__ == "__main__":
 	main(sys.argv[1:],sys.stdout)
