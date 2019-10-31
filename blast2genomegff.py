@@ -8,7 +8,7 @@
 # for SOFA terms:
 # https://github.com/The-Sequence-Ontology/SO-Ontologies/blob/master/subsets/SOFA.obo
 
-'''blast2genomegff.py  last modified 2019-10-14
+'''blast2genomegff.py  last modified 2019-10-31
     convert blast output to gff format for genome annotation
     blastx of a transcriptome (genome guided or de novo) against a protein DB:
 
@@ -32,6 +32,8 @@ blast2genomegff.py -b blastn_output.tab -p BLASTN -t EST_match > output.gff
     for AUGUSTUS GFF format genes, use -x and -T
 
     the reported score (column 6) is the bitscore
+
+    for blastp, if GFF contains both exon and CDS features, use -x and --skip-exons
 '''
 
 import sys
@@ -45,11 +47,11 @@ from itertools import chain
 from Bio import SeqIO
 
 def make_seq_length_dict(sequencefile):
-	sys.stderr.write("# Parsing target sequences from {}".format(sequencefile) + time.asctime() + os.linesep)
+	sys.stderr.write("# Parsing target sequences from {}  ".format(sequencefile) + time.asctime() + os.linesep)
 	lengthdict = {}
 	for seqrec in SeqIO.parse(sequencefile,'fasta'):
 		lengthdict[seqrec.id] = len(seqrec.seq)
-	sys.stderr.write("# Found {} sequences".format(len(lengthdict)) + time.asctime() + os.linesep)
+	sys.stderr.write("# Found {} sequences  ".format(len(lengthdict)) + time.asctime() + os.linesep)
 	return lengthdict
 
 def get_max_frequency(intervals):
@@ -265,7 +267,7 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxta
 	sys.stderr.write("# Removed {} hits by shortness\n".format(shortRemovals) )
 	sys.stderr.write("# Removed {} hits by bitscore\n".format(bitsRemovals) )
 	sys.stderr.write("# Removed {} hits by evalue\n".format(evalueRemovals) )
-	sys.stderr.write("# Found {} hits for {} queries".format(sum(hitDictCounter.values()), len(querynamedict) ) + time.asctime() + os.linesep)
+	sys.stderr.write("# Found {} hits for {} queries  ".format(sum(hitDictCounter.values()), len(querynamedict) ) + time.asctime() + os.linesep)
 	if backframecounts:
 		sys.stderr.write("# {} hits are antisense  ".format(backframecounts) + time.asctime() + os.linesep)
 	if intervalcounts:
