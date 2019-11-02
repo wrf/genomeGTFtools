@@ -8,7 +8,7 @@
 # for SOFA terms:
 # https://github.com/The-Sequence-Ontology/SO-Ontologies/blob/master/subsets/SOFA.obo
 
-'''blast2genomegff.py  last modified 2019-10-31
+'''blast2genomegff.py  last modified 2019-11-02
     convert blast output to gff format for genome annotation
     blastx of a transcriptome (genome guided or de novo) against a protein DB:
 
@@ -46,15 +46,25 @@ from collections import defaultdict,Counter
 from itertools import chain
 from Bio import SeqIO
 
-def make_seq_length_dict(sequencefile):
+def make_seq_length_dict(sequencefile, is_swissprot, get_description):
 	sys.stderr.write("# Parsing target sequences from {}  ".format(sequencefile) + time.asctime() + os.linesep)
 	lengthdict = {}
+	otherdict = {}
+	if get_description:
+		sys.stderr.write("# Taking length and descriptions from sequences\n")
 	for seqrec in SeqIO.parse(sequencefile,'fasta'):
 		lengthdict[seqrec.id] = len(seqrec.seq)
+		if get_description: #
+			sseqid = seqrec.id
+			if is_swissprot:
+				sseqid = sseqid.split("|")[2]
+			swissdescription = parse_swissprot_header(seqrec.description)
+			otherdict[sseqid] = swissdescription
 	sys.stderr.write("# Found {} sequences  ".format(len(lengthdict)) + time.asctime() + os.linesep)
-	return lengthdict
+	return lengthdict, otherdict
 
 def get_max_frequency(intervals):
+	'''from the list of intervals, return the highest frequency of any interval, to check if it is more than 1'''
 	interval_counts = Counter(intervals)
 	max_counts = max(interval_counts.values())
 	return max_counts
@@ -130,7 +140,7 @@ def gtf_to_intervals(gtffile, keepcds, skipexons, transdecoder, nogenemode, gene
 		sys.stderr.write("# Counted {} exons for {} inferred transcripts\n".format(exoncounter, transcounter) )
 	return geneintervals, genestrand, genescaffold
 
-def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxtargets, programname, outputtype, donamechop, is_swissprot, seqlengthdict, geneintervals, genestrand, genescaffold, debugmode=False):
+def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxtargets, programname, outputtype, donamechop, is_swissprot, seqlengthdict, descdict, geneintervals, genestrand, genescaffold, debugmode=False):
 	'''parse blast hits from tabular blast and write to stdout as genome gff'''
 	querynamedict = defaultdict(int) # counter of unique queries
 	# count results to filter
@@ -177,8 +187,11 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxta
 		hitstart = int(lsplits[6])
 		hitend = int(lsplits[7])
 
-		fractioncov = alignlength / seqlengthdict.get(sseqid,1000000.0)
+		# get length from length dict, otherwise return extremely large value, which would remove the hit
+		subjectlength = seqlengthdict.get(sseqid,1000000.0)
+		fractioncov = alignlength / subjectlength
 		bitslength = bitscore/alignlength
+		# filter low quality matches
 		if fractioncov < lengthcutoff: # skip domains that are too short
 			shortRemovals += 1
 			continue
@@ -257,7 +270,12 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxta
 		allpositions = list(chain(*genomeintervals))
 		parentstart = min(allpositions)
 		parentend = max(allpositions)
-		outline = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t.\tID={7}.{8}.{9};Target={8} {10} {11} {12};same_sense={13}\n".format(scaffold, programname, outputtype, parentstart, parentend, bitscore, strand, qseqid, sseqid, hitDictCounter[sseqid], lsplits[8], lsplits[9], "-" if backframe else "+", "0" if backframe else "1")
+		# if making the description tag
+		if descdict:
+			hitdescription = descdict.get(sseqid,"None")
+			outline = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t.\tID={7}.{8}.{9};Target={8} {10} {11} {12};Description={13};same_sense={14}\n".format(scaffold, programname, outputtype, parentstart, parentend, bitscore, strand, qseqid, sseqid, hitDictCounter[sseqid], lsplits[8], lsplits[9], "-" if backframe else "+", hitdescription, "0" if backframe else "1")
+		else:
+			outline = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t.\tID={7}.{8}.{9};Target={8} {10} {11} {12};same_sense={13}\n".format(scaffold, programname, outputtype, parentstart, parentend, bitscore, strand, qseqid, sseqid, hitDictCounter[sseqid], lsplits[8], lsplits[9], "-" if backframe else "+", "0" if backframe else "1")
 		sys.stdout.write( outline )
 		# make child features for each interval
 		for interval in genomeintervals:
@@ -279,6 +297,65 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxta
 	if duplicateintervals:
 		sys.stderr.write("# WARNING: {} matches have duplicate intervals  ".format(duplicateintervals) + time.asctime() + os.linesep)
 	# NO RETURN
+
+def parse_swissprot_header(hitstring):
+	# hitstring can conveniently be taken from seq_record.description
+	# for example
+	# swissprotdict.next().description
+	# 'sp|Q6GZX4|001R_FRG3G Putative transcription factor 001R OS=Frog virus 3 (isolate Goorha) GN=FV3-001R PE=4 SV=1'
+	#
+	# from the swissprot website http://www.uniprot.org/help/fasta-headers
+	# fasta headers appear as:
+	# >db|UniqueIdentifier|EntryName ProteinName OS=OrganismName[ GN=GeneName]PE=ProteinExistence SV=SequenceVersion
+	#
+	# Where:
+	#
+    # db is 'sp' for UniProtKB/Swiss-Prot and 'tr' for UniProtKB/TrEMBL.
+    # UniqueIdentifier is the primary accession number of the UniProtKB entry.
+    # EntryName is the entry name of the UniProtKB entry.
+    # ProteinName is the recommended name of the UniProtKB entry as annotated in the RecName field. For UniProtKB/TrEMBL entries without a RecName field, the SubName field is used. In case of multiple SubNames, the first one is used. The 'precursor' attribute is excluded, 'Fragment' is included with the name if applicable.
+    # OrganismName is the scientific name of the organism of the UniProtKB entry.
+    # GeneName is the first gene name of the UniProtKB entry. If there is no gene name, OrderedLocusName or ORFname, the GN field is not listed.
+    # ProteinExistence is the numerical value describing the evidence for the existence of the protein.
+    # SequenceVersion is the version number of the sequence.
+	#
+	# Examples:
+	#
+	# >sp|Q8I6R7|ACN2_ACAGO Acanthoscurrin-2 (Fragment) OS=Acanthoscurria gomesiana GN=acantho2 PE=1 SV=1
+	# or
+	# sp|Q9GZU7|CTDS1_HUMAN Carboxy-terminal domain RNA polymerase II polypeptide A small phosphatase 1 OS=Homo sapiens GN=CT DSP1 PE=1 SV=1
+
+	# assuming the format of "OS=Homo sapiens"
+	organismre = "OS=(\w+) (\w+)"
+	# extract genus and species as groups()
+	try:
+		osgroups = re.search(organismre,hitstring).groups()
+	# in case of Nonetype for some reason, possibly weird names of bacteria or viruses
+	# such as:
+	# sp|P07572|POL_MPMV Pol polyprotein OS=Mason-Pfizer monkey virus GN=pol PE=3 SV=1
+	except AttributeError: # allows for - character
+		osgroups = re.search("OS=([\w-]+) (\w+)",hitstring).groups()
+	# print in format of H.sapiens
+	osname = "{}.{}".format(osgroups[0][0], osgroups[1])
+	genedescRE = "(.+) OS="
+	# split will take everything after the first space, so:
+	# "Carboxy-terminal domain RNA polymerase II polypeptide A small phosphatase 1 OS=Homo sapiens GN=CT DSP1 PE=1 SV=1"
+	nospnumber = hitstring.split(' ',1)[1]
+	# this should pull everything before the species excluding " OS=", so:
+	# "Carboxy-terminal domain RNA polymerase II polypeptide A small phosphatase 1"
+	genedesc = re.search(genedescRE, nospnumber).groups()[0]
+	# this should specifically remove the annotation "(Fragment)" for some proteins
+	genedesc = genedesc.replace("(Fragment)","")
+	genedesc = genedesc.replace("3'","3-prime").replace("5'","5-prime")
+	genedesc = genedesc.replace("G(s)", "G_s")
+	genedesc = genedesc.replace("G(q)", "G_q")
+	genedesc = genedesc.replace("G(k)", "G_k")
+	genedesc = genedesc.replace(" [GTP]","")
+	genedesc = genedesc.replace(" [ubiquinone]","")
+	genedesc = genedesc.replace(" [glutamine-hydrolyzing]","")
+	# change a bunch of disallowed symbols
+	genedesc = genedesc.replace("(","_").replace(")","_").replace("'","").replace("[","").replace("]","").replace(",","_")
+	return genedesc
 
 def get_intervals(intervals, domstart, domlength, doreverse=True):
 	'''return a list of intervals with genomic positions for the feature'''
@@ -348,16 +425,21 @@ def main(argv, wayout):
 	parser.add_argument('-F','--filter', action="store_true", help="filter low quality matches")
 	parser.add_argument('-G','--no-genes', action="store_true", help="genes are not defined, get gene ID for each exon")
 	parser.add_argument('-S','--swissprot', action="store_true", help="subject db sequences have swissprot headers in blast table")
+	parser.add_argument('--add-description', action="store_true", help="if using swissprot, make GFF attribute of description from the protein description")
 	parser.add_argument('-T','--transdecoder', action="store_true", help="use presets for TransDecoder genome gff")
 	parser.add_argument('-x','--exons', action="store_true", help="use CDS features as exons")
 	parser.add_argument('--skip-exons', action="store_true", help="skip exon features if exon and CDS are in the same file")
 	parser.add_argument('-v','--verbose', action="store_true", help="extra output")
 	args = parser.parse_args(argv)
 
-	protlendb = make_seq_length_dict(args.database)
+	# read database, make a length dict, and possibly also a description dict
+	protlendb, descdict = make_seq_length_dict(args.database, args.swissprot, args.add_description)
+
+	# read the GFF
 	geneintervals, genestrand, genescaffold =  gtf_to_intervals(args.genes, args.exons, args.skip_exons, args.transdecoder, args.no_genes, args.gff_delimiter)
 
-	parse_tabular_blast(args.blast, args.coverage_cutoff, args.evalue_cutoff, args.score_cutoff, args.max_targets, args.program, args.type, args.delimiter, args.swissprot, protlendb, geneintervals, genestrand, genescaffold)
+	# read the blast output
+	parse_tabular_blast(args.blast, args.coverage_cutoff, args.evalue_cutoff, args.score_cutoff, args.max_targets, args.program, args.type, args.delimiter, args.swissprot, protlendb, descdict, geneintervals, genestrand, genescaffold)
 
 if __name__ == "__main__":
 	main(sys.argv[1:],sys.stdout)
