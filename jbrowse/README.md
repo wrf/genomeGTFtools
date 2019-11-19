@@ -98,9 +98,19 @@ The output of AUGUSTUS is also not a standard GFF format, therefore needs to be 
 ### Adding protein matches and domains ###
 ![screenshot_03_pfam.png](https://github.com/wrf/genomeGTFtools/blob/master/jbrowse/screenshot_03_pfam.png)
 
+Two options are added in `blast2genomegff.py`: `--add-description` and `--add-accession`. This is to enable two downstream features, one to display the full protein name or description, the other to allow a mouse-click to directly open the target protein in another tab (which requires the accession number). Currently, this is only configured to work with SwissProt.
+
 ```
-blast2genomegff.py -b hoilungia_vs_hsapiens_blastp_e-3.tab -p blastp -S -g ../tracks/Hhon_BRAKER1_CDS.gff3 -d ~/db/human_uniprot.fasta -x -G > hoilungia_vs_hsapiens_blastp_braker_cds.gff
+blast2genomegff.py -b hoilungia_vs_hsapiens_blastp_e-3.tab -p blastp -S -g ../tracks/Hhon_BRAKER1_CDS.gff3 -d ~/db/human_uniprot.fasta -x -G --add-description --add-accession > hoilungia_vs_hsapiens_blastp_braker_cds.gff
 flatfile-to-json.pl --gff hoilungia_vs_hsapiens_blastp_braker_cds.gff --trackType CanvasFeatures  --trackLabel blastp_v_human --out ./
+```
+
+[PFAM domains](http://pfam.xfam.org/) can be displayed for the protein set:
+
+```
+hmmscan --cpu 4 --domtblout hoilungia_braker1_pfam.tab ~/db/Pfam-A.hmm ../tracks/PlacoH13_BRAKER1_augustus.prot.fasta > /dev/null
+~/git/genomeGTFtools/pfam2gff.py -g ../tracks/PlacoH13_BRAKER1_augustus_no_comment.gff -i hoilungia_braker1_pfam.tab > hoilungia_braker1_pfam.gff
+/var/www/html/jbrowse/bin/flatfile-to-json.pl --out ./ --gff hoilungia_braker1_pfam.gff --trackType CanvasFeatures --trackLabel PFAM
 ```
 
 ### Adding synteny blocks ###
@@ -188,20 +198,31 @@ Following the [instructions on preparing a VCF file](https://jbrowse.org/docs/va
 
 `~/bcftools-1.9/htslib-1.9/tabix -p vcf Hhon_FREEBAYES_DNA_SNPs.vcf.gz`
 
-This can be directly added to the `trackList.json` file. Various style parameters can be changed as above, such as changing the defualt color.
+This can be directly added to the `tracks.conf` file. Various style parameters can be changed as above, such as changing the defualt color. This is given a function to color based on the first alternative allele (usually there is only one). If the switch fails, then the feature is colored black, such as for indels.
+
+Commonly, G is yellow (or black), A is green, T is red, and C is blue.
 
 ```
-      {
-         "category"      : "NGS",
-         "label"         : "DNA SNPs",
-         "key"           : "DNA SNPs",
-         "style": {
-             "color" : "#1c9099",
-         },
-         "storeClass"    : "JBrowse/Store/SeqFeature/VCFTabix",
-         "urlTemplate"   : "Hhon_FREEBAYES_DNA_SNPs.vcf.gz",
-         "type"          : "JBrowse/View/Track/CanvasVariants"
-      }
+[tracks.dnasnps]
+storeClass     = JBrowse/Store/SeqFeature/VCFTabix
+urlTemplate    = Hhon_FREEBAYES_DNA_SNPs.vcf.gz
+category = NGS
+type = JBrowse/View/Track/CanvasVariants
+key  = DNA SNPs
+style.color = function(feature) {
+  switch (feature.variant.ALT[0]) {
+    case "A":
+      return "#23bb45";
+    case "T":
+      return "#d7301f";
+    case "C":
+      return "#0845c4";
+    case "G":
+      return "#feb24c";
+    default:
+      return "black";
+    }
+  }
 ```
 
 ## Some configuration notes for JBrowse ##
@@ -215,4 +236,14 @@ ln -s /mnt/genome_data/ data
 ```
 
 Another drive is used to store the data, rather than the directory `/var/www/`. Note that the default Apache2 user (`www-data`) may need to be configured for certain folders, or given `+x` permissions (i.e. of the entire directory tree up to the data directory). In this case, all key files should have `+r` permissions (they probably already do), and directories up to that folder should have `+x`. This would mean that in the above example, the user `www-data` must have permissions to access `/mnt/` and `/mnt/genome-data/`.
+
+## General troubleshooting ##
+Sometimes tracks have display errors, which can be viewed in the console, in Firefox this is done with `ctrl+shift+k`
+
+`"function(feature) { console.log(feature.); }`
+
+`"function(feature) { console.log(feature._parent); }`
+
+## Et cetera ##
+Big thanks to [cmdcolin](https://github.com/cmdcolin) and [agduncan94](https://github.com/agduncan94) for technical help.
 
