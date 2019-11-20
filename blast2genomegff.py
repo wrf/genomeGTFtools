@@ -339,18 +339,6 @@ def parse_swissprot_header(hitstring):
 	# or
 	# sp|Q9GZU7|CTDS1_HUMAN Carboxy-terminal domain RNA polymerase II polypeptide A small phosphatase 1 OS=Homo sapiens GN=CT DSP1 PE=1 SV=1
 
-	# assuming the format of "OS=Homo sapiens"
-	organismre = "OS=(\w+) (\w+)"
-	# extract genus and species as groups()
-	try:
-		osgroups = re.search(organismre,hitstring).groups()
-	# in case of Nonetype for some reason, possibly weird names of bacteria or viruses
-	# such as:
-	# sp|P07572|POL_MPMV Pol polyprotein OS=Mason-Pfizer monkey virus GN=pol PE=3 SV=1
-	except AttributeError: # allows for - character
-		osgroups = re.search("OS=([\w-]+) (\w+)",hitstring).groups()
-	# print in format of H.sapiens
-	osname = "{}.{}".format(osgroups[0][0], osgroups[1])
 	genedescRE = "(.+) OS="
 	# split will take everything after the first space, so:
 	# "Carboxy-terminal domain RNA polymerase II polypeptide A small phosphatase 1 OS=Homo sapiens GN=CT DSP1 PE=1 SV=1"
