@@ -202,6 +202,8 @@ This can be directly added to the `tracks.conf` file. Various style parameters c
 
 Commonly, G is yellow (or black), A is green, T is red, and C is blue.
 
+![screenshot_06_vcf_snps.png](https://github.com/wrf/genomeGTFtools/blob/master/jbrowse/screenshot_06_vcf_snps.png)
+
 ```
 [tracks.dnasnps]
 storeClass     = JBrowse/Store/SeqFeature/VCFTabix
