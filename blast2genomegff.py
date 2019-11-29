@@ -8,7 +8,7 @@
 # for SOFA terms:
 # https://github.com/The-Sequence-Ontology/SO-Ontologies/blob/master/subsets/SOFA.obo
 
-'''blast2genomegff.py  last modified 2019-11-04
+'''blast2genomegff.py  last modified 2019-11-29
     convert blast output to gff format for genome annotation
     blastx of a transcriptome (genome guided or de novo) against a protein DB:
 
@@ -140,8 +140,8 @@ def gtf_to_intervals(gtffile, keepcds, skipexons, transdecoder, nogenemode, gene
 		sys.stderr.write("# Counted {} exons for {} inferred transcripts\n".format(exoncounter, transcounter) )
 	return geneintervals, genestrand, genescaffold
 
-def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxtargets, programname, outputtype, donamechop, is_swissprot, seqlengthdict, descdict, get_accession, geneintervals, genestrand, genescaffold, debugmode=False):
-	'''parse blast hits from tabular blast and write to stdout as genome gff'''
+def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxtargets, programname, outputtype, report_percent, donamechop, is_swissprot, seqlengthdict, descdict, get_accession, geneintervals, genestrand, genescaffold, debugmode=False):
+	'''parse blast hits from tabular blast and write each hit independently to stdout as genome gff'''
 	querynamedict = defaultdict(int) # counter of unique queries
 	# count results to filter
 	shortRemovals = 0
@@ -221,7 +221,8 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxta
 		hitDictCounter[sseqid] += 1
 
 		# skip if there are already enough targets, default is 10
-		if querynamedict.get(qseqid) >= maxtargets:
+		# increment is several lines above, so must be greater than max
+		if querynamedict.get(qseqid) > maxtargets:
 			maxremovals += 1
 			continue
 
@@ -278,7 +279,12 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxta
 		parentstart = min(allpositions)
 		parentend = max(allpositions)
 		# create attributes string
-		parentattrs = "ID={0}.{1}.{2};Target={1} {3} {4} {5};same_sense={6}".format(qseqid, sseqid, hitDictCounter[sseqid], lsplits[8], lsplits[9], "-" if backframe else "+", "0" if backframe else "1")
+		if report_percent: # show target as percent, like CALM1_HUMAN 2.6 98.0 +
+			S_env_start = float(lsplits[8]) * 100 / subjectlength
+			S_env_end = float(lsplits[9]) * 100 / subjectlength
+			parentattrs = "ID={0}.{1}.{2};Target={1} {3:.1f} {4:.1f} {5};same_sense={6}".format(qseqid, sseqid, hitDictCounter[sseqid], S_env_start, S_env_end, "-" if backframe else "+", "0" if backframe else "1")
+		else:
+			parentattrs = "ID={0}.{1}.{2};Target={1} {3} {4} {5};same_sense={6}".format(qseqid, sseqid, hitDictCounter[sseqid], lsplits[8], lsplits[9], "-" if backframe else "+", "0" if backframe else "1")
 		# add additional tags
 		if descdict: # if making the description tag
 			hitdescription = descdict.get(sseqid,"None")
@@ -426,11 +432,12 @@ def main(argv, wayout):
 	parser.add_argument('-M','--max-targets', type=int, help="most targets to allow per query [10]", default=10)
 	parser.add_argument('-F','--filter', action="store_true", help="filter low quality matches")
 	parser.add_argument('-G','--no-genes', action="store_true", help="genes are not defined, get gene ID for each exon")
+	parser.add_argument('-P','--percent-target', action="store_true", help="print Target tag as percent of target protein, instead of coordinates")
 	parser.add_argument('-S','--swissprot', action="store_true", help="subject db sequences have swissprot headers in blast table")
 	parser.add_argument('--add-description', action="store_true", help="if using swissprot, make GFF attribute of description from the protein description")
 	parser.add_argument('--add-accession', action="store_true", help="if using swissprot, include accession in attribute, for downstream linking")
 	parser.add_argument('-T','--transdecoder', action="store_true", help="use presets for TransDecoder genome gff")
-	parser.add_argument('-x','--exons', action="store_true", help="use CDS features as exons")
+	parser.add_argument('-x','--cds-exons', action="store_true", help="use CDS features as exons")
 	parser.add_argument('--skip-exons', action="store_true", help="skip exon features if exon and CDS are in the same file")
 	parser.add_argument('-v','--verbose', action="store_true", help="extra output")
 	args = parser.parse_args(argv)
@@ -439,10 +446,10 @@ def main(argv, wayout):
 	protlendb, descdict = make_seq_length_dict(args.database, args.swissprot, args.add_description)
 
 	# read the GFF
-	geneintervals, genestrand, genescaffold =  gtf_to_intervals(args.genes, args.exons, args.skip_exons, args.transdecoder, args.no_genes, args.gff_delimiter)
+	geneintervals, genestrand, genescaffold =  gtf_to_intervals(args.genes, args.cds_exons, args.skip_exons, args.transdecoder, args.no_genes, args.gff_delimiter)
 
 	# read the blast output
-	parse_tabular_blast(args.blast, args.coverage_cutoff, args.evalue_cutoff, args.score_cutoff, args.max_targets, args.program, args.type, args.delimiter, args.swissprot, protlendb, descdict, args.add_accession, geneintervals, genestrand, genescaffold)
+	parse_tabular_blast(args.blast, args.coverage_cutoff, args.evalue_cutoff, args.score_cutoff, args.max_targets, args.program, args.type, args.percent_target, args.delimiter, args.swissprot, protlendb, descdict, args.add_accession, geneintervals, genestrand, genescaffold)
 
 if __name__ == "__main__":
 	main(sys.argv[1:],sys.stdout)
