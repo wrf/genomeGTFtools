@@ -6,7 +6,7 @@
 # https://github.com/The-Sequence-Ontology/SO-Ontologies/blob/master/subsets/SOFA.obo
 
 '''
-pfam2gff.py  last modified 2019-10-04
+pfam2gff.py  last modified 2019-12-05
 
     EXAMPLE USAGE:
     to convert to protein gff, where domains are protein coordinates
@@ -179,7 +179,7 @@ def parse_pfam_domains(pfamtabular, evaluecutoff, lengthcutoff, programname, out
 				sys.stderr.write("WARNING: no strand given for {}, using forward\n".format(queryid) )
 				genomeintervals = get_intervals(geneintervals[queryid], domstart, domainlength_nucl, doreverse=False)
 			else: # strand is None, meaning queryid is not in genestrand dict
-				sys.stderr.write("WARNING: cannot retrieve strand for {}\n".format(queryid) )
+				sys.stderr.write("WARNING: no match in GFF for query {}\n".format(queryid) )
 				continue
 			intervalcounts += len(genomeintervals)
 			if not len(genomeintervals):
@@ -218,7 +218,7 @@ def parse_pfam_domains(pfamtabular, evaluecutoff, lengthcutoff, programname, out
 		if intervalcounts:
 			sys.stderr.write("# Wrote {} domain intervals\n".format(intervalcounts) )
 		else:
-			sys.stderr.write("WARNING: NO DOMAINS WRITTEN, CHECK OPTIONS\n")
+			sys.stderr.write("WARNING: NO DOMAINS WRITTEN, CHECK OPTIONS -d AND -D\n")
 	sys.stderr.write("# Removed {} domain hits by shortness\n".format(shortRemovals) )
 	sys.stderr.write("# Removed {} domain hits by evalue\n".format(evalueRemovals) )
 	if intervalproblems:
