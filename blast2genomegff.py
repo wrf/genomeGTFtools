@@ -8,7 +8,7 @@
 # for SOFA terms:
 # https://github.com/The-Sequence-Ontology/SO-Ontologies/blob/master/subsets/SOFA.obo
 
-'''blast2genomegff.py  last modified 2019-11-29
+'''blast2genomegff.py  last modified 2019-12-05
     convert blast output to gff format for genome annotation
     blastx of a transcriptome (genome guided or de novo) against a protein DB:
 
@@ -254,10 +254,13 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxta
 			genomeintervals = get_intervals(geneintervals[qseqid], hitstart, hitlength, doreverse=False)
 		elif strand=='-': # implies '-'
 			genomeintervals = get_intervals(geneintervals[qseqid], hitstart, hitlength, doreverse=True)
+		elif strand=='.': # no strand is given by the input GFF
+			sys.stderr.write("WARNING: strand is undefined . for {} on {}\n".format(qseqid, scaffold) )
+			continue
 		else: # strand is None
 			# strand could not be found
 			# meaning mismatch between query ID in blast and query ID in the GFF
-			sys.stderr.write("WARNING: cannot retrieve strand for {} on {}\n".format(qseqid, scaffold) )
+			sys.stderr.write("WARNING: possible mismatch in ID for {} on {}\n".format(qseqid, scaffold) )
 			continue
 
 		intervalcounts += len(genomeintervals)
@@ -309,7 +312,7 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxta
 	if intervalcounts:
 		sys.stderr.write("# Wrote {} domain intervals  ".format(intervalcounts) + time.asctime() + os.linesep)
 	else:
-		sys.stderr.write("# WARNING: did not write any intervals, check options -D or -G\n")
+		sys.stderr.write("# WARNING: did not write any intervals, check options -D -F or -G for mismatch between IDs in GFF and blast table\n")
 	if missingscaffolds:
 		sys.stderr.write("# WARNING: could not find scaffold for {} hits  ".format(missingscaffolds) + time.asctime() + os.linesep)
 	if intervalproblems:
@@ -424,13 +427,12 @@ def main(argv, wayout):
 	parser.add_argument('-g','--genes', help="query genes or proteins in gff format, can be .gz")
 	parser.add_argument('-p','--program', help="blast program for 2nd column in output [BLASTX]", default="BLASTX")
 	parser.add_argument('-t','--type', help="gff type or method [protein_match]", default="protein_match")
-	parser.add_argument('-D','--delimiter', help="optional delimiter for query protein names in blast table, cuts off end split")
-	parser.add_argument('--gff-delimiter', help="optional delimiter for GFF gene IDs, cuts off end split")
+	parser.add_argument('-D','--blast-delimiter', help="optional delimiter for query protein names in blast table, cuts off end split")
+	parser.add_argument('-F','--gff-delimiter', help="optional delimiter for GFF gene IDs, cuts off end split")
 	parser.add_argument('-c','--coverage-cutoff', type=float, help="query coverage cutoff for filtering [0.1]", default=0.1)
 	parser.add_argument('-e','--evalue-cutoff', type=float, help="evalue cutoff [1e-3]", default=1e-3)
 	parser.add_argument('-s','--score-cutoff', type=float, help="bitscore/length cutoff for filtering [0.1]", default=0.1)
 	parser.add_argument('-M','--max-targets', type=int, help="most targets to allow per query [10]", default=10)
-	parser.add_argument('-F','--filter', action="store_true", help="filter low quality matches")
 	parser.add_argument('-G','--no-genes', action="store_true", help="genes are not defined, get gene ID for each exon")
 	parser.add_argument('-P','--percent-target', action="store_true", help="print Target tag as percent of target protein, instead of coordinates")
 	parser.add_argument('-S','--swissprot', action="store_true", help="subject db sequences have swissprot headers in blast table")
@@ -449,7 +451,7 @@ def main(argv, wayout):
 	geneintervals, genestrand, genescaffold =  gtf_to_intervals(args.genes, args.cds_exons, args.skip_exons, args.transdecoder, args.no_genes, args.gff_delimiter)
 
 	# read the blast output
-	parse_tabular_blast(args.blast, args.coverage_cutoff, args.evalue_cutoff, args.score_cutoff, args.max_targets, args.program, args.type, args.percent_target, args.delimiter, args.swissprot, protlendb, descdict, args.add_accession, geneintervals, genestrand, genescaffold)
+	parse_tabular_blast(args.blast, args.coverage_cutoff, args.evalue_cutoff, args.score_cutoff, args.max_targets, args.program, args.type, args.percent_target, args.blast_delimiter, args.swissprot, protlendb, descdict, args.add_accession, geneintervals, genestrand, genescaffold)
 
 if __name__ == "__main__":
 	main(sys.argv[1:],sys.stdout)

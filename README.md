@@ -115,13 +115,14 @@ As above for the domains in `pfam2gff.py`, entire blast hits to transcripts or p
   `blast2genomegff.py -b transcripts_sprot.tab -d uniprot_sprot.fasta -g transcripts.gtf > transcripts_sprot.genome.gff`
 
 #### Options are: ####
-   * `-p` : program, by default is `blastx`, but change to `blastp` if proteins were used. The correct blast program is needed to calculate the intervals correctly.
-   * `-x` : if starting from proteins, and the `CDS` features are available (such as from `AUGUSTUS`), use CDS features from the GFF instead of exons (that is, exons are not specified at all).
+   * `-p` : program, by default is `blastx`, but change to `blastp` if proteins were used. The correct blast program is needed to calculate the intervals correctly, as blastp results need to be converted to nucleotide coordinates.
+   * `-x` : if starting from proteins, and the `CDS` features are available (such as from `AUGUSTUS`), use CDS features from the GFF instead of exons (that is, exons are not specified at all). If exons are specified as well and are mostly identical to CDS, then also use the option `--skip-exons`.
    * `-D` : delimiter for spliting names in the tabular blast output. For example, if names were `gene1.CDS`, the option `-D .` would be used to split at `gene1`.
-   * `--gff-delimiter` : as above for `-D`, but to split the IDs in the GFF. If the query column in blast (first column) and the ID in the GFF do not match, and there is no output, then this or `-D` may fix the problem.
+   * `-F` : as above for `-D`, but to split the IDs in the GFF. If the query column in blast (first column) and the ID in the GFF do not match, and there is no output, then this or `-D` may fix the problem.
    * `-c` : coverage cutoff, remove queries where the hit is under 0.1 of the subject length
    * `-e` : E-value cutoff, by default is 1e-3
    * `-s` : bitscore/length cutoff, remove hits with bitscore/length of under 0.1, that is, remove very distant matches. Set higher for more closely related species (0.3) or lower for distance species (0.05).
+   * `-G` : ignore `gene` features, or other high-level features like `mRNA` or `transcript`, and instead extract the ID directly from each exon. This might be more convenient to use if exons are given unique IDs in the GFF, like `gene1.t1.exon1`. This is typically used with `-F`, as `-G -F "."`
 
 ### starting from StringTie transcripts
 [StringTie](https://ccb.jhu.edu/software/stringtie/) transcripts can be converted to fasta using the script `cufflinks_gtf_genome_to_cdna_fasta.pl` (packaged with [TransDecoder](https://github.com/TransDecoder/TransDecoder/wiki)). These are used as input for `blastx`. Note that with `blastx`, some can hit antisense, which suggests there is a protein on the antisense strand, or possibly there is an erroneous fusion of two adjacent genes.
