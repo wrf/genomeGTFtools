@@ -8,7 +8,7 @@
 # for SOFA terms:
 # https://github.com/The-Sequence-Ontology/SO-Ontologies/blob/master/subsets/SOFA.obo
 
-'''blast2genomegff.py  last modified 2019-12-05
+'''blast2genomegff.py  last modified 2019-12-09
     convert blast output to gff format for genome annotation
     blastx of a transcriptome (genome guided or de novo) against a protein DB:
 
@@ -33,7 +33,7 @@ blast2genomegff.py -b blastn_output.tab -p BLASTN -t EST_match > output.gff
 
     the reported score (column 6) is the bitscore
 
-    for blastp, if GFF contains both exon and CDS features, use -x and --skip-exons
+    for blastp, if GFF contains both exon and CDS features, use -x and -K
 '''
 
 import sys
@@ -138,6 +138,8 @@ def gtf_to_intervals(gtffile, keepcds, skipexons, transdecoder, nogenemode, gene
 	else: # no mRNA or transcript features were given, count was 0
 		transcounter = len(genescaffold)
 		sys.stderr.write("# Counted {} exons for {} inferred transcripts\n".format(exoncounter, transcounter) )
+	if exoncounter==0:
+		sys.stderr.write("WARNING: NO suitable exons counted, check options -x or -G\n" )
 	return geneintervals, genestrand, genescaffold
 
 def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxtargets, programname, outputtype, report_percent, donamechop, is_swissprot, seqlengthdict, descdict, get_accession, geneintervals, genestrand, genescaffold, debugmode=False):
@@ -273,7 +275,7 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxta
 		if get_max_frequency(genomeintervals) > 1:
 			duplicateintervals += 1
 			if duplicateintervals < 10:
-				sys.stderr.write("WARNING: duplicate intervals found for {}, check option -x\n".format( qseqid ) )
+				sys.stderr.write("WARNING: duplicate intervals found for {}, check option -x or -K\n".format( qseqid ) )
 			elif duplicateintervals == 10:
 				sys.stderr.write("WARNING: duplicate intervals found for {}, will not print further warnings\n".format( qseqid ) )
 
@@ -440,12 +442,15 @@ def main(argv, wayout):
 	parser.add_argument('--add-accession', action="store_true", help="if using swissprot, include accession in attribute, for downstream linking")
 	parser.add_argument('-T','--transdecoder', action="store_true", help="use presets for TransDecoder genome gff")
 	parser.add_argument('-x','--cds-exons', action="store_true", help="use CDS features as exons")
-	parser.add_argument('--skip-exons', action="store_true", help="skip exon features if exon and CDS are in the same file")
+	parser.add_argument('-K','--skip-exons', action="store_true", help="skip exon features if exon and CDS are in the same file")
 	parser.add_argument('-v','--verbose', action="store_true", help="extra output")
 	args = parser.parse_args(argv)
 
 	# read database, make a length dict, and possibly also a description dict
-	protlendb, descdict = make_seq_length_dict(args.database, args.swissprot, args.add_description)
+	if args.database is not None and os.path.exists(args.database):
+		protlendb, descdict = make_seq_length_dict(args.database, args.swissprot, args.add_description)
+	else:
+		sys.exit("ERROR: cannot find database file -d {}, exiting".format(args.database) )
 
 	# read the GFF
 	geneintervals, genestrand, genescaffold =  gtf_to_intervals(args.genes, args.cds_exons, args.skip_exons, args.transdecoder, args.no_genes, args.gff_delimiter)
