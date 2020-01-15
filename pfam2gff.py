@@ -224,7 +224,7 @@ def parse_pfam_domains(pfamtabular, evaluecutoff, lengthcutoff, programname, out
 	if intervalproblems:
 		sys.stderr.write("# {} genes have domains extending beyond gene bounds\n".format(intervalproblems) )
 	if protboundstoline: # should be empty unless in protein GFF mode, meaning no genomic intervals
-		for protid, boundlines in protboundstoline.iteritems(): # sort proteins by start position
+		for protid, boundlines in protboundstoline.items(): # sort proteins by start position
 			for bounds in sorted(boundlines.keys()):
 				sys.stdout.write(boundlines[bounds])
 	# NO RETURN
