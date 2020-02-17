@@ -8,7 +8,7 @@
 # for SOFA terms:
 # https://github.com/The-Sequence-Ontology/SO-Ontologies/blob/master/subsets/SOFA.obo
 
-'''blast2genomegff.py  last modified 2019-12-09
+'''blast2genomegff.py  last modified 2020-02-17
     convert blast output to gff format for genome annotation
     blastx of a transcriptome (genome guided or de novo) against a protein DB:
 
@@ -76,10 +76,14 @@ def gtf_to_intervals(gtffile, keepcds, skipexons, transdecoder, nogenemode, gene
 	genestrand = {}
 	genescaffold = {}
 
-	commentlines = 0
-	linecounter = 0
-	transcounter = 0
-	exoncounter = 0
+	commentlines = 0 # comment lines
+	linecounter = 0 # all lines that are not comments, even if ignored later
+	transcounter = 0 # counter for transcript or mRNA
+	exoncounter = 0 # counter for exon or CDS
+	ignoredfeatures = 0 # all other features that get ignored
+
+	allowed_features = ["gene", "mRNA", "transcript", "exon", "CDS"]
+
 	if gtffile.rsplit('.',1)[-1]=="gz": # autodetect gzip format
 		opentype = gzip.open
 		sys.stderr.write("# Parsing gff from {} as gzipped  ".format(gtffile) + time.asctime() + os.linesep)
@@ -92,6 +96,7 @@ def gtf_to_intervals(gtffile, keepcds, skipexons, transdecoder, nogenemode, gene
 		sys.stderr.write("# CDS features WILL BE USED as exons\n")
 	if nogenemode:
 		sys.stderr.write("# gene name and strand will be read for each exon\n")
+
 	# begin parsing file
 	for line in opentype(gtffile,'rt'):
 		line = line.strip()
@@ -105,6 +110,10 @@ def gtf_to_intervals(gtffile, keepcds, skipexons, transdecoder, nogenemode, gene
 				feature = lsplits[2]
 				strand = lsplits[6]
 				attributes = lsplits[8]
+
+				if feature not in allowed_features: # any other features may cause problems later
+					ignoredfeatures += 1
+					continue
 
 				if attributes.find("ID")>-1: # indicates gff3 format
 					geneid = re.search('ID=([\w.|-]+)', attributes).group(1)
@@ -133,6 +142,8 @@ def gtf_to_intervals(gtffile, keepcds, skipexons, transdecoder, nogenemode, gene
 						genescaffold[geneid] = scaffold
 					geneintervals[geneid].append(boundaries)
 	sys.stderr.write("# Counted {} lines and {} comments  ".format(linecounter, commentlines) + time.asctime() + os.linesep)
+	if ignoredfeatures:
+		sys.stderr.write("# Ignored {} other features in the GFF\n".format(ignoredfeatures) )
 	if transcounter:
 		sys.stderr.write("# Counted {} exons for {} inferred transcripts\n".format(exoncounter, transcounter) )
 	else: # no mRNA or transcript features were given, count was 0
