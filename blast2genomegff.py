@@ -8,7 +8,7 @@
 # for SOFA terms:
 # https://github.com/The-Sequence-Ontology/SO-Ontologies/blob/master/subsets/SOFA.obo
 
-'''blast2genomegff.py  last modified 2020-02-17
+'''blast2genomegff.py  last modified 2020-03-04
     convert blast output to gff format for genome annotation
     blastx of a transcriptome (genome guided or de novo) against a protein DB:
 
@@ -203,6 +203,8 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxta
 		alignlength = float(lsplits[3])
 		hitstart = int(lsplits[6])
 		hitend = int(lsplits[7])
+		mismatches = lsplits[4] # keep as string, since it will only be used for printing later
+		gapopens = lsplits[5] # as above
 
 		# get length from length dict, otherwise return extremely large value, which would remove the hit
 		subjectlength = seqlengthdict.get(sseqid,1000000.0)
@@ -294,22 +296,27 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxta
 		allpositions = list(chain(*genomeintervals))
 		parentstart = min(allpositions)
 		parentend = max(allpositions)
+
 		# create attributes string
 		if report_percent: # show target as percent, like CALM1_HUMAN 2.6 98.0 +
 			S_env_start = float(lsplits[8]) * 100 / subjectlength
 			S_env_end = float(lsplits[9]) * 100 / subjectlength
 			parentattrs = "ID={0}.{1}.{2};Target={1} {3:.1f} {4:.1f} {5};same_sense={6}".format(qseqid, sseqid, hitDictCounter[sseqid], S_env_start, S_env_end, "-" if backframe else "+", "0" if backframe else "1")
-		else:
+		else: # show target as indices of the match protein
 			parentattrs = "ID={0}.{1}.{2};Target={1} {3} {4} {5};same_sense={6}".format(qseqid, sseqid, hitDictCounter[sseqid], lsplits[8], lsplits[9], "-" if backframe else "+", "0" if backframe else "1")
+
 		# add additional tags
+		parentattrs += ";Gaps={};Mismatch={};Evalue={}".format(gapopens, mismatches, evalue)
 		if descdict: # if making the description tag
 			hitdescription = descdict.get(sseqid,"None")
 			parentattrs += ";Description={}".format(hitdescription)
 		if get_accession and accession is not None: # if adding accession
 			parentattrs += ";Accession={}".format(accession)
+
 		# final line to print
 		outline = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t.\t{7}\n".format(scaffold, programname, outputtype, parentstart, parentend, bitscore, strand, parentattrs)
 		sys.stdout.write( outline )
+
 		# make child features for each interval
 		for interval in genomeintervals:
 		# thus ID appears as qseqid.sseqid.number, so avic1234.avGFP.1, and uses ID in most browsers
@@ -323,7 +330,7 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxta
 	if backframecounts:
 		sys.stderr.write("# {} hits are antisense  ".format(backframecounts) + time.asctime() + os.linesep)
 	if intervalcounts:
-		sys.stderr.write("# Wrote {} domain intervals  ".format(intervalcounts) + time.asctime() + os.linesep)
+		sys.stderr.write("# Wrote {} match intervals  ".format(intervalcounts) + time.asctime() + os.linesep)
 	else:
 		sys.stderr.write("# WARNING: did not write any intervals, check options -D -F or -G for mismatch between IDs in GFF and blast table\n")
 	if missingscaffolds:
@@ -377,8 +384,17 @@ def parse_swissprot_header(hitstring):
 	genedesc = genedesc.replace(" [GTP]","")
 	genedesc = genedesc.replace(" [ubiquinone]","")
 	genedesc = genedesc.replace(" [glutamine-hydrolyzing]","")
+
 	# change a bunch of disallowed symbols
-	genedesc = genedesc.replace("(","_").replace(")","_").replace("'","").replace("[","").replace("]","").replace(",","_").replace("/","-")
+	underscore_symbols = "(),"
+	for symbol in underscore_symbols:
+		genedesc = genedesc.replace(symbol,"_")
+	remove_symbols = "'[]"
+	for symbol in underscore_symbols:
+		genedesc = genedesc.replace(symbol,"")
+	genedesc = genedesc.replace("/","-")
+
+	# return description
 	return genedesc
 
 def get_intervals(intervals, domstart, domlength, doreverse=True):
