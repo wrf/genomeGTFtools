@@ -3,7 +3,7 @@
 # scaffold_synteny.py created 2019-03-27
 
 '''
-scaffold_synteny.py  v1.1 last modified 2019-10-14
+scaffold_synteny.py  v1.1 last modified 2020-02-25
     makes a table of gene matches between two genomes, to detect synteny
     these can be converted into a dotplot of gene matches
 
@@ -48,7 +48,7 @@ from collections import defaultdict
 from Bio import SeqIO
 
 def make_seq_length_dict(contigsfile, maxlength, exclusiondict, wayout, isref=False):
-	'''read fasta file, and return dict where key is scaffold name and value is length'''
+	'''read fasta file, and return dict where key is scaffold name and value is length, also print the length of each scaffold to stdout'''
 	lengthdict = {}
 	if contigsfile.rsplit('.',1)[-1]=="gz": # autodetect gzip format
 		opentype = gzip.open
@@ -66,7 +66,6 @@ def make_seq_length_dict(contigsfile, maxlength, exclusiondict, wayout, isref=Fa
 
 	sorteddict = {} # key is scaffold, value is offset relative to previous scaffolds
 	lengthsum = 0 # cumulative sum of lengths of large scaffolds
-	breaklines = [0] # contains scaffold lengths, starts with position 0
 	maxlength_MB = 1000000*maxlength
 	sys.stderr.write("# Sorting contigs by length, keeping up to {}Mbp\n".format(maxlength) )
 	# keep the first N scaffolds, where total length is approximately maxlength
@@ -78,12 +77,9 @@ def make_seq_length_dict(contigsfile, maxlength, exclusiondict, wayout, isref=Fa
 		sorteddict[k] = lengthsum
 		lengthsum += v
 		wayout.write("{}\t{}\t{}\t{}\t{:.6f}\t{}\t{:.6f}\t-\n".format(scafkey, k, scaffoldcounter, v, v*1.0/totalgenomesize, lengthsum, lengthsum*1.0/totalgenomesize) )
-		if lengthsum >= maxlength_MB:
+		if lengthsum >= maxlength_MB: # keep adding scaffolds until length limit is hit or exceeded
 			break
-	#	breaklines.append(lengthsum)
-	# offset len(sorteddict) count by 1, as length 0 is not a contig
-	sys.stderr.write("# Kept {} contigs, for {} bases, last contig was {}bp long  ".format( len(sorteddict)-1, lengthsum, v) + time.asctime() + os.linesep)
-	#sys.stderr.write(",".join( map(str,breaklines) )	
+	sys.stderr.write("# Kept {} contigs, for {} bases, last contig was {}bp long  ".format( len(sorteddict), lengthsum, v) + time.asctime() + os.linesep)
 	return sorteddict
 
 def parse_gtf(gtffile, excludedict, delimiter, isref=False):
@@ -179,8 +175,8 @@ def parse_tabular_blast(blasttabfile, evaluecutoff, querydelimiter, refdelimiter
 	sys.stderr.write("# Kept {} blast hits\n".format( total_kept ) )
 	return filtered_hit_dict
 
-def generate_synteny_points(queryScafOffset, dbScafOffset, queryPos, dbPos, blastdict, wayout):
-	'''combine all datasets and for each gene on the query scaffolds, print tab delimited data'''
+def generate_synteny_points(queryScafOffset, dbScafOffset, queryPos, dbPos, blastdict, give_local_positions, wayout):
+	'''combine all datasets and for each gene on the query scaffolds, print tab delimited data to stdout'''
 	printcount = 0
 	scaffoldtotals = defaultdict(int) # counts of total genes for each scaffold
 	sys.stderr.write("# Determining match positions  " + time.asctime() + os.linesep)
@@ -188,22 +184,37 @@ def generate_synteny_points(queryScafOffset, dbScafOffset, queryPos, dbPos, blas
 		scaffoldcounts = defaultdict(int) # counts of hits to each reference scaffold
 		for gene, localposition in genedict.items():
 			scaffoldtotals[scaffold] += 1
+			# check offset for query scaffolds
 			queryoffset = queryScafOffset.get(scaffold,None)
-			if queryoffset is None:
+			if queryoffset is None: # if none, then match is not on one of the kept query scaffolds
 				continue
-			overallposition = localposition + queryoffset
+			if give_local_positions: # if using local positions, ignore all ofsets and use only localposition
+				overallposition = localposition
+			else: # using global positions
+				overallposition = localposition + queryoffset
+
+			# then get matches for that gene
 			blasthits = blastdict.get(gene, None)
-			if blasthits is None:
+			if blasthits is None: # skip query genes with no matches
 				continue
+			# iterate through dict of matches
 			for matchgene, bitscore in sorted(blasthits.items(), key=lambda x: x[1], reverse=True):
 				matchscaf, matchposition = dbPos.get(matchgene, [None, None])
-				if matchscaf is None:
+				if matchscaf is None: # would mean blast hit is not in the GFF
 					continue
+
+				# check offset for db scaffold
 				matchoffset = dbScafOffset.get(matchscaf, None)
-				if matchoffset is None:
+				if matchoffset is None: # blast hit is not on a kept db scaffolds
 					continue
-				overallmatchpos = matchposition + matchoffset
+				if give_local_positions:
+					overallmatchpos = matchposition
+				else: # using global positions
+					overallmatchpos = matchposition + matchoffset
+
 				scaffoldcounts[matchscaf] += 1
+
+				# write each match to file
 				printcount += 1
 				wayout.write("g\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format(gene, scaffold, matchgene, matchscaf, overallposition, overallmatchpos, bitscore) )
 	if printcount:
@@ -313,6 +324,7 @@ def main(argv, wayout):
 	parser.add_argument('-R','--global-randomize', help="globally randomize gene positions of query GFF, cannot use with -S", action="store_true")
 	parser.add_argument('-S','--scaffold-randomize', help="randomize gene positions of query GFF within each scaffold, cannot use with -R", action="store_true")
 	parser.add_argument('--double-randomize', help="randomize gene positions of db, use with -S", action="store_true")
+	parser.add_argument('--local-positions', help="output points as local positions on each scaffold, not global position", action="store_true")
 	args = parser.parse_args(argv)
 
 	exclusiondict = make_exclude_dict(args.exclude) if args.exclude else {}
@@ -322,6 +334,7 @@ def main(argv, wayout):
 	db_scaf_lengths = make_seq_length_dict(args.db_fasta, args.db_genome_len, exclusiondict, wayout, True)
 
 	# read query as normal
+	# and assign to query_gene_pos, as a dict of dicts
 	query_gene_pos = parse_gtf(args.query_gff, exclusiondict, args.query_delimiter, False)
 	### IF DOING RANDOMIZATION ###
 	if args.global_randomize:
@@ -341,7 +354,7 @@ def main(argv, wayout):
 	blastdict = parse_tabular_blast(args.blast, args.evalue, args.blast_query_delimiter, args.blast_db_delimiter, args.maximum_hits, args.group_size_maximum)
 
 	# write output
-	generate_synteny_points( query_scaf_lengths, db_scaf_lengths, query_gene_pos, db_gene_pos, blastdict, wayout)
+	generate_synteny_points( query_scaf_lengths, db_scaf_lengths, query_gene_pos, db_gene_pos, blastdict, args.local_positions, wayout)
 
 if __name__ == "__main__":
 	main(sys.argv[1:],sys.stdout)
