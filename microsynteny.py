@@ -2,7 +2,7 @@
 # microsynteny.py
 # v1.0 2015-10-09
 
-'''microsynteny.py v1.3 last modified 2019-09-27
+'''microsynteny.py v1.3 last modified 2020-03-16
 
 microsynteny.py -q query.gtf -d ref_species.gtf -b query_vs_ref_blast.tab -E ../bad_contigs -g -D '_' --blast-query-delimiter '.' > query_vs_ref_microsynteny.tab
 
@@ -49,7 +49,7 @@ from collections import namedtuple,defaultdict
 querygene = namedtuple("querygene", "start end strand")
 refgene = namedtuple("refgene", "scaffold start end strand")
 
-def parse_gtf(gtffile, exonstogenes, excludedict, delimiter, isref=False):
+def parse_gtf(gtffile, exons_to_genes, cds_to_genes, excludedict, delimiter, isref=False):
 	'''from a gtf, return a dict of dicts where keys are scaffold names, then gene names, and values are gene info as a tuple of start end and strand direction'''
 	if gtffile.rsplit('.',1)[-1]=="gz": # autodetect gzip format
 		opentype = gzip.open
@@ -62,7 +62,8 @@ def parse_gtf(gtffile, exonstogenes, excludedict, delimiter, isref=False):
 		genesbyscaffold = {}
 	else:
 		genesbyscaffold = defaultdict(dict) # scaffolds as key, then gene name, then genemapping tuple
-	if exonstogenes:
+
+	if exons_to_genes or cds_to_genes:
 		nametoscaffold = {} # in order to get transcript boundaries, store names to scaffolds
 		nametostrand = {} # store strand by gene ID
 		exonboundaries = defaultdict(list) # make list of tuples of exons by transcript, to determine genes
@@ -92,7 +93,7 @@ def parse_gtf(gtffile, exonstogenes, excludedict, delimiter, isref=False):
 					boundstrand = querygene(start=int(lsplits[3]), end=int(lsplits[4]), strand=lsplits[6] )
 					genesbyscaffold[scaffold][geneid] = boundstrand
 			# if using exons only, then start collecting exons
-			elif (exonstogenes and feature=="exon"):
+			elif (exons_to_genes and feature=="exon"):
 				try:
 					geneid = re.search('gene_id "([\w.|-]+)"', attributes).group(1)
 				except AttributeError: # in case re fails and group does not exist
@@ -101,13 +102,29 @@ def parse_gtf(gtffile, exonstogenes, excludedict, delimiter, isref=False):
 				nametostrand[geneid] = lsplits[6]
 				exonbounds = (int(lsplits[3]), int(lsplits[4]))
 				exonboundaries[geneid].append(exonbounds) # for calculating gene boundaries
+			# if using only CDS
+			elif (cds_to_genes and feature=="CDS"):
+				try:
+					geneid = re.search('ID=([\w.|-]+)', attributes).group(1)
+				except AttributeError: # in case re fails and group does not exist
+					geneid = re.search('Parent=([\w.|-]+)', attributes).group(1)
+				nametoscaffold[geneid] = scaffold
+				nametostrand[geneid] = lsplits[6]
+				cdsbounds = (int(lsplits[3]), int(lsplits[4]))
+				exonboundaries[geneid].append(cdsbounds) # for calculating gene boundaries
 
+	# after parsing file, calculate stats and return
 	if len(genesbyscaffold) > 0: # even if no-genes was set, this should be more than 0 if genes were in one gtf
 		if isref:
-			sys.stderr.write("# Found {} genes  ".format( len(genesbyscaffold) ) + time.asctime() + os.linesep)
+			genecount = len(genesbyscaffold)
+			sys.stderr.write("# Found {} genes  {}\n".format( genecount, time.asctime() ) )
 		else:
-			sys.stderr.write("# Found {} genes  ".format(sum( list(map( len,genesbyscaffold.values())) ) ) + time.asctime() + os.linesep)
+			# count up number of genes on each scaffold, by length of each value
+			# then convert to list, then sum again
+			genecount = sum( list( map( len,genesbyscaffold.values() ) ) )
+			sys.stderr.write("# Found {} genes  {}\n".format(genecount, time.asctime() ) )
 		return genesbyscaffold
+	# for exon or CDS mode
 	else: # generate gene boundaries by scaffold
 		sys.stderr.write("# Estimated {} genes from {} exons  ".format(len(exonboundaries), sum(len(x) for x in exonboundaries.values() ) ) + time.asctime() + os.linesep)
 		for gene,exons in exonboundaries.items():
@@ -117,7 +134,8 @@ def parse_gtf(gtffile, exonstogenes, excludedict, delimiter, isref=False):
 			else:
 				boundstrand = querygene(start=min(x[0] for x in exons), end=max(x[1] for x in exons), strand=nametostrand[gene] )
 				genesbyscaffold[nametoscaffold[gene]][gene] = boundstrand
-		sys.stderr.write("# Found {} genes  ".format(len(genesbyscaffold) ) + time.asctime() + os.linesep) # uses len here
+		genecount = len(genesbyscaffold) # uses len here
+		sys.stderr.write("# Found {} genes  {}\n".format( genecount, time.asctime() ) )
 		return genesbyscaffold
 
 def parse_tabular_blast(blasttabfile, evaluecutoff, querydelimiter, refdelimiter, switchquery=False, maxhits=100):
@@ -358,6 +376,7 @@ def main(argv, wayout):
 	parser.add_argument('-D','--db-delimiter', help="gene transcript separator for db [.]")
 	parser.add_argument('--blast-query-delimiter', help="gene transcript separator for blast query [|]", default='|')
 	parser.add_argument('--blast-db-delimiter', help="gene transcript separator for blast ref [|]", default='|')
+	parser.add_argument('-c','--cds-only', action="store_true", help="genes are not defined, get gene ID for each CDS feature")
 	parser.add_argument('-e','--evalue', type=float, default=1e-4, help="evalue cutoff for post blast filtering [1e-4]")
 	parser.add_argument('-E','--exclude', help="file of list of bad contigs, from either genome")
 	parser.add_argument('-g','--no-genes', action="store_true", help="genes are not defined, get gene ID for each exon")
@@ -391,12 +410,12 @@ def main(argv, wayout):
 
 	### SETUP DICTIONARIES ###
 	if args.switch_query:
-		querydict = parse_gtf(args.db_gtf, args.no_genes, exclusionDict), args.db_delimiter
-		refdict = parse_gtf(args.query_gtf, args.no_genes, exclusionDict, args.query_delimiter, isref=True)
+		querydict = parse_gtf(args.db_gtf, args.no_genes, args.cds_only, exclusionDict, args.db_delimiter)
+		refdict = parse_gtf(args.query_gtf, args.no_genes, args.cds_only, exclusionDict, args.query_delimiter, isref=True)
 		blastdict = parse_tabular_blast(args.blast, args.evalue, args.blast_query_delimiter, args.blast_db_delimiter, args.switch_query)
 	else:
-		querydict = parse_gtf(args.query_gtf, args.no_genes, exclusionDict, args.query_delimiter)
-		refdict = parse_gtf(args.db_gtf, args.no_genes, exclusionDict, args.db_delimiter, isref=True)
+		querydict = parse_gtf(args.query_gtf, args.no_genes, args.cds_only, exclusionDict, args.query_delimiter)
+		refdict = parse_gtf(args.db_gtf, args.no_genes, args.cds_only, exclusionDict, args.db_delimiter, isref=True)
 		blastdict = parse_tabular_blast(args.blast, args.evalue, args.blast_query_delimiter, args.blast_db_delimiter)
 
 	### IF DOING RANDOMIZATION ###
