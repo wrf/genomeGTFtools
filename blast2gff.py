@@ -11,7 +11,7 @@
 # https://www.sanger.ac.uk/resources/software/gff/spec.html
 # http://www.sequenceontology.org/gff3.shtml
 
-'''blast2gff.py last modified 2019-10-04
+'''blast2gff.py last modified 2020-04-23
 
 blast2gff.py -b tblastn_output.tab > output.gff3
 
@@ -92,6 +92,7 @@ def main(argv, wayout):
 	parser.add_argument('-A','--augustus', action="store_true", help="print source information for AUGUSTUS hints")
 	parser.add_argument('-F','--filter', action="store_true", help="filter low quality matches, set value with -s")
 	parser.add_argument('-S','--swissprot', action="store_true", help="query sequences have swissprot headers")
+	parser.add_argument('-L','--locus', action="store_true", help="IDs will be named by the locus, as scaffold_start_end")
 	parser.add_argument('-v','--verbose', action="store_true", help="extra output")
 	args = parser.parse_args(argv)
 
@@ -123,6 +124,8 @@ def main(argv, wayout):
 		#attributes = "ID={}".format(qseqid)
 		if args.augustus:
 			attributes = "source=P;ID={0}.{1}-{2}".format(qseqid, qstart, qend)
+		elif args.locus:
+			attributes = "ID={0}_{1}_{2};Target={3} {4} {5}".format(sseqid, sstart, send, qseqid, qstart, qend)
 		else:
 			attributes = "ID={0}.{1}{2};Target={0} {3} {4}".format(qseqid, args.type, hitDictCounter[qseqid], qstart, qend)
 		# if verbose, display the current attributes format for debugging
