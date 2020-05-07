@@ -2,7 +2,7 @@
 #
 # extract_coordinates.py
 
-'''extract_coordinates.py  last modified 2020-04-11
+'''extract_coordinates.py  last modified 2020-05-07
 
     extract relevant regions from a GFF, to make simple figures
     resembling a view in a genome browser
@@ -14,6 +14,10 @@
 extract_coordinates.py -s ML0011 -b 63000 -e 88000 -g ML2.2.gff3 > ml0011_63k-88k_annot_short.tab
 
     -g can take multiple files to extract from different tracks at the same locus
+
+    for bacterial genomes, where each gene is a single CDS, use -p
+
+extract_coordinates.py -g GCF_000011805.1_ASM1180v1_genomic.gff -s NC_006841.2 -b 1041700 -e 1051700 -p > lux_locus_short_annot.tab
 '''
 
 import sys
@@ -74,7 +78,7 @@ def extract_features(gtffile, target_scaffold, target_start, target_end, keep_on
 				sys.stdout.write( outline )
 			elif feature=="CDS" and is_bacterial:
 				gene_id = attrd.get("Parent")
-				outline = "{}\tgene\t{}\t{}\t{}\n".format( gene_id, feature, fstart, fend, strand )
+				outline = "{}\tgene\t{}\t{}\t{}\n".format( gene_id, fstart, fend, strand )
 				sys.stdout.write( outline )
 				genecounter += 1
 	sys.stderr.write("# Read {} lines, kept {} transcripts/genes\n".format(linecounter, genecounter) )

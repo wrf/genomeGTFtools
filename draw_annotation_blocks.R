@@ -1,12 +1,13 @@
 #!/usr/bin/env Rscript
 # convert tabular annotation format to rectangle blocks
 # or polygon blocks for single CDS genes, like bacteria
-# last modified 2020-04-17
+# last modified 2020-05-07
 
 args = commandArgs(trailingOnly=TRUE)
 
 inputfile = args[1]
 #inputfile = "~/genomes/mnemiopsis_leidyi/ml0011_63k-88k_annot_short.tab"
+#inputfile = "~/genomes/aliivibrio_fisheri/lux_locus_short_annot.tab"
 outputfile = gsub("([\\w/]+)\\....$","\\1.pdf",inputfile,perl=TRUE)
 
 annottab = read.table(inputfile,header=FALSE,sep="\t",stringsAsFactors=FALSE)
@@ -16,15 +17,20 @@ seqcount = args[2]
 if (!is.na(seqcount)) {
 	num_tx = seqcount
 }
-
+# default is to draw rectangles as exons with an arrow
+# for bacteria, genes are usually entire CDS and are better rendered with polygons
 draw_polygons = FALSE
 
 # separate features by category
 axistype = annottab[which(annottab[,2]=="axis"),]
-axis_width = axistype[1,4] - axistype[1,3]
+# for some reason this has to be forced to numeric sometimes
+window_start = as.numeric(axistype[1,3])
+window_end   = as.numeric(axistype[1,4])
+axis_width = window_end - window_start
 offset_width = axis_width * 0.05
 print(paste("# plotting axis of distance",axis_width,"for up to",num_tx,"genes"))
 
+# mRNA or transcripts
 mrnatypes = annottab[which(annottab[,2]=="mRNA"),]
 # for cases where no mRNA is given, assume meant to be entire genes as blocks
 if (dim(mrnatypes)[1]==0) {
@@ -53,7 +59,7 @@ exon_index = match(exontypes[,1],tx_names)
 
 
 pdf(file=outputfile, width=8, height=10)
-plot(0,0, type='n', axes=FALSE, frame.plot=FALSE, ylim=c(0,num_tx), xlim=c(axistype[1,3],axistype[1,4]), xlab="", ylab="")
+plot(0,0, type='n', axes=FALSE, frame.plot=FALSE, ylim=c(0,num_tx), xlim=c(window_start,window_end), xlab="", ylab="")
 par(mar=c(4.5,2,1,1))
 axis(1, cex.axis=1.4)
 if (draw_polygons==TRUE) {
@@ -81,12 +87,12 @@ if (draw_polygons==TRUE) {
 	}
 } else {
 	# draw as arrows and boxes
-	arrows(forward_tx[,3], tx_index[is_forward], forward_tx[,4]+offset_width, tx_index[is_forward], lwd=3, angle=15, length=0.1)
-	arrows(reverse_tx[,4], tx_index[is_reverse], reverse_tx[,3]-offset_width, tx_index[is_reverse], lwd=3, angle=15, length=0.1)
+	arrows(forward_tx[,3], tx_index[is_forward], forward_tx[,4]+offset_width, tx_index[is_forward], lwd=3, angle=15, length=0.1, col="#bbbbbb")
+	arrows(reverse_tx[,4], tx_index[is_reverse], reverse_tx[,3]-offset_width, tx_index[is_reverse], lwd=3, angle=15, length=0.1, col="#bbbbbb")
 	rect(exontypes[,3], exon_index-0.3, exontypes[,4], exon_index+0.3, col="#25893a")
 }
 text(mrnatypes[,3], tx_index, tx_names, pos=2)
-mtext(axistype[1,1], side=1, at=axistype[1,3]-(1.5*offset_width), cex=1.8, line=-0.4)
+mtext(axistype[1,1], side=1, at=window_start-(1.5*offset_width), cex=1.8, line=-0.4)
 dev.off()
 
 
