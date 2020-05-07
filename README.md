@@ -227,10 +227,56 @@ The same can be generated for more distant species. Here two choanoflagellates a
 
 `Rscript ~/git/genomeGTFtools/synteny_2d_plot.R monbr1_vs_srosetta_scaffold2d_points.tab Monosiga-brevicollis Salpingoeca-rosetta`
 
+## extract_coordinates
+This is a script to extract feature positions from a GFF to generate a figure that roughly resembles what is seen in a genome browser, to make something that has the same effect as a screenshot but looks better. Because GFFs contain indices by scaffold position, rather than gene, the script effectively converts the tabular GFF to a format where the features are the genes and exons themselves. This allows for easy downstream processing and visualization with the associated script `draw_annotation_blocks.R`.
+
+#### Required terms are: ####
+   * `-g` one or more GFF files, each roughly representing a track in a genome browser
+   * `-s` the chromosome or scaffold ID
+   * `-b` the beginning position to extract from that scaffold (inclusive)
+   * `-e` the end position to extract from that scaffold (also inclusive)
+
+The output of the program is a 5-column tab-delimited file, containing gene name, feature type, start, stop, and strand. Even if multiple GFFs are used, all of the transcripts or genes will end up in the same file.
+
+For example, studying the arrangement of the Lux operon, in the bacterium [*Aliivibrio fisheri*](https://en.wikipedia.org/wiki/Aliivibrio_fischeri), the genome and GFF are downloaded [from NCBI](https://www.ncbi.nlm.nih.gov/genome/724). 
+
+  `extract_coordinates.py -g GCF_000011805.1_ASM1180v1_genomic.gff -s NC_006841.2 -b 1041700 -e 1051700 -p > lux_locus_short_annot.tab`
+
+## draw_annotation_blocks
+A rather unsophisticated script to plot the extracted coordinates of genes or exons from `extract_coordinates.py`. By default, it only requires the output of `extract_coordinates.py` and will generate a `.pdf` of the same name. In this example, the input file `lux_locus_short_annot.tab` yields the output `lux_locus_short_annot.pdf`.
+
+  `Rscript draw_annotation_blocks.R lux_locus_short_annot.tab`
+
+As there is not a straightforward way to display features, or generate a figure of whatever someone would want to convey, the output is rather quirky, ultimately meaning that it is much easier to generate the `.pdf` and import it into another program like Inkscape.
+
+* The X-axis and scaling of the features is set by the boundaries from `-b` and `-e` in `extract_coordinates.py`, meaning to make two graphs to compare loci, the span of `-b` to `-e` should be the same
+* Each gene or transcript is printed on a different Y-position, of up to 30 features (this can be changed). This means that splice variants are each on their own line, as are genes in operons.
+* All features are colored the same.
+* The names are taken from the `ID` tag in the GFF, which may not be the same as `Name`.
+
+The raw output is shown below. Some feature names are cut off due to the grouping of objects. These can be ungrouped and moved.
+
+![lux_locus_short_annot.png](https://github.com/wrf/genomeGTFtools/blob/master/test_data/lux_locus_short_annot.png)
+
+Naturally this requires some work to make it presentable, i.e. flipping the axis, coloring each gene, renaming them from the GFF ID, which did not have meaningful IDs for most of the proteins. Thus, a final version may look more like this, maintaining the color scheme used in [Dunlap 2009](http://linkinghub.elsevier.com/retrieve/pii/B9780123739445000663).
+
+![lux_locus_nice_looking.png](https://github.com/wrf/genomeGTFtools/blob/master/test_data/lux_locus_nice_looking.png)
+
 ## repeat2gtf
 From scaffolds or masked contigs, generate a feature for each long repeat of N's or n's (or any other arbitrary letter or pattern). The most obvious application is to make a track for gaps, which is the default behavior. The search is a regular expression, so could be any other simple repeat as well - CACA, CAG (glutamine repeats).
 
   `repeat2gtf.py scaffolds.fasta > scaffolds_gaps.gtf`
+
+In jbrowse, I typically change a few options in the style to make this more visually useful. The color is set to black, the height is reduced to narrow bars, and the label is the score, which is the length of the gap.
+
+```
+         "style" : {
+            "className" : "feature",
+            "color" : "#000000",
+            "height" : 5,
+            "label" : "score"
+         },
+```
 
 ## pal2gtf
 Convert palindromic repeats from the [EMBOSS program palindrome](http://emboss.sourceforge.net/apps/release/6.6/emboss/apps/palindrome.html) into GTF features. This was meant for mitochondrial genomes, but could potentially be whole nuclear genomes.
