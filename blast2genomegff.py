@@ -8,7 +8,7 @@
 # for SOFA terms:
 # https://github.com/The-Sequence-Ontology/SO-Ontologies/blob/master/subsets/SOFA.obo
 
-'''blast2genomegff.py  last modified 2020-03-04
+'''blast2genomegff.py  last modified 2020-05-02
     convert blast output to gff format for genome annotation
     blastx of a transcriptome (genome guided or de novo) against a protein DB:
 
@@ -301,9 +301,9 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxta
 		if report_percent: # show target as percent, like CALM1_HUMAN 2.6 98.0 +
 			S_env_start = float(lsplits[8]) * 100 / subjectlength
 			S_env_end = float(lsplits[9]) * 100 / subjectlength
-			parentattrs = "ID={0}.{1}.{2};Target={1} {3:.1f} {4:.1f} {5};same_sense={6}".format(qseqid, sseqid, hitDictCounter[sseqid], S_env_start, S_env_end, "-" if backframe else "+", "0" if backframe else "1")
+			parentattrs = "ID={1}.{0}.{2};Target={1} {3:.1f} {4:.1f} {5};same_sense={6}".format(qseqid, sseqid, hitDictCounter[sseqid], S_env_start, S_env_end, "-" if backframe else "+", "0" if backframe else "1")
 		else: # show target as indices of the match protein
-			parentattrs = "ID={0}.{1}.{2};Target={1} {3} {4} {5};same_sense={6}".format(qseqid, sseqid, hitDictCounter[sseqid], lsplits[8], lsplits[9], "-" if backframe else "+", "0" if backframe else "1")
+			parentattrs = "ID={1}.{0}.{2};Target={1} {3} {4} {5};same_sense={6}".format(qseqid, sseqid, hitDictCounter[sseqid], lsplits[8], lsplits[9], "-" if backframe else "+", "0" if backframe else "1")
 
 		# add additional tags
 		parentattrs += ";Gaps={};Mismatch={};Evalue={}".format(gapopens, mismatches, evalue)
@@ -319,8 +319,8 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxta
 
 		# make child features for each interval
 		for interval in genomeintervals:
-		# thus ID appears as qseqid.sseqid.number, so avic1234.avGFP.1, and uses ID in most browsers
-			outline = "{0}\t{1}\tmatch_part\t{3}\t{4}\t{5}\t{6}\t.\tParent={7}.{8}.{9}\n".format(scaffold, programname, outputtype, interval[0], interval[1], bitscore, strand, qseqid, sseqid, hitDictCounter[sseqid] )
+		# thus ID appears as sseqid.qseqid.number, so avGFP.Renre1234.1, and uses ID in most browsers
+			outline = "{0}\t{1}\tmatch_part\t{3}\t{4}\t{5}\t{6}\t.\tParent={8}.{7}.{9}\n".format(scaffold, programname, outputtype, interval[0], interval[1], bitscore, strand, qseqid, sseqid, hitDictCounter[sseqid] )
 			sys.stdout.write( outline )
 	sys.stderr.write("# Removed {} hits by shortness\n".format(shortRemovals) )
 	sys.stderr.write("# Removed {} hits by bitscore\n".format(bitsRemovals) )
