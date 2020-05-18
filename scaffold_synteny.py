@@ -3,7 +3,7 @@
 # scaffold_synteny.py created 2019-03-27
 
 '''
-scaffold_synteny.py  v1.1 last modified 2020-02-25
+scaffold_synteny.py  v1.1 last modified 2020-05-18
     makes a table of gene matches between two genomes, to detect synteny
     these can be converted into a dotplot of gene matches
 
@@ -40,7 +40,6 @@ Rscript synteny_2d_plot.R monbr1_vs_srosetta_scaffold2d_points.tab Monosiga-brev
 import sys
 import argparse
 import time
-import os
 import re
 import gzip
 import random
@@ -52,13 +51,13 @@ def make_seq_length_dict(contigsfile, maxlength, exclusiondict, wayout, isref=Fa
 	lengthdict = {}
 	if contigsfile.rsplit('.',1)[-1]=="gz": # autodetect gzip format
 		opentype = gzip.open
-		sys.stderr.write("# Parsing genomic contigs {} as gzipped  ".format(contigsfile) + time.asctime() + os.linesep)
+		sys.stderr.write("# Parsing genomic contigs {} as gzipped  {}\n".format(contigsfile, time.asctime() ) )
 	else: # otherwise assume normal open for fasta format
 		opentype = open
-		sys.stderr.write("# Parsing genomic contigs {}  ".format(contigsfile) + time.asctime() + os.linesep)
+		sys.stderr.write("# Parsing genomic contigs {}  {}\n".format(contigsfile, time.asctime() ) )
 	for seqrec in SeqIO.parse(opentype(contigsfile,'rt'), "fasta"):
 		lengthdict[seqrec.id] = len(seqrec.seq)
-	sys.stderr.write("# Found {} contigs  ".format(len(lengthdict)) + time.asctime() + os.linesep)
+	sys.stderr.write("# Found {} contigs  {}\n".format(len(lengthdict), time.asctime() ) )
 
 	# make scaffold key as s1 for query and s2 for reference db
 	scafkey = "s2" if isref else "s1"
@@ -79,7 +78,7 @@ def make_seq_length_dict(contigsfile, maxlength, exclusiondict, wayout, isref=Fa
 		wayout.write("{}\t{}\t{}\t{}\t{:.6f}\t{}\t{:.6f}\t-\n".format(scafkey, k, scaffoldcounter, v, v*1.0/totalgenomesize, lengthsum, lengthsum*1.0/totalgenomesize) )
 		if lengthsum >= maxlength_MB: # keep adding scaffolds until length limit is hit or exceeded
 			break
-	sys.stderr.write("# Kept {} contigs, for {} bases, last contig was {}bp long  ".format( len(sorteddict), lengthsum, v) + time.asctime() + os.linesep)
+	sys.stderr.write("# Kept {} contigs, for {} bases, last contig was {}bp long  {}\n".format( len(sorteddict), lengthsum, v, time.asctime() ) )
 	return sorteddict
 
 def parse_gtf(gtffile, excludedict, delimiter, isref=False):
@@ -89,12 +88,12 @@ def parse_gtf(gtffile, excludedict, delimiter, isref=False):
 	else:
 		genesbyscaffold = defaultdict(dict) # scaffolds as key, then gene name, then gene position integer
 
-	if gtffile.rsplit('.',1)[1]=="gz": # autodetect gzip format
+	if gtffile.rsplit('.',1)[-1]=="gz": # autodetect gzip format
 		opentype = gzip.open
-		sys.stderr.write("# Parsing loci from {} as gzipped  ".format(gtffile) + time.asctime() + os.linesep)
+		sys.stderr.write("# Parsing loci from {} as gzipped  {}\n".format(gtffile, time.asctime() ) )
 	else: # otherwise assume normal open for fasta format
 		opentype = open
-		sys.stderr.write("# Parsing loci from {}  ".format(gtffile) + time.asctime() + os.linesep)
+		sys.stderr.write("# Parsing loci from {}  {}\n".format(gtffile, time.asctime() ) )
 	for line in opentype(gtffile,'rt'):
 		line = line.strip()
 		if line and not line[0]=="#": # ignore empty lines and comments
@@ -118,19 +117,20 @@ def parse_gtf(gtffile, excludedict, delimiter, isref=False):
 					genesbyscaffold[scaffold][geneid] = genemidpoint
 
 	if len(genesbyscaffold) > 0:
-		sys.stderr.write("# Found {} genes  ".format( sum( list( map( len,genesbyscaffold.values()) ) ) ) + time.asctime() + os.linesep)
+		genetotal = sum( list( map( len, genesbyscaffold.values() ) ) )
+		sys.stderr.write("# Found {} genes  {}\n".format( genetotal, time.asctime() ) )
 		return genesbyscaffold
 	else:
 		sys.stderr.write("# WARNING: NO GENES FOUND\n")
 
 def parse_tabular_blast(blasttabfile, evaluecutoff, querydelimiter, refdelimiter, maxhits, group_removal_max):
 	'''read tabular blast file, return a dict where key is query ID and value is dict of subject ID and bitscore'''
-	if blasttabfile.rsplit('.',1)[1]=="gz": # autodetect gzip format
+	if blasttabfile.rsplit('.',1)[-1]=="gz": # autodetect gzip format
 		opentype = gzip.open
-		sys.stderr.write("# Parsing tabular blast output {} as gzipped  ".format(blasttabfile) + time.asctime() + os.linesep)
+		sys.stderr.write("# Parsing tabular blast output {} as gzipped  {}\n".format(blasttabfile, time.asctime() ) )
 	else: # otherwise assume normal open for fasta format
 		opentype = open
-		sys.stderr.write("# Parsing tabular blast output {}  ".format(blasttabfile) + time.asctime() + os.linesep)
+		sys.stderr.write("# Parsing tabular blast output {}  {}\n".format(blasttabfile, time.asctime() ) )
 	query_to_sub_dict = defaultdict( lambda: defaultdict(int) )
 	evalueRemovals = 0
 	subjectcounter = defaultdict(int)
@@ -149,7 +149,7 @@ def parse_tabular_blast(blasttabfile, evaluecutoff, querydelimiter, refdelimiter
 		bitscore = float(lsplits[11])
 		query_to_sub_dict[queryseq][subjectid] += bitscore
 		subjectcounter[subjectid] += 1
-	sys.stderr.write("# Found blast hits for {} query sequences, removed {} hits by evalue  ".format( len(query_to_sub_dict), evalueRemovals ) + time.asctime() + os.linesep)
+	sys.stderr.write("# Found blast hits for {} query sequences, removed {} hits by evalue  {}\n".format( len(query_to_sub_dict), evalueRemovals, time.asctime() ) )
 	# filter by number of hits
 	total_kept = 0
 	large_group_removals_qu = {} # to prevent multiple counting, store keys
@@ -179,7 +179,7 @@ def generate_synteny_points(queryScafOffset, dbScafOffset, queryPos, dbPos, blas
 	'''combine all datasets and for each gene on the query scaffolds, print tab delimited data to stdout'''
 	printcount = 0
 	scaffoldtotals = defaultdict(int) # counts of total genes for each scaffold
-	sys.stderr.write("# Determining match positions  " + time.asctime() + os.linesep)
+	sys.stderr.write("# Determining match positions  {}\n".format( time.asctime() ) )
 	for scaffold, genedict in queryPos.items():
 		scaffoldcounts = defaultdict(int) # counts of hits to each reference scaffold
 		for gene, localposition in genedict.items():
@@ -226,7 +226,7 @@ def randomize_genes_globally(refdict):
 	'''take the query gtf dict and randomize the gene names for all genes on all scaffolds, return a similar dict of dicts'''
 	genepositions = {} # store gene positions
 	randomgenelist = []
-	sys.stderr.write("# Globally randomizing query gene positions  " + time.asctime() + os.linesep)
+	sys.stderr.write("# Globally randomizing query gene positions  {}\n".format( time.asctime() ) )
 	for scaffold, genedict in refdict.items(): # iterate first to get list of all genes
 		for genename in genedict.keys():
 			randomgenelist.append(genename)
@@ -240,7 +240,7 @@ def randomize_genes_globally(refdict):
 		for genename, bounds in genedict.items():
 			randomgenesbyscaf[scaffold][randomgenelist[genecounter]] = genepositions[genename]
 			genecounter += 1
-	sys.stderr.write("# Randomized {} genes  ".format(genecounter) + time.asctime() + os.linesep)
+	sys.stderr.write("# Randomized {} genes  {}\n".format(genecounter, time.asctime() ) )
 	return randomgenesbyscaf
 
 def randomize_genes_locally(refdict):
@@ -249,7 +249,7 @@ def randomize_genes_locally(refdict):
 	scaffoldcount = 0
 	total_genes = 0
 	randomgenesbyscaf = defaultdict(dict) # scaffolds as key, then gene name, then genemapping tuple
-	sys.stderr.write("# Randomizing query gene positions by scaffold  " + time.asctime() + os.linesep)
+	sys.stderr.write("# Randomizing query gene positions by scaffold  {}\n".format( time.asctime() ) )
 	for scaffold, genedict in refdict.items(): # iterate first to get list of all genes
 		scaffoldcount += 1
 		randomgenelist = [] # generate new list to randomize for each scaffold
@@ -264,7 +264,7 @@ def randomize_genes_locally(refdict):
 			randomgenesbyscaf[scaffold][randomgenelist[genecounter]] = genepositions[genename]
 			genecounter += 1
 			total_genes += 1
-	sys.stderr.write("# Randomized {} genes on {} scaffolds  ".format(total_genes,scaffoldcount) + time.asctime() + os.linesep)
+	sys.stderr.write("# Randomized {} genes on {} scaffolds  {}\n".format(total_genes, scaffoldcount, time.asctime() ) )
 	return randomgenesbyscaf
 
 def randomize_db_locally(refdict):
@@ -272,7 +272,7 @@ def randomize_db_locally(refdict):
 	scaffoldcount = 0
 	total_genes = 0
 	randomgenesbyscaf = {} # key is reference gene ID, value is list of scaffold and gene midpoint position
-	sys.stderr.write("# Randomizing reference gene positions by scaffold  " + time.asctime() + os.linesep)
+	sys.stderr.write("# Randomizing reference gene positions by scaffold  {}\n".format( time.asctime() ) )
 	for scaffold, genedict in refdict.items(): # iterate first to get list of all genes
 		scaffoldcount += 1
 		randomposlist = [] # generate new list of the gene positions to randomize for each scaffold
@@ -286,19 +286,19 @@ def randomize_db_locally(refdict):
 			randomgenesbyscaf[genename] = [scaffold, randomposlist[genecounter]]
 			genecounter += 1
 			total_genes += 1
-	sys.stderr.write("# Randomized {} genes on {} scaffolds  ".format(total_genes,scaffoldcount) + time.asctime() + os.linesep)
+	sys.stderr.write("# Randomized {} genes on {} scaffolds  {}\n".format(total_genes, scaffoldcount, time.asctime() ) )
 	return randomgenesbyscaf
 
 def make_exclude_dict(excludefile):
 	'''read file of list of contigs, and return a dict where keys are contig names to exclude'''
-	sys.stderr.write("# Reading exclusion list {}  ".format(excludefile) + time.asctime() + os.linesep)
+	sys.stderr.write("# Reading exclusion list {}  {}\n".format(excludefile, time.asctime() ) )
 	exclusion_dict = {}
 	for term in open(excludefile,'r'):
 		term = term.strip()
 		if term[0] == ">":
 			term = term[1:]
 		exclusion_dict[term] = True
-	sys.stderr.write("# Found {} contigs to exclude  ".format(len(exclusion_dict) ) + time.asctime() + os.linesep)
+	sys.stderr.write("# Found {} contigs to exclude  {}\n".format( len(exclusion_dict), time.asctime() ) )
 	return exclusion_dict
 
 def main(argv, wayout):
