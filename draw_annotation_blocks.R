@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 # convert tabular annotation format to rectangle blocks
 # or polygon blocks for single CDS genes, like bacteria
-# last modified 2020-05-07
+# last modified 2020-05-18
 
 args = commandArgs(trailingOnly=TRUE)
 
@@ -15,8 +15,9 @@ annottab = read.table(inputfile,header=FALSE,sep="\t",stringsAsFactors=FALSE)
 num_tx = 30
 seqcount = args[2]
 if (!is.na(seqcount)) {
-	num_tx = seqcount
+	num_tx = as.integer(seqcount)
 }
+
 # default is to draw rectangles as exons with an arrow
 # for bacteria, genes are usually entire CDS and are better rendered with polygons
 draw_polygons = FALSE
