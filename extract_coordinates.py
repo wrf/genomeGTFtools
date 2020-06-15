@@ -29,7 +29,7 @@ from collections import defaultdict
 #from matplotlib.patches import Arrow
 #from matplotlib.patches import Polygon
 
-def extract_features(gtffile, target_scaffold, target_start, target_end, keep_only_full=False, gene_level_only=False, is_bacterial=False):
+def extract_features(gtffile, target_scaffold, target_start, target_end, keep_only_full=False, gene_level_only=False, use_cds=False, is_bacterial=False):
 	if gtffile.rsplit('.',1)[-1]=="gz": # autodetect gzip format
 		opentype = gzip.open
 		sys.stderr.write("# Parsing gff from {} as gzipped\n".format(gtffile) )
@@ -76,11 +76,16 @@ def extract_features(gtffile, target_scaffold, target_start, target_end, keep_on
 				gene_id = attrd.get("Parent")
 				outline = "{}\t{}\t{}\t{}\t{}\n".format( gene_id, feature, fstart, fend, strand )
 				sys.stdout.write( outline )
-			elif feature=="CDS" and is_bacterial:
-				gene_id = attrd.get("Parent")
-				outline = "{}\tgene\t{}\t{}\t{}\n".format( gene_id, fstart, fend, strand )
-				sys.stdout.write( outline )
-				genecounter += 1
+			elif feature=="CDS":
+				if is_bacterial:
+					gene_id = attrd.get("Parent")
+					outline = "{}\tgene\t{}\t{}\t{}\n".format( gene_id, fstart, fend, strand )
+					sys.stdout.write( outline )
+					genecounter += 1
+				elif use_cds:
+					gene_id = attrd.get("Parent")
+					outline = "{}\texon\t{}\t{}\t{}\n".format( gene_id, feature, fstart, fend, strand )
+					sys.stdout.write( outline )
 	sys.stderr.write("# Read {} lines, kept {} transcripts/genes\n".format(linecounter, genecounter) )
 	if genecounter==0:
 		if target_scaffold in scaffold_tracker:
@@ -98,6 +103,7 @@ def main(argv, wayout):
 	#parser.add_argument('-o','--output', help="name of output file (as .png)")
 	parser.add_argument('-s','--scaffold', help="name of target scaffold")
 	parser.add_argument('-f','--full-only', action="store_true", help="only keep features completely within the selected window")
+	parser.add_argument('-c','--use_cds', action="store_true", help="use CDS features when drawing genes if exons are not given, not used with -G or -p")
 	parser.add_argument('-G','--genes-only', action="store_true", help="draw only genes, ignore exon features")
 	parser.add_argument('-p','--prokaryote', action="store_true", help="assume annotation is for a prokaryote, use gene or CDS features, and no exons or mRNA are specified")
 	parser.add_argument('-v','--verbose', action="store_true", help="extra output")
@@ -109,7 +115,7 @@ def main(argv, wayout):
 	sys.stdout.write( axis_line )
 
 	for gff_file in args.gff_files:
-		extract_features( gff_file, args.scaffold, args.begin, args.end, args.full_only, args.genes_only, args.prokaryote )
+		extract_features( gff_file, args.scaffold, args.begin, args.end, args.full_only, args.genes_only, args.use_cds, args.prokaryote )
 
 
 
