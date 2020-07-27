@@ -240,11 +240,22 @@ ln -s /mnt/genome_data/ data
 Another drive is used to store the data, rather than the directory `/var/www/`. Note that the default Apache2 user (`www-data`) may need to be configured for certain folders, or given `+x` permissions (i.e. of the entire directory tree up to the data directory). In this case, all key files should have `+r` permissions (they probably already do), and directories up to that folder should have `+x`. This would mean that in the above example, the user `www-data` must have permissions to access `/mnt/` and `/mnt/genome-data/`.
 
 ## General troubleshooting ##
-Sometimes tracks have display errors, which can be viewed in the console, in Firefox this is done with `ctrl+shift+k`
+Sometimes tracks have display errors, which can be viewed in the console, in Firefox this is done with `ctrl+shift+k`.
 
-`"function(feature) { console.log(feature.); }`
+`"function(feature) { console.log(this.feature); }"`
 
-`"function(feature) { console.log(feature._parent); }`
+`"function(feature) { console.log(this.feature._parent); }"`
+
+`"function(feature) { console.log(this.feature.get('subfeatures')[1].get('product') ); }"`
+
+For debugging, this seems to be the easiest when the features are queried in the mouse-over options.
+
+```
+         "onClick" : {
+            "label" : ""function(feature) { console.log(this.feature); }",
+            "title" : "{name} {type}",
+         },
+```
 
 ## Et cetera ##
 Big thanks to [cmdcolin](https://github.com/cmdcolin) and [agduncan94](https://github.com/agduncan94) for technical help.
