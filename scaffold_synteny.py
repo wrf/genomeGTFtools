@@ -3,7 +3,7 @@
 # scaffold_synteny.py created 2019-03-27
 
 '''
-scaffold_synteny.py  v1.1 last modified 2020-05-18
+scaffold_synteny.py  v1.1 last modified 2020-07-27
     makes a table of gene matches between two genomes, to detect synteny
     these can be converted into a dotplot of gene matches
 
@@ -104,10 +104,12 @@ def parse_gtf(gtffile, excludedict, delimiter, isref=False):
 			feature = lsplits[2]
 			attributes = lsplits[8]
 			if feature=="gene" or feature=="transcript" or feature=="mRNA":
-				geneid = re.search('ID=([\w.|-]+)', attributes).group(1)
+				raw_geneid = re.search('ID=([\w.|-]+)', attributes).group(1)
 				# if a delimiter is given for either query or db, then split
 				if delimiter:
 					geneid = geneid.rsplit(delimiter,1)[0]
+				else:
+					geneid = raw_geneid
 
 				# generate midpoint of each gene as average of start and end positions
 				genemidpoint = (int(lsplits[3]) + int(lsplits[4])) / 2
@@ -119,6 +121,7 @@ def parse_gtf(gtffile, excludedict, delimiter, isref=False):
 	if len(genesbyscaffold) > 0:
 		genetotal = sum( list( map( len, genesbyscaffold.values() ) ) )
 		sys.stderr.write("# Found {} genes  {}\n".format( genetotal, time.asctime() ) )
+		sys.stderr.write("# GFF names parsed as {} from {}\n".format( geneid, raw_geneid ) )
 		return genesbyscaffold
 	else:
 		sys.stderr.write("# WARNING: NO GENES FOUND\n")
@@ -171,7 +174,7 @@ def parse_tabular_blast(blasttabfile, evaluecutoff, querydelimiter, refdelimiter
 			hit_counter += 1 # should never get above maxhits
 		total_kept += hit_counter
 	sys.stderr.write("# Removed {} queries and {} subjects with {} or more hits\n".format( len(large_group_removals_qu), len(large_group_removals_sb), group_removal_max ) )
-	sys.stderr.write("# Names parsed as {} from {}, and {} from {}\n".format( queryseq,lsplits[0], subjectid,lsplits[1] ))
+	sys.stderr.write("# Blast names parsed as {} from {}, and {} from {}\n".format( queryseq,lsplits[0], subjectid,lsplits[1] ))
 	sys.stderr.write("# Kept {} blast hits\n".format( total_kept ) )
 	return filtered_hit_dict
 
