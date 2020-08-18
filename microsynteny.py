@@ -2,7 +2,7 @@
 # microsynteny.py
 # v1.0 2015-10-09
 
-'''microsynteny.py v1.3 last modified 2020-03-16
+'''microsynteny.py v1.3 last modified 2020-08-18
 
 microsynteny.py -q query.gtf -d ref_species.gtf -b query_vs_ref_blast.tab -E ../bad_contigs -g -D '_' --blast-query-delimiter '.' > query_vs_ref_microsynteny.tab
 
@@ -63,10 +63,14 @@ def parse_gtf(gtffile, exons_to_genes, cds_to_genes, excludedict, delimiter, isr
 	else:
 		genesbyscaffold = defaultdict(dict) # scaffolds as key, then gene name, then genemapping tuple
 
-	if exons_to_genes or cds_to_genes:
-		nametoscaffold = {} # in order to get transcript boundaries, store names to scaffolds
-		nametostrand = {} # store strand by gene ID
-		exonboundaries = defaultdict(list) # make list of tuples of exons by transcript, to determine genes
+	feature_counts = defaultdict(int) # count freq of each feature type
+
+	# used if exons_to_genes or cds_to_genes, otherwise should stay empty
+	nametoscaffold = {} # in order to get transcript boundaries, store names to scaffolds
+	nametostrand = {} # store strand by gene ID
+	exonboundaries = defaultdict(list) # make list of tuples of exons by transcript, to determine genes
+
+	# begin parsing
 	for line in opentype(gtffile,'rt'):
 		line = line.strip()
 		if line and not line[0]=="#": # ignore empty lines and comments
@@ -75,6 +79,7 @@ def parse_gtf(gtffile, exons_to_genes, cds_to_genes, excludedict, delimiter, isr
 			if excludedict and excludedict.get(scaffold, False):
 				continue # skip anything that hits to excludable scaffolds
 			feature = lsplits[2]
+			feature_counts[feature] += 1
 			attributes = lsplits[8]
 			if feature=="gene" or feature=="transcript" or feature=="mRNA":
 				try:
@@ -113,6 +118,10 @@ def parse_gtf(gtffile, exons_to_genes, cds_to_genes, excludedict, delimiter, isr
 				cdsbounds = (int(lsplits[3]), int(lsplits[4]))
 				exonboundaries[geneid].append(cdsbounds) # for calculating gene boundaries
 
+	if len(exonboundaries)==0:
+		if feature_counts.get("CDS",0) > 0:
+			sys.stderr.write("WARNING: NO EXONS FOUND, {} CDS features detected, try to rerun with -c\n".format( feature_counts.get("CDS") ) )
+
 	# after parsing file, calculate stats and return
 	if len(genesbyscaffold) > 0: # even if no-genes was set, this should be more than 0 if genes were in one gtf
 		if isref:
@@ -126,15 +135,18 @@ def parse_gtf(gtffile, exons_to_genes, cds_to_genes, excludedict, delimiter, isr
 		return genesbyscaffold
 	# for exon or CDS mode
 	else: # generate gene boundaries by scaffold
-		sys.stderr.write("# Estimated {} genes from {} exons  ".format(len(exonboundaries), sum(len(x) for x in exonboundaries.values() ) ) + time.asctime() + os.linesep)
-		for gene,exons in exonboundaries.items():
-			if isref: # make different tuple for reference genes, since they are indexed by name, not scaffold
+		subpart_total = sum(len(x) for x in exonboundaries.values())
+		sys.stderr.write("# Estimated {} genes from {} subparts  {}\n".format(len(exonboundaries), subpart_total, time.asctime() ) )
+		if isref: # make different tuple for reference genes, since they are indexed by name, not scaffold
+			for gene,exons in exonboundaries.items():
 				refbounds = refgene(scaffold=nametoscaffold[gene], start=min(x[0] for x in exons), end=max(x[1] for x in exons), strand=nametostrand[gene] )
 				genesbyscaffold[gene] = refbounds
-			else:
+			genecount = len(genesbyscaffold) # uses len here
+		else:
+			for gene,exons in exonboundaries.items():
 				boundstrand = querygene(start=min(x[0] for x in exons), end=max(x[1] for x in exons), strand=nametostrand[gene] )
 				genesbyscaffold[nametoscaffold[gene]][gene] = boundstrand
-		genecount = len(genesbyscaffold) # uses len here
+			genecount = sum(len(x) for x in genesbyscaffold.values()) # must get length for each sub-dict of each scaffold
 		sys.stderr.write("# Found {} genes  {}\n".format( genecount, time.asctime() ) )
 		return genesbyscaffold
 
@@ -409,6 +421,8 @@ def main(argv, wayout):
 		exclusionDict = None
 
 	### SETUP DICTIONARIES ###
+	if args.cds_only:
+		sys.stderr.write("# -c ENABLED, will determine genes from CDS features\n")
 	if args.switch_query:
 		querydict = parse_gtf(args.db_gtf, args.no_genes, args.cds_only, exclusionDict, args.db_delimiter)
 		refdict = parse_gtf(args.query_gtf, args.no_genes, args.cds_only, exclusionDict, args.query_delimiter, isref=True)
