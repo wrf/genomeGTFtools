@@ -35,7 +35,14 @@ def main(argv, wayout):
 			if feature=="transcript" or feature=="mRNA": # changed to ID and Name
 				lsplits[2] = args.transcript
 				transcriptid = attrd.get("transcript_id").replace('"','')
-				newattrs = "ID={0};Name={0}".format(transcriptid)
+				# if using StringTie with FPKM etc, then add transfer those as well
+				fpkm = attrd.get("FPKM","NA").replace('"','')
+				tpm = attrd.get("TPM","NA").replace('"','')
+				coverage = attrd.get("cov","NA").replace('"','')
+				if fpkm=="NA" or tmp=="NA" or coverage=="NA": # otherwise just use ID and name
+					newattrs = "ID={0};Name={0}".format(transcriptid)
+				else:
+					newattrs = "ID={0};Name={0};cov={1};FPKM={2};TPM={3}".format(transcriptid, coverage, fpkm, tpm )
 			elif feature=="exon": # change to ID and Parent
 				transcriptid = attrd.get("transcript_id").replace('"','')
 				exonnum = attrd.get("exon_number","").replace('"','')
