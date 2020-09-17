@@ -31,6 +31,8 @@ def main(argv, wayout):
 			lsplits = line.split("\t")
 			feature = lsplits[2]
 			attributes = lsplits[8]
+			if attributes.find("ID=")>-1:
+				raise ValueError("ERROR: ID tag found, file may already by GFF format:\n{}\n".format(line) )
 			attrd = dict([(field.strip().split(" ")) for field in attributes.split(";") if field])
 			if feature=="transcript" or feature=="mRNA": # changed to ID and Name
 				lsplits[2] = args.transcript
