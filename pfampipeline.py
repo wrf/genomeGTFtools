@@ -104,9 +104,9 @@ def main(argv, wayout):
 	args = parser.parse_args(argv)
 
 	if not os.path.isfile(args.input):
-		sys.exit("ERROR: CANNOT FIND FILE {}".format(args.input))
+		sys.exit("ERROR: CANNOT FIND INPUT FILE {}".format(args.input))
 	if not os.path.isfile(args.clans):
-		sys.exit("ERROR: CANNOT FIND FILE {}".format(args.input))
+		sys.exit("ERROR: CANNOT FIND CLAN LINKS FILE {}".format(args.clans))
 
 	hmmtblout = call_hmmscan(args.input, args.processors, args.PFAM)
 	pfamgff = call_pfamgff(hmmtblout, args.evalue)
