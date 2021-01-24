@@ -2,7 +2,7 @@
 #
 # extract_coordinates.py
 
-'''extract_coordinates.py  last modified 2020-07-21
+'''extract_coordinates.py  last modified 2021-01-24
 
     extract relevant regions from a GFF, to make simple figures
     resembling a view in a genome browser
@@ -79,6 +79,8 @@ def extract_features(gtffile, target_scaffold, target_start, target_end, keep_on
 			elif feature=="CDS":
 				if is_bacterial:
 					gene_id = attrd.get("Parent")
+					if gene_id is None: # some formats will use ID instead of Parent for CDS features
+						gene_id = attrd.get("ID")
 					outline = "{}\tgene\t{}\t{}\t{}\n".format( gene_id, fstart, fend, strand )
 					sys.stdout.write( outline )
 					genecounter += 1
