@@ -91,7 +91,7 @@ def extract_features(gtffile, target_scaffold, target_start, target_end, keep_on
 	sys.stderr.write("# Read {} lines, kept {} transcripts/genes\n".format(linecounter, genecounter) )
 	if genecounter==0:
 		if target_scaffold in scaffold_tracker:
-			sys.stderr.write("# NO GENES KEPT, check -b or -e\n")
+			sys.stderr.write("# NO GENES KEPT FROM {}, check -b or -e\n".format(gtffile) )
 		else:
 			sys.stderr.write("# NO GENES KEPT, SCAFFOLD:  {}  NOT FOUND, check -s\n".format(target_scaffold) )
 
