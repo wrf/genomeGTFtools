@@ -3,7 +3,7 @@
 ## Overview
 These are some scripts to convert various features and annotations into a GFF-like file for use in genome browsers. There are also general purpose tools for genome annotation.
 
-GFF (generic feature format) is a [tab-delimited pseudoformat](https://github.com/The-Sequence-Ontology/Specifications/blob/master/gff3.md) for annotating genomes, consisting of 8 well-defined columns, and a free-text 9th column (with some "guidelines" of what to include).
+GFF (generic feature format) is a [tab-delimited pseudoformat](https://github.com/The-Sequence-Ontology/Specifications/blob/master/gff3.md) for annotating genomes, consisting of 8 well-defined columns, and a free-text 9th column (with some "guidelines" of what to include). Most work in fixing a GFF involves fixing the final column. While this is not a great format, [most formats](https://www.genome.ucsc.edu/FAQ/FAQformat.html) are insufficient for one reason or another. Ultimately, it would be better if certain fields were explicit, like ID (a unique machine-understandable identifier, which could be accession, etc.), Parent (any other ID), and Name (like gene name). This would also allow for fast indexing or sorting by ID, Parent, or Name, which would also make it easier to [extract or process genes or features](https://github.com/wrf/genomeGTFtools#extract_coordinates) for graphics.
 
 | Column | Name | Description |
 |--------|------|-------------|
@@ -21,11 +21,13 @@ Many of these tools were used in [our analysis of the genome of the sponge *Teth
 
 ### Jump to: ###
 * [pfam2gff.py](https://github.com/wrf/genomeGTFtools#pfam2gff) PFAM domains of proteins/coding sequences made into a GFF
-* [blast2gff.py](https://github.com/wrf/genomeGTFtools#blast2gff) blast hits to GFF, generally indicating exons or conserved domains
+* [blast2gff.py](https://github.com/wrf/genomeGTFtools#blast2gff) blast hits directly on a genome (i.e. the scaffolds) to GFF, generally indicating exons or conserved domains
+* [blast2genomegff.py](https://github.com/wrf/genomeGTFtools#blast2genomegff) make features of blast hits against transcripts, showing the span of target proteins and include the splicing
 * [microsynteny.py](https://github.com/wrf/genomeGTFtools#microsynteny) using two GFF files of two different genomes and blast hits, determine blocks of conserved gene order
+* [extract_coordinates.py](https://github.com/wrf/genomeGTFtools#extract_coordinates) extract gene or exon information to draw diagrams that look like a genome browser
 
 ## number_contigs_by_length
-By convention, the longest chromosomes are numbered first. This naturally applies to scaffolds as well. Contigs/scaffolds can be renumbered and reordered with `number_contigs_by_length.py` script. Use the option `-c` to specify an additional output file of the conversion vector, that can be used to rename the scaffold column in any GFF file with the `rename_gtf_contigs.py` script.
+By convention, the longest chromosomes are numbered first. This naturally applies to scaffolds as well. Contigs/scaffolds can be renumbered and reordered with [number_contigs_by_length.py](https://github.com/wrf/genomeGTFtools/blob/master/number_contigs_by_length.py) script. Use the option `-c` to specify an additional output file of the conversion vector, that can be used to rename the scaffold column in any GFF file with the [rename_gtf_contigs.py](https://github.com/wrf/genomeGTFtools/blob/master/rename_gtf_contigs.py) script.
 
 ## pfam2gff
 This has two modes: one will convert the "tabular" hmmscan output (generated using PFAM-A (`Pfam-A.hmm`), which can be found in [the FTP section of PFAM](http://pfam.xfam.org/) as the hmm database, or direct download from `ftp://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.hmm.gz`) into a protein GFF with domains at the protein positions.
