@@ -8,7 +8,7 @@
 # for SOFA terms:
 # https://github.com/The-Sequence-Ontology/SO-Ontologies/blob/master/subsets/SOFA.obo
 
-'''blast2genomegff.py  last modified 2020-05-02
+'''blast2genomegff.py  last modified 2021-03-19
     convert blast output to gff format for genome annotation
     blastx of a transcriptome (genome guided or de novo) against a protein DB:
 
@@ -157,9 +157,11 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxta
 	'''parse blast hits from tabular blast and write each hit independently to stdout as genome gff'''
 	querynamedict = defaultdict(int) # counter of unique queries
 	# count results to filter
-	shortRemovals = 0
-	evalueRemovals = 0
-	bitsRemovals = 0
+	not_found_subjects = 0 # counter for subject IDs not found by lookup
+	shortRemovals = 0 # removals for lengthcutoff, by length of query, default is 0.1
+	evalueRemovals = 0 # removals for evaluecutoff, default is 1e-3
+	bitsRemovals = 0 # removals for bitscutoff, by bits per length, default is 0.1
+	total_kept = 0
 	# count frequency of other problems
 	missingscaffolds = 0 # count if scaffold cannot be found, suggesting naming problem
 	intervalproblems = 0 # counter if no intervals are found for some sequence
@@ -207,7 +209,10 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxta
 		gapopens = lsplits[5] # as above
 
 		# get length from length dict, otherwise return extremely large value, which would remove the hit
-		subjectlength = seqlengthdict.get(sseqid,1000000.0)
+		subjectlength = seqlengthdict.get(sseqid,None)
+		if subjectlength is None:
+			not_found_subjects += 1
+			continue
 		fractioncov = alignlength / subjectlength
 		bitslength = bitscore/alignlength
 		# filter low quality matches
@@ -220,6 +225,7 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxta
 		if evalue >= evaluecutoff: # skip domains with bad evalue
 			evalueRemovals += 1
 			continue
+		total_kept += 1
 
 		# then count queries
 		qseqid = lsplits[0]
@@ -322,11 +328,14 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxta
 		# thus ID appears as sseqid.qseqid.number, so avGFP.Renre1234.1, and uses ID in most browsers
 			outline = "{0}\t{1}\tmatch_part\t{3}\t{4}\t{5}\t{6}\t.\tParent={8}.{7}.{9}\n".format(scaffold, programname, outputtype, interval[0], interval[1], bitscore, strand, qseqid, sseqid, hitDictCounter[sseqid] )
 			sys.stdout.write( outline )
+	sys.stderr.write("# Counted {} lines and kept {} hits\n".format(linecounter, total_kept) )
+	if not_found_subjects:
+		sys.stderr.write("# Could not find {} sequences in database, check -d or -D \n".format(not_found_subjects) )
 	sys.stderr.write("# Removed {} hits by shortness\n".format(shortRemovals) )
 	sys.stderr.write("# Removed {} hits by bitscore\n".format(bitsRemovals) )
 	sys.stderr.write("# Removed {} hits by evalue\n".format(evalueRemovals) )
 	sys.stderr.write("# Removed {} hits that exceeded query max\n".format(maxremovals) )
-	sys.stderr.write("# Found {} hits for {} queries  ".format(sum(hitDictCounter.values()), len(querynamedict) ) + time.asctime() + os.linesep)
+	sys.stderr.write("# Found {} hits for {} queries  {}\n".format(sum(hitDictCounter.values()), len(querynamedict), time.asctime() ) )
 	if backframecounts:
 		sys.stderr.write("# {} hits are antisense  ".format(backframecounts) + time.asctime() + os.linesep)
 	if intervalcounts:
