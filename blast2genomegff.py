@@ -8,7 +8,7 @@
 # for SOFA terms:
 # https://github.com/The-Sequence-Ontology/SO-Ontologies/blob/master/subsets/SOFA.obo
 
-'''blast2genomegff.py  last modified 2021-03-19
+'''blast2genomegff.py  last modified 2021-03-21
     convert blast output to gff format for genome annotation
     blastx of a transcriptome (genome guided or de novo) against a protein DB:
 
@@ -117,10 +117,26 @@ def gtf_to_intervals(gtffile, keepcds, skipexons, transdecoder, nogenemode, gene
 
 				if attributes.find("ID")>-1: # indicates gff3 format
 					geneid = re.search('ID=([\w.|-]+)', attributes).group(1)
-				elif attributes.find("Parent")>-1: # gff3 format but no ID
-					geneid = re.search('Parent=([\w.|-]+)', attributes).group(1)
 				elif attributes.find("gene_id")>-1: # indicates gtf format
 					geneid = re.search('transcript_id "([\w.|-]+)";', attributes).group(1)
+				else:
+					geneid = None
+
+				if attributes.find("Parent")>-1: # gff3 format but no ID
+					toplevel_ID = re.search('Parent=([\w.|-]+)', attributes).group(1)
+				elif attributes.find("gene_id")>-1: # indicates gtf format
+					toplevel_ID = re.search('gene_id "([\w.|-]+)";', attributes).group(1)
+				else:
+					toplevel_ID = None
+
+				if geneid is None and toplevel_ID is None: # means no feature info was found, so error
+					raise KeyError("ERROR: cannot extract ID or Parent from line {}\n{}\n".format(linecounter, line) )
+				# if either geneid or toplevel_ID are missing, use the other
+				if geneid is None and toplevel_ID is not None:
+					geneid = toplevel_ID
+				if geneid is not None and toplevel_ID is None:
+					toplevel_ID = geneid
+
 				# clean up transdecoder IDs
 				if transdecoder: # meaning CDS IDs will start with cds.gene.123|m.1
 					geneid = geneid.replace("cds.","") # simply remove the cds.
@@ -138,10 +154,10 @@ def gtf_to_intervals(gtffile, keepcds, skipexons, transdecoder, nogenemode, gene
 					boundaries = ( int(lsplits[3]), int(lsplits[4]) )
 					if nogenemode: # gtf contains only exon and CDS, so get gene info from each CDS
 						# strand and scaffold should be the same for each exon
-						genestrand[geneid] = strand
-						genescaffold[geneid] = scaffold
-					geneintervals[geneid].append(boundaries)
-	sys.stderr.write("# Counted {} lines and {} comments  ".format(linecounter, commentlines) + time.asctime() + os.linesep)
+						genestrand[toplevel_ID] = strand
+						genescaffold[toplevel_ID] = scaffold
+					geneintervals[toplevel_ID].append(boundaries)
+	sys.stderr.write("# Counted {} lines and {} comments  {}\n".format(linecounter, commentlines, time.asctime() ) )
 	if ignoredfeatures:
 		sys.stderr.write("# Ignored {} other features in the GFF\n".format(ignoredfeatures) )
 	if transcounter:
@@ -238,7 +254,7 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxta
 				accession = sseqid.split("|")[1] # should keep P0DI82
 			sseqid = sseqid.split("|")[2] # should change to TPC2B_HUMAN
 		else:
-			sseqid = sseqid.replace("|","")
+			sseqid = sseqid.replace("|","") ###TODO make this agree with seqlength dict
 		hitDictCounter[sseqid] += 1
 
 		# skip if there are already enough targets, default is 10
