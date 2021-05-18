@@ -52,7 +52,7 @@ def parse_pfam_gtf(pfamgtf, overlaplimit, verbose=False):
 	sys.stderr.write("# Parsing GTF from {}  {}\n".format(pfamgtf, time.asctime() ) )
 	for line in open(pfamgtf,'r').readlines():
 		line = line.strip()
-		if line and not line[0]=="#":
+		if line and line[0]!="#":
 			domcount += 1
 			lsplits = line.split("\t")
 			protid = lsplits[0]

@@ -6,7 +6,7 @@
 # https://github.com/The-Sequence-Ontology/SO-Ontologies/blob/master/subsets/SOFA.obo
 
 '''
-pfam2gff.py  last modified 2019-12-05
+pfam2gff.py  last modified 2021-05-18
 
     EXAMPLE USAGE:
     to convert to protein gff, where domains are protein coordinates
@@ -114,6 +114,7 @@ def parse_pfam_domains(pfamtabular, evaluecutoff, lengthcutoff, programname, out
 	shortRemovals = 0
 	intervalproblems = 0
 	intervalcounts = 0
+	writecount = 0
 	# for protein GFF, keep domains in dict for later sorting by position
 	protboundstoline = defaultdict(dict)
 
@@ -187,6 +188,8 @@ def parse_pfam_domains(pfamtabular, evaluecutoff, lengthcutoff, programname, out
 				intervalproblems += 1
 				continue
 
+			writecount += 1
+
 			# make Parent feature
 			allpositions = list(chain(*genomeintervals))
 			parentstart = min(allpositions)
@@ -206,6 +209,7 @@ def parse_pfam_domains(pfamtabular, evaluecutoff, lengthcutoff, programname, out
 
 		### FOR PROTEIN GFF ###
 		else: # for protein GFF, make outline for later sorting
+			writecount += 1
 			boundaries = (domstart,domend)
 			if debugmode:
 				bitlength = float(lsplits[13])/domainlength
@@ -213,7 +217,7 @@ def parse_pfam_domains(pfamtabular, evaluecutoff, lengthcutoff, programname, out
 			else:
 				outline = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t.\t.\tID={6}.{7}.{8};Name={6}.{7}.{8}\n".format(queryid, programname, outputtype, domstart, domend, domscore, pfamacc, targetname, domnumber)
 			protboundstoline[queryid][boundaries] = outline
-	sys.stderr.write("# Found {} domains for {} proteins  ".format(domaincounter, len(protnamedict) ) + time.asctime() + os.linesep)
+	sys.stderr.write("# Found {} domains for {} proteins, wrote {}  {}\n".format(domaincounter, len(protnamedict), writecount, time.asctime() ) )
 	if geneintervals: # in genome GFF mode, check if any CDS intervals were actually collected
 		if intervalcounts:
 			sys.stderr.write("# Wrote {} domain intervals\n".format(intervalcounts) )
