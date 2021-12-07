@@ -5,7 +5,7 @@
 # for SOFA terms:
 # https://github.com/The-Sequence-Ontology/SO-Ontologies/blob/master/subsets/SOFA.obo
 
-"""repeat2gtf.py  last modified 2019-10-10
+"""repeat2gtf.py  last modified 2021-12-07
     generates a GFF3 format file of repeats, typically Ns as gaps
   the script only searches the FORWARD strand, meaning would need
   to be run twice for non-palindromic sequences (e.g. CACA vs GTGT)
@@ -54,19 +54,19 @@ def main(argv, wayout):
 
 	# all integers initialized
 	seqcount = 0
-	seqsum = 0
+	combined_rep_len = 0
 	repcounter = 0
 	longestrepeat = 0
-	lrepcontig = ""
+	longestrepcontig = ""
 
 	# make the one or two regexps
 	repeatregex = re.compile("({0})+".format(args.repeat) )
 	if args.lowercase: # lowercase version of the same repeat
 		lowerrepeat = args.repeat.lower()
 		lcregex = re.compile("({0})+".format(lowerrepeat) )
-		sys.stderr.write("# Parsing repeats of {} and {} from {}  ".format(args.repeat, lowerrepeat, args.input_file.name) + time.asctime() + os.linesep)
+		sys.stderr.write("# Parsing repeats of {} and {} from {}  {}\n".format(args.repeat, lowerrepeat, args.input_file.name, time.asctime() ) )
 	else:
-		sys.stderr.write("# Parsing repeats of {} from {}  ".format(args.repeat, args.input_file.name) + time.asctime() + os.linesep)
+		sys.stderr.write("# Parsing repeats of {} from {}  {}\n".format(args.repeat, args.input_file.name, time.asctime() ) )
 
 	# begin iterating through sequences, then search the regular expression
 	for seqrec in SeqIO.parse(args.input_file, args.format):
@@ -79,8 +79,8 @@ def main(argv, wayout):
 				continue
 			if replen > longestrepeat:
 				longestrepeat = replen
-				lrepcontig = contig
-			seqsum += replen
+				longestrepcontig = contig
+			combined_rep_len += replen
 			repstart = rep.start()+1
 			repend = rep.end()
 			reptracker[repstart] = [repstart, repend, replen, args.repeat]
@@ -89,7 +89,7 @@ def main(argv, wayout):
 				replen = rep.end() - rep.start()
 				if replen < args.above or replen > args.below:
 					continue
-				seqsum += replen
+				combined_rep_len += replen
 				repstart = rep.start()+1
 				repend = rep.end()
 				reptracker[repstart] = [repstart, repend, replen, lowerrepeat]
@@ -97,10 +97,13 @@ def main(argv, wayout):
 			repcounter += 1
 			sys.stdout.write("{}\t{}\t{}\t{}\t{}\t{}\t.\t.\t{}={}.{}.{}.{}\n".format(contig, args.program, args.type, reptracker[startpos][0], reptracker[startpos][1], reptracker[startpos][2], args.attribute, args.identifier, reptracker[startpos][3], repcounter, reptracker[startpos][2]) )
 
-	sys.stderr.write("# Counted {} sequences  ".format(seqcount) + time.asctime() + os.linesep)
-	sys.stderr.write("# Counted {} repeats of {} total bases, average {:.2f}\n".format(repcounter, seqsum, seqsum*1.0/repcounter) )
+	sys.stderr.write("# Counted {} sequences  {}\n".format(seqcount, time.asctime() ) )
+	try:
+		sys.stderr.write("# Counted {} repeats of {} total bases, average {:.2f}\n".format(repcounter, combined_rep_len, combined_rep_len*1.0/repcounter) )
+	except ZeroDivisionError: # repcounter remains at 0, no repeats
+		sys.stderr.write( "# No repeats found\n" )
 	if longestrepeat:
-		sys.stderr.write("# Longest repeat was {} bases on {}\n".format(longestrepeat, lrepcontig) )
+		sys.stderr.write("# Longest repeat was {} bases on {}\n".format(longestrepeat, longestrepcontig) )
 
 if __name__ == "__main__":
 	main(sys.argv[1:],sys.stdout)
