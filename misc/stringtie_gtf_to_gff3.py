@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-'''
+'''stringtie_gtf_to_gff3.py  last modified 2021-12-07
+
 convert stringtie GTF to standard GFF (ID-Parent format)
 stringtie_gtf_to_gff3.py stringtie.gtf > stringtie.gff3
 
@@ -19,7 +20,7 @@ def main(argv, wayout):
 	parser.add_argument('--transcript', default="transcript", help="optional name for transcript features, default is transcript")
 	args = parser.parse_args(argv)
 
-	print >> sys.stderr, "# Converting {} to GFF".format(args.gtf)
+	sys.stderr.write( "# Converting {} to GFF\n".format(args.gtf) )
 	for line in open(args.gtf,'r'):
 		line = line.strip()
 		if line and line[0] != "#":
@@ -53,7 +54,7 @@ def main(argv, wayout):
 				else:
 					newattrs = "Parent={0}".format(transcriptid)
 			lsplits[8] = newattrs
-			print >> wayout, "\t".join(lsplits)
+			print( "\t".join(lsplits) , file=wayout )
 
 if __name__ == "__main__":
 	main(sys.argv[1:],sys.stdout)
