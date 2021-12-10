@@ -8,7 +8,7 @@
 # for SOFA terms:
 # https://github.com/The-Sequence-Ontology/SO-Ontologies/blob/master/subsets/SOFA.obo
 
-'''blast2genomegff.py  last modified 2021-03-21
+'''blast2genomegff.py  last modified 2021-12-10
     convert blast output to gff format for genome annotation
     blastx of a transcriptome (genome guided or de novo) against a protein DB:
 
@@ -73,8 +73,8 @@ def gtf_to_intervals(gtffile, keepcds, skipexons, transdecoder, nogenemode, gene
 	'''convert protein or gene intervals from gff to dictionary where mrna IDs are keys and lists of intervals are values'''
 	# this should probably be a class
 	geneintervals = defaultdict(list)
-	genestrand = {}
-	genescaffold = {}
+	gene_to_strand_dict = {} # key is ID, value is strand as str
+	gene_to_scaffold_dict = {} # 
 
 	commentlines = 0 # comment lines
 	linecounter = 0 # all lines that are not comments, even if ignored later
@@ -147,15 +147,15 @@ def gtf_to_intervals(gtffile, keepcds, skipexons, transdecoder, nogenemode, gene
 
 				if feature=="transcript" or feature=="mRNA": # or (aqumode and feature=="gene"):
 					transcounter += 1
-					genestrand[geneid] = strand
-					genescaffold[geneid] = scaffold
+					gene_to_strand_dict[geneid] = strand
+					gene_to_scaffold_dict[geneid] = scaffold
 				elif (feature=="exon" and not skipexons) or (keepcds and feature=="CDS"):
 					exoncounter += 1
 					boundaries = ( int(lsplits[3]), int(lsplits[4]) )
 					if nogenemode: # gtf contains only exon and CDS, so get gene info from each CDS
 						# strand and scaffold should be the same for each exon
-						genestrand[toplevel_ID] = strand
-						genescaffold[toplevel_ID] = scaffold
+						gene_to_strand_dict[toplevel_ID] = strand
+						gene_to_scaffold_dict[toplevel_ID] = scaffold
 					geneintervals[toplevel_ID].append(boundaries)
 	sys.stderr.write("# Counted {} lines and {} comments  {}\n".format(linecounter, commentlines, time.asctime() ) )
 	if ignoredfeatures:
@@ -163,13 +163,13 @@ def gtf_to_intervals(gtffile, keepcds, skipexons, transdecoder, nogenemode, gene
 	if transcounter:
 		sys.stderr.write("# Counted {} exons for {} inferred transcripts\n".format(exoncounter, transcounter) )
 	else: # no mRNA or transcript features were given, count was 0
-		transcounter = len(genescaffold)
+		transcounter = len(gene_to_scaffold_dict)
 		sys.stderr.write("# Counted {} exons for {} inferred transcripts\n".format(exoncounter, transcounter) )
 	if exoncounter==0:
 		sys.stderr.write("WARNING: NO suitable exons counted, check options -x or -G\n" )
-	return geneintervals, genestrand, genescaffold
+	return geneintervals, gene_to_strand_dict, gene_to_scaffold_dict
 
-def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxtargets, programname, outputtype, report_percent, donamechop, is_swissprot, seqlengthdict, descdict, get_accession, geneintervals, genestrand, genescaffold, debugmode=False):
+def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxtargets, programname, outputtype, report_percent, donamechop, is_swissprot, seqlengthdict, descdict, get_accession, geneintervals, gene_to_strand_dict, gene_to_scaffold_dict, debugmode=False):
 	'''parse blast hits from tabular blast and write each hit independently to stdout as genome gff'''
 	querynamedict = defaultdict(int) # counter of unique queries
 	# count results to filter
@@ -274,7 +274,7 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxta
 		hitstart = (hitstart - 1) * multiplier + 1
 		hitend = hitend * multiplier # end is necessarily the end of a codon
 		hitlength = abs(hitend - hitstart) + 1 # bases 1 to 6 should have length 6
-		scaffold = genescaffold.get(qseqid, None)
+		scaffold = gene_to_scaffold_dict.get(qseqid, None)
 		if scaffold is None:
 			missingscaffolds += 1
 			if missingscaffolds < 10:
@@ -282,15 +282,14 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxta
 			elif missingscaffolds == 10:
 				sys.stderr.write("WARNING: cannot get scaffold for {}, will not print further warnings\n".format( qseqid ) )
 			continue
-		strand = genestrand.get(qseqid, None)
+		strand = gene_to_strand_dict.get(qseqid, None)
 		genomeintervals = [] # to have empty iterable
-		if backframe: # reassign strand if match is backwards
-			strand = "+" if strand=="-" else "-"
+
 		# convert transcript nucleotide to genomic nucleotide, and split at exon bounds
 		if strand=='+':
-			genomeintervals = get_intervals(geneintervals[qseqid], hitstart, hitlength, doreverse=False)
+			genomeintervals = get_intervals(geneintervals[qseqid], hitstart, hitlength, doreverse = False )
 		elif strand=='-': # implies '-'
-			genomeintervals = get_intervals(geneintervals[qseqid], hitstart, hitlength, doreverse=True)
+			genomeintervals = get_intervals(geneintervals[qseqid], hitstart, hitlength, doreverse = True )
 		elif strand=='.': # no strand is given by the input GFF
 			sys.stderr.write("WARNING: strand is undefined . for {} on {}\n".format(qseqid, scaffold) )
 			continue
@@ -299,6 +298,12 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxta
 			# meaning mismatch between query ID in blast and query ID in the GFF
 			sys.stderr.write("WARNING: possible mismatch in ID for {} on {}\n".format(qseqid, scaffold) )
 			continue
+
+		# reassign feature strand if match is backwards
+		# if gene is forward strand, and feature is backstranded, then assign as -
+		# if gene is reverse strand, and feature is backstranded, assign as +
+		if backframe: # meaning swap whatever the gene strand is
+			strand = "+" if strand=="-" else "-"
 
 		intervalcounts += len(genomeintervals)
 		if not len(genomeintervals):
@@ -320,12 +325,14 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxta
 		parentend = max(allpositions)
 
 		# create attributes string
+		target_sense_val = "-" if backframe else "+"
+		is_same_sense_val = "0" if backframe else "1"
 		if report_percent: # show target as percent, like CALM1_HUMAN 2.6 98.0 +
 			S_env_start = float(lsplits[8]) * 100 / subjectlength
 			S_env_end = float(lsplits[9]) * 100 / subjectlength
-			parentattrs = "ID={1}.{0}.{2};Target={1} {3:.1f} {4:.1f} {5};same_sense={6}".format(qseqid, sseqid, hitDictCounter[sseqid], S_env_start, S_env_end, "-" if backframe else "+", "0" if backframe else "1")
+			parentattrs = "ID={1}.{0}.{2};Target={1} {3:.1f} {4:.1f} {5};same_sense={6}".format(qseqid, sseqid, hitDictCounter[sseqid], S_env_start, S_env_end, target_sense_val, is_same_sense_val)
 		else: # show target as indices of the match protein
-			parentattrs = "ID={1}.{0}.{2};Target={1} {3} {4} {5};same_sense={6}".format(qseqid, sseqid, hitDictCounter[sseqid], lsplits[8], lsplits[9], "-" if backframe else "+", "0" if backframe else "1")
+			parentattrs = "ID={1}.{0}.{2};Target={1} {3} {4} {5};same_sense={6}".format(qseqid, sseqid, hitDictCounter[sseqid], lsplits[8], lsplits[9], target_sense_val, is_same_sense_val)
 
 		# add additional tags
 		parentattrs += ";Gaps={};Mismatch={};Evalue={}".format(gapopens, mismatches, evalue)
@@ -505,10 +512,10 @@ def main(argv, wayout):
 		sys.exit("ERROR: cannot find database file -d {}, exiting".format(args.database) )
 
 	# read the GFF
-	geneintervals, genestrand, genescaffold =  gtf_to_intervals(args.genes, args.cds_exons, args.skip_exons, args.transdecoder, args.no_genes, args.gff_delimiter)
+	geneintervals, gene_to_strand_dict, gene_to_scaffold_dict =  gtf_to_intervals(args.genes, args.cds_exons, args.skip_exons, args.transdecoder, args.no_genes, args.gff_delimiter)
 
 	# read the blast output
-	parse_tabular_blast(args.blast, args.coverage_cutoff, args.evalue_cutoff, args.score_cutoff, args.max_targets, args.program, args.type, args.percent_target, args.blast_delimiter, args.swissprot, protlendb, descdict, args.add_accession, geneintervals, genestrand, genescaffold)
+	parse_tabular_blast(args.blast, args.coverage_cutoff, args.evalue_cutoff, args.score_cutoff, args.max_targets, args.program, args.type, args.percent_target, args.blast_delimiter, args.swissprot, protlendb, descdict, args.add_accession, geneintervals, gene_to_strand_dict, gene_to_scaffold_dict)
 
 if __name__ == "__main__":
 	main(sys.argv[1:],sys.stdout)
