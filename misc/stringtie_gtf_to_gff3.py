@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-'''stringtie_gtf_to_gff3.py  last modified 2021-12-07
+'''stringtie_gtf_to_gff3.py  last modified 2021-12-19
 
 convert stringtie GTF to standard GFF (ID-Parent format)
 stringtie_gtf_to_gff3.py stringtie.gtf > stringtie.gff3
@@ -42,7 +42,7 @@ def main(argv, wayout):
 				fpkm = attrd.get("FPKM","NA").replace('"','')
 				tpm = attrd.get("TPM","NA").replace('"','')
 				coverage = attrd.get("cov","NA").replace('"','')
-				if fpkm=="NA" or tmp=="NA" or coverage=="NA": # otherwise just use ID and name
+				if fpkm=="NA" or tpm=="NA" or coverage=="NA": # otherwise just use ID and name
 					newattrs = "ID={0};Name={0}".format(transcriptid)
 				else:
 					newattrs = "ID={0};Name={0};cov={1};FPKM={2};TPM={3}".format(transcriptid, coverage, fpkm, tpm )
