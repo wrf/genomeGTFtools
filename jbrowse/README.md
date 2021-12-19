@@ -1,6 +1,6 @@
 # genomeGTFtools
 
-## Tips for use in [JBrowse](https://jbrowse.org/) ##
+## Tips for use in [JBrowse v1](https://jbrowse.org/) ##
 JBrowse is a genome browser that can run in a web browser. Because of the lack of consistency in GTF/GFF formats (all of which hinges on the flexibility of the final column), various genome browsers will interpret GFF files differently.
 
 Thus, to best configure GFF files for display in JBrowse, there are several considerations.
@@ -256,6 +256,28 @@ For debugging, this seems to be the easiest when the features are queried in the
             "title" : "{name} {type}",
          },
 ```
+
+## Jbrowse v2 ##
+Some of the callbacks have different syntax in Jbrowse1 and [Jbrowse2](https://jbrowse.org/jb2/docs/).
+
+To change the color of forward and reverse strands, in the config file one would write:
+
+```
+      "displays": [
+        {
+          "type": "LinearBasicDisplay",
+          "displayId": "stringtie_tx-1639388015558-LinearBasicDisplay",
+          "renderer": {
+            "type": "SvgFeatureRenderer",
+            "color1": "jexl:get( feature , 'strand') == 1? '#467758':'#41b677'"
+          }
+        }
+      ]
+```
+
+In the `FeatureTrack settings` menu in the Desktop version, one simply would instead write:
+
+`get( feature , 'strand') == 1? '#467758':'#41b677'`
 
 ## Et cetera ##
 Big thanks to [cmdcolin](https://github.com/cmdcolin) and [agduncan94](https://github.com/agduncan94) for technical help.
