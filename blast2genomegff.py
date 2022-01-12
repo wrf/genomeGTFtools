@@ -8,7 +8,7 @@
 # for SOFA terms:
 # https://github.com/The-Sequence-Ontology/SO-Ontologies/blob/master/subsets/SOFA.obo
 
-'''blast2genomegff.py  last modified 2021-12-10
+'''blast2genomegff.py  last modified 2022-01-12
     convert blast output to gff format for genome annotation
     blastx of a transcriptome (genome guided or de novo) against a protein DB:
 
@@ -34,6 +34,15 @@ blast2genomegff.py -b blastn_output.tab -p BLASTN -t EST_match > output.gff
     the reported score (column 6) is the bitscore
 
     for blastp, if GFF contains both exon and CDS features, use -x and -K
+
+    if using SwissProt/UniProt, use -S to correctly parse the fasta header
+  also allows  --add-description  or  -add-accession
+    for example, the header below would end up as part of the 9th column key-value pairs:
+  >sp|Q6YN16|HSDL2_HUMAN Hydroxysteroid dehydrogenase-like protein 2 OS=Homo sapiens OX=9606 GN=HSDL2 PE=1 SV=1
+
+  ID=g4.t1.HSDL2_HUMAN.1;Target=HSDL2_HUMAN 7 418 +;same_sense=1;Gaps=4;Mismatch=156;Evalue=3.3e-132;Description=Hydroxysteroid dehydrogenase-like protein 2;Accession=Q6YN16
+
+
 '''
 
 import sys
@@ -48,8 +57,8 @@ from Bio import SeqIO
 
 def make_seq_length_dict(sequencefile, is_swissprot, get_description):
 	sys.stderr.write("# Parsing target sequences from {}  ".format(sequencefile) + time.asctime() + os.linesep)
-	lengthdict = {}
-	otherdict = {}
+	lengthdict = {} # key is seqid, value is length of seq
+	otherdict = {} # key is seqid or swissprot id, value is description field from fasta parsing, or swissprot
 	if get_description:
 		sys.stderr.write("# Taking length and descriptions from sequences\n")
 	for seqrec in SeqIO.parse(sequencefile,'fasta'):
@@ -58,9 +67,12 @@ def make_seq_length_dict(sequencefile, is_swissprot, get_description):
 			sseqid = seqrec.id
 			if is_swissprot:
 				sseqid = sseqid.split("|")[2]
-			swissdescription = parse_swissprot_header(seqrec.description)
-			otherdict[sseqid] = swissdescription
-	sys.stderr.write("# Found {} sequences  ".format(len(lengthdict)) + time.asctime() + os.linesep)
+				swissdescription = parse_swissprot_header(seqrec.description)
+				otherdict[sseqid] = swissdescription
+			else:
+				sseqid = sseqid.replace("|","_")
+				otherdict[sseqid] = clean_up_description( str(seqrec.description) )
+	sys.stderr.write("# Found {} sequences  {}\n".format(len(lengthdict), time.asctime() ) )
 	return lengthdict, otherdict
 
 def get_max_frequency(intervals):
@@ -206,6 +218,7 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxta
 	else: # otherwise assume normal open for fasta format
 		opentype = open
 		sys.stderr.write("# Starting BLAST parsing on {}  ".format(blastfile) + time.asctime() + os.linesep)
+	# iterate
 	for line in opentype(blastfile, 'r'):
 		line = line.strip()
 		if not line or line[0]=="#": # skip comment lines
@@ -254,7 +267,7 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxta
 				accession = sseqid.split("|")[1] # should keep P0DI82
 			sseqid = sseqid.split("|")[2] # should change to TPC2B_HUMAN
 		else:
-			sseqid = sseqid.replace("|","") ###TODO make this agree with seqlength dict
+			sseqid = sseqid.replace("|","_") ###TODO make this agree with seqlength dict
 		hitDictCounter[sseqid] += 1
 
 		# skip if there are already enough targets, default is 10
@@ -417,17 +430,21 @@ def parse_swissprot_header(hitstring):
 	genedesc = genedesc.replace(" [ubiquinone]","")
 	genedesc = genedesc.replace(" [glutamine-hydrolyzing]","")
 
-	# change a bunch of disallowed symbols
-	underscore_symbols = "(),"
-	for symbol in underscore_symbols:
-		genedesc = genedesc.replace(symbol,"_")
-	remove_symbols = "'[]"
-	for symbol in underscore_symbols:
-		genedesc = genedesc.replace(symbol,"")
-	genedesc = genedesc.replace("/","-")
+	genedesc = clean_up_description(genedesc)
 
 	# return description
 	return genedesc
+
+def clean_up_description(description):
+	# change a bunch of disallowed symbols
+	underscore_symbols = "(),=|"
+	for symbol in underscore_symbols:
+		description = description.replace(symbol,"_")
+	remove_symbols = "'[]"
+	for symbol in underscore_symbols:
+		description = description.replace(symbol,"")
+	description = description.replace("/","-")
+	return description
 
 def get_intervals(intervals, domstart, domlength, doreverse=True):
 	'''return a list of intervals with genomic positions for the feature'''

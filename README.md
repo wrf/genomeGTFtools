@@ -125,6 +125,7 @@ As above for the domains in `pfam2gff.py`, entire blast hits to transcripts or p
    * `-e` : E-value cutoff, by default is 1e-3
    * `-s` : bitscore/length cutoff, remove hits with bitscore/length of under 0.1, that is, remove very distant matches. Set higher for more closely related species (0.3) or lower for distance species (0.05).
    * `-G` : ignore `gene` features, or other high-level features like `mRNA` or `transcript`, and instead extract the ID directly from each exon. This might be more convenient to use if exons are given unique IDs in the GFF, like `gene1.t1.exon1`. This is typically used with `-F`, as `-G -F "."`
+   * `-S` : specifies that the target proteins are from [SwissProt/UniProt](https://www.uniprot.org/). This is required for using `--add-accession`, and usually for `--add-description`, though the description should work anyway, but will not be parsed correctly.
 
 ### starting from StringTie transcripts
 [StringTie](https://ccb.jhu.edu/software/stringtie/) transcripts can be converted to fasta using the script `cufflinks_gtf_genome_to_cdna_fasta.pl` (packaged with [TransDecoder](https://github.com/TransDecoder/TransDecoder/wiki)). These are used as input for `blastx`. Note that with `blastx`, some can hit antisense, which suggests there is a protein on the antisense strand, or possibly there is an erroneous fusion of two adjacent genes.
