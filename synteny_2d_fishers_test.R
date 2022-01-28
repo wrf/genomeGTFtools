@@ -60,10 +60,13 @@ pointsdata = all2Ddata[is_points,]
 scaffold_data = data.frame( sc1 = pointsdata[,3], sc2 = pointsdata[,5])
 
 match_freq_table = table(scaffold_data)
+# must na.omit in case some scaffold has no matches
 scaf1_names = scafdata1[,2]
-sc1_reorder_index = match(scaf1_names,row.names(match_freq_table))[is_longscafs1]
+sc1_reorder_index = na.omit( match(scaf1_names,row.names(match_freq_table))[is_longscafs1] )
 scaf2_names = scafdata2[,2]
-sc2_reorder_index = match(scaf2_names,colnames(match_freq_table))[is_longscafs2]
+sc2_reorder_index = na.omit( match(scaf2_names,colnames(match_freq_table))[is_longscafs2] )
+# maybe need to switch indexing
+#match(row.names(match_freq_table), scaf1_names[is_longscafs1])
 
 reordered_table = match_freq_table[sc1_reorder_index,sc2_reorder_index]
 
@@ -90,11 +93,11 @@ ftest_p_value_mat = matrix( data=ftest_p_value_log, nrow=nscaf_g1, byrow=TRUE )
 
 # raw p value matrix for csv
 raw_p_value_mat = matrix( data=ftest_p_values, nrow=nscaf_g1, byrow=TRUE )
-colnames(raw_p_value_mat) = scaf2_names
+colnames(raw_p_value_mat) = scaf2_names[sc2_reorder_index]
 # write csv
 output_csv = gsub("([\\w/]+)\\....$","\\1.pvalue.csv",all2Dfile,perl=TRUE)
 print( paste("writing csv to",output_csv) )
-write.csv(raw_p_value_mat, file=output_csv, row.names=scaf1_names )
+write.csv(raw_p_value_mat, file=output_csv, row.names=scaf1_names[sc1_reorder_index] )
 #
 
 

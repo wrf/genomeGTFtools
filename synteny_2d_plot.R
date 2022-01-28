@@ -88,6 +88,7 @@ par( mar=c(4.5,4.5,1,1) )
 # dotcolor = "#c51b8a88" # pink
 # dotcolor = "#1c909988" # teal
 # dotcolor = "#2071d388" # blue
+# dotcolor = "#88419d88" # purple
 
 plot(genome_x, genome_y, pch=16, col="#18935188", cex=pointsize, main=all2Dfile, xlab=xlab, ylab=ylab, axes=FALSE, cex.lab=1.4)
 
@@ -104,6 +105,7 @@ barpos_y = rep(c( xmax*-0.01, xmax*-0.02),round(nscafs_y)/2)
 segments( barpos_y[1:(nscafs_y-1)], longscafs_y[1:(nscafs_y-1)], barpos_y[0:(nscafs_y-1)], longscafs_y[2:nscafs_y], lwd=3)
 segments( 0, longscafs_y, longscafs_x[nscafs_x], longscafs_y, lwd=0.1, col="#777777")
 
+# display numbers beside y-axis scaffold segments
 #textpos_y = rep(c( xmax*-0.02, xmax*-0.01 ),round(24)/2)
 #textmidbar = as.numeric(scafdata1[1:24,6]) - as.numeric(scafdata1[1:24,4])/2
 #text(textpos_y, textmidbar, 1:24, cex=0.5)
