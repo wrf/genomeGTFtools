@@ -3,7 +3,7 @@
 # scaffold_synteny.py created 2019-03-27
 
 '''
-scaffold_synteny.py  v1.1 last modified 2020-07-27
+scaffold_synteny.py  v1.1 last modified 2022-01-29
     makes a table of gene matches between two genomes, to detect synteny
     these can be converted into a dotplot of gene matches
 
@@ -104,7 +104,12 @@ def parse_gtf(gtffile, excludedict, delimiter, isref=False):
 			feature = lsplits[2]
 			attributes = lsplits[8]
 			if feature=="gene" or feature=="transcript" or feature=="mRNA":
-				raw_geneid = re.search('ID=([\w.|-]+)', attributes).group(1)
+				# regex search expects gff format
+				# should allow a-z , A-Z _ . | + -
+				try:
+					raw_geneid = re.search('ID=([\w\.\|\+\-]+)', attributes).group(1)
+				except AttributeError:
+					print( "ERROR: cannot extract ID= for {}".format(attributes, line) , file=sys.stderr )
 				# if a delimiter is given for either query or db, then split
 				if delimiter:
 					geneid = geneid.rsplit(delimiter,1)[0]
