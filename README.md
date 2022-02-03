@@ -88,7 +88,7 @@ Convert a PFAM protein GFF (above) to the PFAM clans, and remove some redundant 
 
 ## pfampipeline
 **Requires BioPython, HMMER, PFAM-A and SignalP**
-Script to generate graph of domains for a FASTA file of proteins. Both of the above scripts (`pfam2gff.py` and `pfamgff2clans.py`) are automatically called, followed by [SignalP](http://www.cbs.dtu.dk/services/SignalP/) and the R script `draw_protein_gtf.R`. This is called as a command on a protein file, for example on the test dataset of [nidogen](http://www.uniprot.org/uniprot/P14543) proteins:
+Script to generate graph of domains for a FASTA file of proteins. Both of the above scripts (`pfam2gff.py` and `pfamgff2clans.py`) are automatically called, followed by [SignalP](http://www.cbs.dtu.dk/services/SignalP/) and the R script `draw_protein_gtf.R`. This is called as a command on a protein file, for example on the test dataset of [nidogen](http://www.uniprot.org/uniprot/P14543) proteins. The graph below illustrates some of the difficulty in identifying true orthologs, as the domain structure is quite variable between phyla.
 
 `pfampipeline.py test_data/nidogen_full_prots.fasta`
 
@@ -96,7 +96,9 @@ Several output files are automatically generated, including the domain assignmen
 
 ![nidogen_full_prots.png](https://github.com/wrf/genomeGTFtools/blob/master/test_data/nidogen_full_prots.png)
 
-To view exon structure from a GFF file on a 3D protein structure, see instructions at my [PDBcolor repo](https://github.com/wrf/pdbcolor#gene-structure).
+To view exon structure from a GFF file on a 3D protein structure, see instructions at my [PDBcolor repo](https://github.com/wrf/pdbcolor#gene-structure). Below is an example using [human nidogen1](https://www.ncbi.nlm.nih.gov/gene/4811), with the structure from [Alphafold2](https://alphafold.com/entry/P14543):
+
+![human_nidogen1_colored_by_exons.png](https://github.com/wrf/pdbcolor/blob/master/examples/human_nidogen1_colored_by_exons.png)
 
 ## blast2gff
 This was a strategy to convert blast hits into gene models. The direction of the blast hit and the grouping of blast hits in the same region is most indicative of a gene (though possibly pseudogenes as well). In general, blasting all human proteins against the target genome can find many proteins even in distantly related organisms. Repeated domains or very common domains (like ATP binding for kinases) will show up all over the place, so limiting the `-max_target_seqs` is advisable.
@@ -222,7 +224,9 @@ Then, the R script is run to generate the dot plot. Synteny is clearly evident f
 
 `Rscript synteny_2d_plot.R hoilungia_vs_trichoplax_scaffold2d_points.tab Hoilungia-hongkongensis Trichoplax-adhaerens`
 
-The same can be generated for more distant species. Here two choanoflagellates are used, *Monosiga brevicollis* ([using the AUGUSTUS reannotation](https://bitbucket.org/wrf/genome-reannotations/downloads/Monbr1_augustus_v1.prots.fasta.gz)) and *Salpingoeca rosetta* ([at Ensembl](http://jul2018-protists.ensembl.org/Salpingoeca_rosetta/Info/Index)).
+The same can be generated for more distant species (such as this one published in [Kenny 2020](https://doi.org/10.1038/s41467-020-17397-w)). Here two choanoflagellates are used, *Monosiga brevicollis* ([using the AUGUSTUS reannotation](https://bitbucket.org/wrf/genome-reannotations/downloads/Monbr1_augustus_v1.prots.fasta.gz)) and *Salpingoeca rosetta* ([at Ensembl](http://jul2018-protists.ensembl.org/Salpingoeca_rosetta/Info/Index)).
+
+![monosiga_vs_salpingoeca_dotplot.png](https://github.com/wrf/genomeGTFtools/blob/master/test_data/monosiga_vs_salpingoeca_dotplot.png)
 
 `blastp -query Monbr1_augustus_v1.prot_no_rename.fasta -db Salpingoeca_rosetta.Proterospongia_sp_ATCC50818.pep.all.fa -outfmt 6 -num_threads 6 -evalue 1e-3 -max_target_seqs 100 > monbr1_vs_srosetta_blastp.tab`
 
