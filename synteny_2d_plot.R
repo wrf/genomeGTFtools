@@ -1,7 +1,7 @@
 # synteny_2d_plot.R
 # make dot plot of synteny between two genomes, based on unidirectional blast hits (i.e. not reciprocal)
 # created by WRF 2019-04-01
-# last modified 2019-04-01
+# last modified 2022-02-16
 
 args = commandArgs(trailingOnly=TRUE)
 
@@ -9,19 +9,20 @@ args = commandArgs(trailingOnly=TRUE)
 all2Dfile = args[1]
 
 # read optional species names
+# should match between query and subject in scaffold_synteny.py, as -f and -F
 genome1_arg = args[2]
 genome2_arg = args[3]
 
 if (!is.na(genome1_arg)) {
-xlab = paste( gsub("-", " ", genome1_arg),"(total Mb)")
+genome1_lab = paste( gsub("-", " ", genome1_arg),"(total Mb)")
 } else {
-xlab = "Genome 1 (total Mb)"
+genome1_lab = "Genome 1 (total Mb)"
 }
 
 if (!is.na(genome2_arg)) {
-ylab = paste( gsub("-", " ", genome2_arg),"(total Mb)")
+genome2_lab = paste( gsub("-", " ", genome2_arg),"(total Mb)")
 } else {
-ylab = "Genome 2 (total Mb)"
+genome2_lab = "Genome 2 (total Mb)"
 }
 
 # read all data in a single file
@@ -53,6 +54,7 @@ pointsdata = all2Ddata[is_points,]
 #head(pointsdata)
 
 # determine which genome is longer, for correct orientation on paper
+# if genome 1 is longer, then swap the positions, axes, and labels
 if (longestscaf1 > longestscaf2) {
 	genome_x = pointsdata[,7]
 	genome_y = pointsdata[,6]
@@ -62,6 +64,8 @@ if (longestscaf1 > longestscaf2) {
 	longscafs_y = longscafs1
 	nscafs_x = length(longscafs2)
 	nscafs_y = length(longscafs1)
+	xlab = genome2_lab
+	ylab = genome1_lab
 } else {
 	genome_x = pointsdata[,6]
 	genome_y = pointsdata[,7]
@@ -71,6 +75,8 @@ if (longestscaf1 > longestscaf2) {
 	longscafs_y = longscafs2
 	nscafs_x = length(longscafs1)
 	nscafs_y = length(longscafs2)
+	xlab = genome1_lab
+	ylab = genome2_lab
 }
 
 xmax_mb = round(xmax / 1000000)
