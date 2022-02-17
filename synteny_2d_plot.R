@@ -85,11 +85,6 @@ ymax_mb = round(ymax / 1000000)
 # larger bitscores make larger points
 pointsize = log10(as.numeric(pointsdata[,8])) / 4
 
-# make PDF
-outputfile = gsub("([\\w/]+)\\....$","\\1.pdf",all2Dfile,perl=TRUE)
-pdf(file=outputfile, width=8, height=11)
-par( mar=c(4.5,4.5,1,1) )
-
 # dotcolor = "#18935188" # green
 # dotcolor = "#c51b8a88" # pink
 # dotcolor = "#1c909988" # teal
@@ -113,6 +108,11 @@ if ( !is.na(args[4]) ) {
   dotcolor = "#18935188" # default green
 }
 
+# make PDF
+outputfile = gsub("([\\w/]+)\\....$","\\1.pdf",all2Dfile,perl=TRUE)
+pdf(file=outputfile, width=8, height=11)
+par( mar=c(4.5,4.5,1,1) )
+
 plot(genome_x, genome_y, pch=16, col=dotcolor, cex=pointsize, main=all2Dfile, xlab=xlab, ylab=ylab, axes=FALSE, cex.lab=1.4)
 
 tickpoints = pretty(c(0,xmax_mb))
@@ -121,17 +121,19 @@ barpos_x = rep(c( ymax*-0.01, ymax*-0.02),round(nscafs_x)/2)
 segments( longscafs_x[1:(nscafs_x-1)], barpos_x[1:(nscafs_x-1)], longscafs_x[2:nscafs_x], barpos_x[0:(nscafs_x-1)], lwd=3)
 segments(longscafs_x, 0, longscafs_x, longscafs_y[nscafs_y], lwd=0.1, col="#777777")
 
-
 tickpoints = pretty(c(0,ymax_mb))
 axis(2, at=tickpoints*1000000, labels=tickpoints, cex.axis=1.3, line=0.5)
 barpos_y = rep(c( xmax*-0.01, xmax*-0.02),round(nscafs_y)/2)
 segments( barpos_y[1:(nscafs_y-1)], longscafs_y[1:(nscafs_y-1)], barpos_y[0:(nscafs_y-1)], longscafs_y[2:nscafs_y], lwd=3)
 segments( 0, longscafs_y, longscafs_x[nscafs_x], longscafs_y, lwd=0.1, col="#777777")
 
-# display numbers beside y-axis scaffold segments
-#textpos_y = rep(c( xmax*-0.02, xmax*-0.01 ),round(24)/2)
-#textmidbar = as.numeric(scafdata1[1:24,6]) - as.numeric(scafdata1[1:24,4])/2
-#text(textpos_y, textmidbar, 1:24, cex=0.5)
+# display numbers beside axis scaffold segments
+# textpos_x = rep(c( ymax*-0.02, ymax*-0.01 ),round(25)/2)
+# textmidbar = as.numeric(scafdata1[1:25,6]) - as.numeric(scafdata1[1:25,4])/2
+# text(textpos_x, textmidbar, 1:25, cex=0.5)
+# textpos_y = rep(c( xmax*-0.02, xmax*-0.01 ),round(25)/2)
+# textmidbar = as.numeric(scafdata2[1:25,6]) - as.numeric(scafdata2[1:25,4])/2
+# text(textmidbar, textpos_y, 1:25, cex=0.5)
 
 dev.off()
 

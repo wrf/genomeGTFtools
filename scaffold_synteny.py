@@ -3,7 +3,7 @@
 # scaffold_synteny.py created 2019-03-27
 
 '''
-scaffold_synteny.py  v1.1 last modified 2022-01-29
+scaffold_synteny.py  v1.1 last modified 2022-02-17
     makes a table of gene matches between two genomes, to detect synteny
     these can be converted into a dotplot of gene matches
 
@@ -183,6 +183,17 @@ def parse_tabular_blast(blasttabfile, evaluecutoff, querydelimiter, refdelimiter
 	sys.stderr.write("# Kept {} blast hits\n".format( total_kept ) )
 	return filtered_hit_dict
 
+def make_self_blast_dict(gene_positions):
+	'''for haplotype comparison mode, return dict of dicts, where key, key are the same seq ID, and value is 100'''
+	artificial_hit_dict = defaultdict( lambda: defaultdict(int) )
+	gene_counter = 0
+	sys.stderr.write("# Converting gene list to self hits  {}\n".format( time.asctime() ) )
+	for scaf,posdict in gene_positions.items():
+		for gene,pos in posdict.items():
+			artificial_hit_dict[gene][gene] = 100
+	sys.stderr.write("# Using {} genes for positions\n".format( len(artificial_hit_dict ) ) )
+	return artificial_hit_dict
+
 def generate_synteny_points(queryScafOffset, dbScafOffset, queryPos, dbPos, blastdict, give_local_positions, wayout):
 	'''combine all datasets and for each gene on the query scaffolds, print tab delimited data to stdout'''
 	printcount = 0
@@ -313,7 +324,7 @@ def main(argv, wayout):
 	if not len(argv):
 		argv.append("-h")
 	parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description=__doc__)
-	parser.add_argument('-b','--blast', help="tabular blast output", required=True)
+	parser.add_argument('-b','--blast', help="tabular blast output")
 	parser.add_argument('-f','--query-fasta', help="fasta file of query scaffolds", required=True)
 	parser.add_argument('-F','--db-fasta', help="fasta file of reference scaffolds", required=True)
 	parser.add_argument('-q','--query-gff', help="GFF file of query genes", required=True)
@@ -333,7 +344,15 @@ def main(argv, wayout):
 	parser.add_argument('-S','--scaffold-randomize', help="randomize gene positions of query GFF within each scaffold, cannot use with -R", action="store_true")
 	parser.add_argument('--double-randomize', help="randomize gene positions of db, use with -S", action="store_true")
 	parser.add_argument('--local-positions', help="output points as local positions on each scaffold, not global position", action="store_true")
+	parser.add_argument('--compare-haplotypes', help="compare gene placement between two haplotypes, blast -b is ignored", action="store_true")
 	args = parser.parse_args(argv)
+
+	# check for required tabular blast output file
+	if args.blast is None:
+		if args.compare_haplotypes:
+			print( "# comparing haplotypes, ignoring -b, will assume that all transcripts blast only to self  {}".format(time.asctime()), file=sys.stderr )
+		else:
+			raise OSError("ERROR: blast output file -b is required, or use --compare-haplotypes mode if you are comparing haplotype assemblies of the same organism")
 
 	exclusiondict = make_exclude_dict(args.exclude) if args.exclude else {}
 
@@ -359,7 +378,11 @@ def main(argv, wayout):
 		db_gene_pos = parse_gtf(args.db_gff, exclusiondict, args.db_delimiter, True)
 
 	# read blast hits
-	blastdict = parse_tabular_blast(args.blast, args.evalue, args.blast_query_delimiter, args.blast_db_delimiter, args.maximum_hits, args.group_size_maximum)
+	if args.compare_haplotypes:
+		blastdict = make_self_blast_dict(query_gene_pos)
+	else:
+		blastdict = parse_tabular_blast(args.blast, args.evalue, args.blast_query_delimiter, args.blast_db_delimiter, args.maximum_hits, args.group_size_maximum)
+	
 
 	# write output
 	generate_synteny_points( query_scaf_lengths, db_scaf_lengths, query_gene_pos, db_gene_pos, blastdict, args.local_positions, wayout)
