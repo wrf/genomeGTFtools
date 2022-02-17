@@ -1,7 +1,7 @@
 # synteny_2d_plot.R
 # make dot plot of synteny between two genomes, based on unidirectional blast hits (i.e. not reciprocal)
 # created by WRF 2019-04-01
-# last modified 2022-02-16
+# last modified 2022-02-17
 
 args = commandArgs(trailingOnly=TRUE)
 
@@ -96,7 +96,24 @@ par( mar=c(4.5,4.5,1,1) )
 # dotcolor = "#2071d388" # blue
 # dotcolor = "#88419d88" # purple
 
-plot(genome_x, genome_y, pch=16, col="#18935188", cex=pointsize, main=all2Dfile, xlab=xlab, ylab=ylab, axes=FALSE, cex.lab=1.4)
+# approximate s/v, with varied h
+dot_color_set = rainbow(256, s=0.8, v=0.7, alpha = 0.53)
+if ( !is.na(args[4]) ) {
+  # use H value specified by user, from 1 to 256
+  # can be converted to integer, and is between 1 and 256
+  if ( !is.na(as.integer(args[4])) & as.integer(args[4]) > 0 & as.integer(args[4]) <= 256) {
+    dotcolor = dot_color_set[ as.integer(args[4]) ]
+  } else if ( args[4]=="r" | args[4]=="R") {
+    # make random color, upon user request
+    dotcolor = dot_color_set[sample(1:length(dot_color_set), 1)]
+  } else {
+    dotcolor = "#18935188" # default green
+  }
+} else {
+  dotcolor = "#18935188" # default green
+}
+
+plot(genome_x, genome_y, pch=16, col=dotcolor, cex=pointsize, main=all2Dfile, xlab=xlab, ylab=ylab, axes=FALSE, cex.lab=1.4)
 
 tickpoints = pretty(c(0,xmax_mb))
 axis(1, at=tickpoints*1000000, labels=tickpoints, cex.axis=1.3)
