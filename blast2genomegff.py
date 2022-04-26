@@ -8,7 +8,7 @@
 # for SOFA terms:
 # https://github.com/The-Sequence-Ontology/SO-Ontologies/blob/master/subsets/SOFA.obo
 
-'''blast2genomegff.py  last modified 2022-01-12
+'''blast2genomegff.py  last modified 2022-03-22
     convert blast output to gff format for genome annotation
     blastx of a transcriptome (genome guided or de novo) against a protein DB:
 
@@ -267,7 +267,7 @@ def parse_tabular_blast(blastfile, lengthcutoff, evaluecutoff, bitscutoff, maxta
 				accession = sseqid.split("|")[1] # should keep P0DI82
 			sseqid = sseqid.split("|")[2] # should change to TPC2B_HUMAN
 		else:
-			sseqid = sseqid.replace("|","_") ###TODO make this agree with seqlength dict
+			sseqid = sseqid.replace("|","_") # should agree with seqlength dict, but only for description field
 		hitDictCounter[sseqid] += 1
 
 		# skip if there are already enough targets, default is 10
@@ -437,11 +437,11 @@ def parse_swissprot_header(hitstring):
 
 def clean_up_description(description):
 	# change a bunch of disallowed symbols
-	underscore_symbols = "(),=|"
+	underscore_symbols = "(),=|#%"
 	for symbol in underscore_symbols:
 		description = description.replace(symbol,"_")
 	remove_symbols = "'[]"
-	for symbol in underscore_symbols:
+	for symbol in remove_symbols:
 		description = description.replace(symbol,"")
 	description = description.replace("/","-")
 	return description
