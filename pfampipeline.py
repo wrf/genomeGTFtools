@@ -2,7 +2,7 @@
 #
 # pfampipeline.py
 
-'''pfampipeline.py  last modified 2019-09-26
+'''pfampipeline.py  last modified 2022-03-16
 
     USAGE requires only a fasta file of proteins
 pfampipeline.py proteins.fasta
@@ -38,7 +38,7 @@ def call_hmmscan(inputfasta, threadcount, pfamhmms):
 	outfile = "{}.pfam.tab".format(os.path.splitext(inputfasta)[0])
 	hmmscan_args = ["hmmscan","--cpu", threadcount, "--domtblout", outfile, pfamhmms, inputfasta]
 	DEVNULL = open(os.devnull, 'w')
-	sys.stderr.write("# Searching PFAM against {}  ".format(inputfasta) + time.asctime() + os.linesep)
+	sys.stderr.write("# Searching PFAM against {}  {}\n".format(inputfasta, time.asctime() ) )
 	sys.stderr.write("Calling:\n{}\n".format(' '.join(hmmscan_args)) )
 	subprocess.call(hmmscan_args, stdout=DEVNULL)
 	return outfile
@@ -61,7 +61,7 @@ def call_pfamcdd(pfamgff, clanlinks, inputprots):
 
 def call_signalp(signalp, inputfasta, gfftype, cddgff, dscorecutoff):
 	if not os.path.exists(signalp):
-		sys.stderr.write("# Cannot find {}, skipping...  ".format(signalp) + time.asctime() + os.linesep)
+		sys.stderr.write("# Cannot find {}, skipping...  {}\n".format(signalp, time.asctime() ) )
 		return 1
 	signalp_args = [signalp, inputfasta]
 	sys.stderr.write("Calling:\n{}\n".format(' '.join(signalp_args)) )
@@ -92,7 +92,7 @@ def main(argv, wayout):
 	if not len(argv):
 		argv.append('-h')
 	parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description=__doc__)
-	parser.add_argument('input', help="fasta format file of proteins")
+	parser.add_argument('input', help="fasta format file of proteins, for example, a file of orthologs")
 	parser.add_argument('-c','--clans', default=os.path.expanduser("~/db/Pfam-A.clans.tsv"), help="PFAM clan information tsv")
 	parser.add_argument('-d','--d-score', type=float, default=0.25, help="D-score cutoff for SignalP")
 	parser.add_argument('-e','--evalue', type=float, default=1e-1, help="evalue cutoff for domain filtering [1e-1]")
