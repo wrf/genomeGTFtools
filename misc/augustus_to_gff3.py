@@ -1,7 +1,10 @@
 #!/usr/bin/env python
+#
+# 2020-09-03 previous version
+# 2022-05-02 fix for old format without tags for transcript features
 
 '''
-  augustus_to_gff3.py  last modified  2020-09-03
+  augustus_to_gff3.py  last modified  2022-05-02
   generate true GFF3 from augustus output
   involves creating mRNA features from transcript
   and exon from CDS
@@ -36,7 +39,10 @@ else:
 				newattrs = "ID={0};Name={0}".format(attributes)
 			elif feature=="transcript": # changed to ID and Name
 				lsplits[2] = "mRNA"
-				attrd = dict([(field.strip().split(" ",1)) for field in attributes.split(";") if field])
+				try: # dictionary update sequence element #0 has length 1; 2 is required
+					attrd = dict([(field.strip().split(" ",1)) for field in attributes.split(";") if field])
+				except ValueError: # catch for cases of old version with format of g4.t1 as the only line item
+					attrd = {"gene_id":attributes.split(".",1)[0] , "transcript_id": attributes.strip() }
 				if attrd.get("gene_id", False) and attrd.get("transcript_id", False):
 					newattrs = "ID={0};Parent={1}".format(attrd.get("transcript_id").replace('"',''), attrd.get("gene_id").replace('"',''))
 				else:
