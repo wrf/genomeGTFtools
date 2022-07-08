@@ -3,6 +3,7 @@
 # v1.0 2014-10-22
 # v1.1 added option to remove weak blast hits, fixed integer bug 2014-10-28
 # v1.2 reverted to previous version after name change 2015-05-13
+# v1.3 parsing for IDs with comma separated items
 #
 # blast2gff.py convert blast output to gff format for genome annotation
 # translated from blast2gff.pl and parseblast.pl
@@ -11,7 +12,7 @@
 # https://www.sanger.ac.uk/resources/software/gff/spec.html
 # http://www.sequenceontology.org/gff3.shtml
 
-'''blast2gff.py last modified 2020-04-23
+'''blast2gff.py last modified 2022-07-08
 
 blast2gff.py -b tblastn_output.tab > output.gff3
 
@@ -93,6 +94,7 @@ def main(argv, wayout):
 	parser.add_argument('-F','--filter', action="store_true", help="filter low quality matches, set value with -s")
 	parser.add_argument('-S','--swissprot', action="store_true", help="query sequences have swissprot headers")
 	parser.add_argument('-L','--locus', action="store_true", help="IDs will be named by the locus, as scaffold_start_end")
+	parser.add_argument('-U','--parse-properties', action="store_true", help="parse additional attributes from the seq ID separated by ,")
 	parser.add_argument('-v','--verbose', action="store_true", help="extra output")
 	args = parser.parse_args(argv)
 
@@ -104,9 +106,10 @@ def main(argv, wayout):
 	shorthits = 0
 
 	hitDictCounter = defaultdict(int)
-	sys.stderr.write("# Starting BLAST parsing on {}  ".format(args.blast) + time.asctime() + os.linesep)
+	sys.stderr.write("# Starting BLAST parsing on {}  {}\n".format(args.blast, time.asctime() ) )
 	for line in open(args.blast, 'r'):
 		linecounter += 1
+		extra_attributes = []
 		line = line.strip()
 		lsplits = line.split("\t")
 		# 0       1       2       3       4         5        6       7     8       9     10      11
@@ -116,6 +119,9 @@ def main(argv, wayout):
 		if args.swissprot:
 		# blast outputs swissprot proteins as: sp|P0DI82|TPC2B_HUMAN
 			qseqid = qseqid.split("|")[2]
+		elif args.parse_properties:
+			extra_attributes = [ "{}={}".format( *attr.split(":") ) for attr in qseqid.split(",")[1:] ]
+			qseqid = qseqid.split(",")[0]
 		else:
 			qseqid = qseqid.replace("|","")
 		hitDictCounter[qseqid] += 1
@@ -126,8 +132,11 @@ def main(argv, wayout):
 			attributes = "source=P;ID={0}.{1}-{2}".format(qseqid, qstart, qend)
 		elif args.locus:
 			attributes = "ID={0}_{1}_{2};Target={3} {4} {5}".format(sseqid, sstart, send, qseqid, qstart, qend)
+		elif args.parse_properties:
+			attributes = ";".join( ["ID={0}.{1}{2}".format(qseqid, args.type, hitDictCounter[qseqid]) , "Target={0} {1} {2}".format(qseqid, qstart, qend)] + extra_attributes )
 		else:
 			attributes = "ID={0}.{1}{2};Target={0} {3} {4}".format(qseqid, args.type, hitDictCounter[qseqid], qstart, qend)
+
 		# if verbose, display the current attributes format for debugging
 		if args.verbose and linecounter == 1:
 			sys.stderr.write( "{}\n".format(attributes) )
@@ -163,13 +172,13 @@ def main(argv, wayout):
 			continue
 		writecounter += 1
 		write_line(outlist, wayout)
-	sys.stderr.write("# Parsed {} lines  ".format( linecounter ) + time.asctime() + os.linesep)
+	sys.stderr.write("# Parsed {} lines  {}\n".format( linecounter, time.asctime() ) )
 	sys.stderr.write("# Found {} forward and {} reverse hits\n".format(plusstrand, minusstrand) )
 	if shorthits:
 		sys.stderr.write("# Removed {} short matches\n".format(shorthits) )
 	if badhits:
 		sys.stderr.write("# Removed {} weak matches\n".format(badhits) )
-	sys.stderr.write("# Wrote {} matches  ".format(writecounter) + time.asctime() + os.linesep)
+	sys.stderr.write("# Wrote {} matches  {}\n".format(writecounter, time.asctime() ) )
 
 if __name__ == "__main__":
 	main(sys.argv[1:],sys.stdout)
