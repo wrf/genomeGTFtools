@@ -8,7 +8,7 @@
 # for SOFA terms:
 # https://github.com/The-Sequence-Ontology/SO-Ontologies/blob/master/subsets/SOFA.obo
 
-'''blast2genomegff.py  last modified 2022-03-22
+'''blast2genomegff.py  last modified 2022-10-22
     convert blast output to gff format for genome annotation
     blastx of a transcriptome (genome guided or de novo) against a protein DB:
 
@@ -98,10 +98,10 @@ def gtf_to_intervals(gtffile, keepcds, skipexons, transdecoder, nogenemode, gene
 
 	if gtffile.rsplit('.',1)[-1]=="gz": # autodetect gzip format
 		opentype = gzip.open
-		sys.stderr.write("# Parsing gff from {} as gzipped  ".format(gtffile) + time.asctime() + os.linesep)
+		sys.stderr.write("# Parsing gff from {} as gzipped  {}\n".format(gtffile, time.asctime() ) )
 	else: # otherwise assume normal open for fasta format
 		opentype = open
-		sys.stderr.write("# Parsing gff from {}  ".format(gtffile) + time.asctime() + os.linesep)
+		sys.stderr.write("# Parsing gff from {}  {}\n".format(gtffile, time.asctime() ) )
 	if skipexons: #
 		sys.stderr.write("# exon features WILL BE IGNORED\n")
 	if keepcds: # alert user to the flags that have been set
@@ -118,6 +118,8 @@ def gtf_to_intervals(gtffile, keepcds, skipexons, transdecoder, nogenemode, gene
 			else:
 				linecounter += 1
 				lsplits = line.split("\t")
+				if len(lsplits) < 9:
+					sys.stderr.write("WARNING: line {} has {} columns, will likely cause an error  {}\n{}\n".format( linecounter, len(lsplits), time.asctime(), line) )
 				scaffold = lsplits[0]
 				feature = lsplits[2]
 				strand = lsplits[6]
