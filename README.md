@@ -30,7 +30,7 @@ Many of these tools were used in [our analysis of the genome of the sponge *Teth
 By convention, the longest chromosomes are numbered first. This naturally applies to scaffolds as well. Contigs/scaffolds can be renumbered and reordered with [number_contigs_by_length.py](https://github.com/wrf/genomeGTFtools/blob/master/number_contigs_by_length.py) script. Use the option `-c` to specify an additional output file of the conversion vector, that can be used to rename the scaffold column in any GFF file with the [rename_gtf_contigs.py](https://github.com/wrf/genomeGTFtools/blob/master/rename_gtf_contigs.py) script.
 
 ## pfam2gff
-This has two modes: one will convert the "tabular" hmmscan output (generated using PFAM-A (`Pfam-A.hmm`), which can be found in [the FTP section of PFAM](http://pfam.xfam.org/) as the hmm database, or direct download from `ftp://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.hmm.gz`) into a protein GFF with domains at the protein positions.
+This has two modes: one will convert the "tabular" hmmscan output (generated using PFAM-A database (`Pfam-A.hmm`), which can be found in [the FTP section of PFAM](https://www.ebi.ac.uk/interpro/download/Pfam/) as the hmm database) into a protein GFF with domains at the protein positions. The other mode will generate a genome-GFF with the domain positions mapped onto the protein features, i.e. that the domains will fit into/across exons.
 
   `hmmscan --domE 0.1 --cpu 4 --domtblout stringtie.pfam.tab ~/PfamScan/data/Pfam-A.hmm stringtie_transdecoder_prots.fasta > stringtie.pfam.log`
 
