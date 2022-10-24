@@ -3,7 +3,7 @@
 # scaffold_synteny.py created 2019-03-27
 
 '''
-scaffold_synteny.py  v1.1 last modified 2022-02-17
+scaffold_synteny.py  v1.1 last modified 2022-10-24
     makes a table of gene matches between two genomes, to detect synteny
     these can be converted into a dotplot of gene matches
 
@@ -103,7 +103,7 @@ def parse_gtf(gtffile, excludedict, delimiter, isref=False):
 				continue # skip anything that hits to excludable scaffolds
 			feature = lsplits[2]
 			attributes = lsplits[8]
-			if feature=="gene" or feature=="transcript" or feature=="mRNA":
+			if feature=="transcript" or feature=="mRNA" or feature=="gene":
 				# regex search expects gff format
 				# should allow a-z , A-Z _ . | + -
 				try:
@@ -194,7 +194,7 @@ def make_self_blast_dict(gene_positions):
 	sys.stderr.write("# Using {} genes for positions\n".format( len(artificial_hit_dict ) ) )
 	return artificial_hit_dict
 
-def generate_synteny_points(queryScafOffset, dbScafOffset, queryPos, dbPos, blastdict, give_local_positions, wayout):
+def generate_synteny_points(queryScafOffset, dbScafOffset, queryPos, dbPos, blastdict, give_local_positions, do_print_all, wayout):
 	'''combine all datasets and for each gene on the query scaffolds, print tab delimited data to stdout'''
 	printcount = 0
 	scaffoldtotals = defaultdict(int) # counts of total genes for each scaffold
@@ -214,18 +214,30 @@ def generate_synteny_points(queryScafOffset, dbScafOffset, queryPos, dbPos, blas
 
 			# then get matches for that gene
 			blasthits = blastdict.get(gene, None)
-			if blasthits is None: # skip query genes with no matches
-				continue
+			if blasthits is None: 
+				if do_print_all: # make fake entry for non-matches
+					blasthits = { "NA": 0 }
+				else: # skip query genes with no matches
+					continue
+
 			# iterate through dict of matches
 			for matchgene, bitscore in sorted(blasthits.items(), key=lambda x: x[1], reverse=True):
 				matchscaf, matchposition = dbPos.get(matchgene, [None, None])
 				if matchscaf is None: # would mean blast hit is not in the GFF
-					continue
+					if do_print_all: # fix to NA and 0 for printing anyway
+						matchscaf = "NA"
+						matchposition = 0
+					else:
+						continue
 
 				# check offset for db scaffold
 				matchoffset = dbScafOffset.get(matchscaf, None)
 				if matchoffset is None: # blast hit is not on a kept db scaffolds
-					continue
+					if do_print_all: # fix to 0 for printing
+						matchoffset = 0
+					else:
+						continue
+
 				if give_local_positions:
 					overallmatchpos = matchposition
 				else: # using global positions
@@ -345,6 +357,7 @@ def main(argv, wayout):
 	parser.add_argument('--double-randomize', help="randomize gene positions of db, use with -S", action="store_true")
 	parser.add_argument('--local-positions', help="output points as local positions on each scaffold, not global position", action="store_true")
 	parser.add_argument('--compare-haplotypes', help="compare gene placement between two haplotypes, blast -b is ignored", action="store_true")
+	parser.add_argument('--print-no-match', help="print lines for all queries, including those without blast matches", action="store_true")
 	args = parser.parse_args(argv)
 
 	# check for required tabular blast output file
@@ -385,7 +398,7 @@ def main(argv, wayout):
 	
 
 	# write output
-	generate_synteny_points( query_scaf_lengths, db_scaf_lengths, query_gene_pos, db_gene_pos, blastdict, args.local_positions, wayout)
+	generate_synteny_points( query_scaf_lengths, db_scaf_lengths, query_gene_pos, db_gene_pos, blastdict, args.local_positions, args.print_no_match, wayout)
 
 if __name__ == "__main__":
 	main(sys.argv[1:],sys.stdout)
