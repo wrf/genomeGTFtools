@@ -1,7 +1,7 @@
 # synteny_2d_plot.R
 # make dot plot of synteny between two genomes, based on unidirectional blast hits (i.e. not reciprocal)
 # created by WRF 2019-04-01
-# last modified 2022-02-17
+# last modified 2022-10-24
 
 args = commandArgs(trailingOnly=TRUE)
 
@@ -12,6 +12,9 @@ all2Dfile = args[1]
 # should match between query and subject in scaffold_synteny.py, as -f and -F
 genome1_arg = args[2]
 genome2_arg = args[3]
+
+#genome1_arg = NA
+#genome2_arg = NA
 
 if (!is.na(genome1_arg)) {
 genome1_lab = paste( gsub("-", " ", genome1_arg),"(total Mb)")
@@ -42,12 +45,14 @@ is_longscafs1 = which(as.numeric(scafdata1[,5]) > 0.0009)
 #is_longscafs1
 
 longscafs1 = c(0, scafdata1[,6][is_longscafs1] )
+longscafs1_names = scafdata1[is_longscafs1,2]
 
 is_scaf2 = which(categories=="s2")
 scafdata2 = all2Ddata[is_scaf2,]
 longestscaf2 = max(scafdata2[,6])
 is_longscafs2 =  which(as.numeric(scafdata2[,5]) > 0.0009)
 longscafs2 = c(0, scafdata2[,6][is_longscafs2] )
+longscafs2_names = scafdata2[is_longscafs2,2]
 
 is_points = which(categories=="g")
 pointsdata = all2Ddata[is_points,]
@@ -92,6 +97,9 @@ pointsize = log10(as.numeric(pointsdata[,8])) / 4
 # dotcolor = "#88419d88" # purple
 
 # approximate s/v, with varied h
+# this uses an optional 4th argument, of value from 1 to 256
+# or use random color with either "r" or "R"
+# otherwise uses default green
 dot_color_set = rainbow(256, s=0.8, v=0.7, alpha = 0.53)
 if ( !is.na(args[4]) ) {
   # use H value specified by user, from 1 to 256
@@ -102,15 +110,20 @@ if ( !is.na(args[4]) ) {
     # make random color, upon user request
     dotcolor = dot_color_set[sample(1:length(dot_color_set), 1)]
   } else {
+    # meaning user entered something outside 1-256, or not letter r
     dotcolor = "#18935188" # default green
   }
 } else {
+  # value is not given at all in command line
   dotcolor = "#18935188" # default green
 }
 
 # make PDF
 outputfile = gsub("([\\w/]+)\\....$","\\1.pdf",all2Dfile,perl=TRUE)
-pdf(file=outputfile, width=8, height=11)
+pdf(file=outputfile, width=8, height=11) # a4 size
+#pdf(file=outputfile, width=16, height=23) # a2 size
+#pdf(file=outputfile, width=32, height=45) # a0 size
+
 par( mar=c(4.5,4.5,1,1) )
 
 plot(genome_x, genome_y, pch=16, col=dotcolor, cex=pointsize, main=all2Dfile, xlab=xlab, ylab=ylab, axes=FALSE, cex.lab=1.4)
@@ -127,13 +140,24 @@ barpos_y = rep(c( xmax*-0.01, xmax*-0.02),round(nscafs_y)/2)
 segments( barpos_y[1:(nscafs_y-1)], longscafs_y[1:(nscafs_y-1)], barpos_y[0:(nscafs_y-1)], longscafs_y[2:nscafs_y], lwd=3)
 segments( 0, longscafs_y, longscafs_x[nscafs_x], longscafs_y, lwd=0.1, col="#777777")
 
+# make shortened names
+# short_names1 = gsub("scaffold_", "", longscafs1_names)
+# short_names2 = gsub("scaffold_", "", longscafs2_names)
+
 # display numbers beside axis scaffold segments
-# textpos_x = rep(c( ymax*-0.02, ymax*-0.01 ),round(25)/2)
-# textmidbar = as.numeric(scafdata1[1:25,6]) - as.numeric(scafdata1[1:25,4])/2
-# text(textpos_x, textmidbar, 1:25, cex=0.5)
-# textpos_y = rep(c( xmax*-0.02, xmax*-0.01 ),round(25)/2)
-# textmidbar = as.numeric(scafdata2[1:25,6]) - as.numeric(scafdata2[1:25,4])/2
-# text(textmidbar, textpos_y, 1:25, cex=0.5)
+# this controls bars along the left side, so actually Y axis
+# max_x_n = 25 # max numbers to display
+# textpos_x = rep(c( ymax*-0.02, ymax*-0.01 ),round(max_x_n)/2)
+# textmidbar = as.numeric(scafdata1[1:max_x_n,6]) - as.numeric(scafdata1[1:max_x_n,4])/2
+# #text(textpos_x, textmidbar, 1:25, cex=0.5)
+# text(textpos_x, textmidbar, short_names1[1:max_x_n], cex=0.5)
+# 
+# # this controls bars along the bottom side, so actually X axis
+# max_y_n = 30
+# textpos_y = rep(c( xmax*-0.02, xmax*-0.01 ),round(max_y_n)/2)
+# textmidbar = as.numeric(scafdata2[1:max_y_n,6]) - as.numeric(scafdata2[1:max_y_n,4])/2
+# #text(textmidbar, textpos_y, 1:25, cex=0.5)
+# text(textmidbar, textpos_y, short_names2[1:max_y_n], cex=0.5)
 
 dev.off()
 
