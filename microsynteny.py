@@ -1,8 +1,9 @@
 #!/usr/bin/env python
-# microsynteny.py
-# v1.0 2015-10-09
+# microsynteny.py v1.0 2015-10-09
+# v1.3 2020-08-18
+# v1.4 2022-10-22 bug fix for exon mode
 
-'''microsynteny.py v1.3 last modified 2020-08-18
+'''microsynteny.py v1.4 last modified 2020-10-24
 
 microsynteny.py -q query.gtf -d ref_species.gtf -b query_vs_ref_blast.tab -E ../bad_contigs -g -D '_' --blast-query-delimiter '.' > query_vs_ref_microsynteny.tab
 
@@ -39,7 +40,6 @@ query-scaffold  ref-scaffold  block-number
 
 import sys
 import re
-import os
 import time
 import argparse
 import random
@@ -53,10 +53,10 @@ def parse_gtf(gtffile, exons_to_genes, cds_to_genes, excludedict, delimiter, isr
 	'''from a gtf, return a dict of dicts where keys are scaffold names, then gene names, and values are gene info as a tuple of start end and strand direction'''
 	if gtffile.rsplit('.',1)[-1]=="gz": # autodetect gzip format
 		opentype = gzip.open
-		sys.stderr.write("# Parsing {} as gzipped  ".format(gtffile) + time.asctime() + os.linesep)
+		sys.stderr.write("# Parsing {} as gzipped  {}\n".format(gtffile, time.asctime() ) )
 	else: # otherwise assume normal open for fasta format
 		opentype = open
-		sys.stderr.write("# Parsing {}  ".format(gtffile) + time.asctime() + os.linesep)
+		sys.stderr.write("# Parsing {}  {}\n".format(gtffile, time.asctime() ) )
 
 	if isref: # meaning is db/subject, thus get normal dictionary
 		genesbyscaffold = {}
@@ -79,8 +79,15 @@ def parse_gtf(gtffile, exons_to_genes, cds_to_genes, excludedict, delimiter, isr
 			if excludedict and excludedict.get(scaffold, False):
 				continue # skip anything that hits to excludable scaffolds
 			feature = lsplits[2]
+			feature_start = int(lsplits[3])
+			feature_end = int(lsplits[4])
+
+			# count frequency of all features
+			# THIS IS NOT REPORTED ANYWHERE TODO
 			feature_counts[feature] += 1
 			attributes = lsplits[8]
+
+			# for top-level features, get bounds directly
 			if feature=="gene" or feature=="transcript" or feature=="mRNA":
 				try:
 					geneid = re.search('gene_id "([\w.|-]+)"', attributes).group(1)
@@ -92,10 +99,10 @@ def parse_gtf(gtffile, exons_to_genes, cds_to_genes, excludedict, delimiter, isr
 
 				# generate tuple differently for query and db
 				if isref:
-					refbounds = refgene(scaffold=lsplits[0], start=int(lsplits[3]), end=int(lsplits[4]), strand=lsplits[6] )
+					refbounds = refgene(scaffold=lsplits[0], start=feature_start, end=feature_end, strand=lsplits[6] )
 					genesbyscaffold[geneid] = refbounds
 				else:
-					boundstrand = querygene(start=int(lsplits[3]), end=int(lsplits[4]), strand=lsplits[6] )
+					boundstrand = querygene(start=feature_start, end=feature_end, strand=lsplits[6] )
 					genesbyscaffold[scaffold][geneid] = boundstrand
 			# if using exons only, then start collecting exons
 			elif (exons_to_genes and feature=="exon"):
@@ -105,8 +112,8 @@ def parse_gtf(gtffile, exons_to_genes, cds_to_genes, excludedict, delimiter, isr
 					geneid = re.search('name "([\w.|-]+)"', attributes).group(1)
 				nametoscaffold[geneid] = scaffold
 				nametostrand[geneid] = lsplits[6]
-				exonbounds = (int(lsplits[3]), int(lsplits[4]))
-				exonboundaries[geneid].append(exonbounds) # for calculating gene boundaries
+				feature_bounds = ( feature_start , feature_end )
+				exonboundaries[geneid].append(feature_bounds) # for calculating gene boundaries
 			# if using only CDS
 			elif (cds_to_genes and feature=="CDS"):
 				try:
@@ -115,10 +122,10 @@ def parse_gtf(gtffile, exons_to_genes, cds_to_genes, excludedict, delimiter, isr
 					geneid = re.search('Parent=([\w.|-]+)', attributes).group(1)
 				nametoscaffold[geneid] = scaffold
 				nametostrand[geneid] = lsplits[6]
-				cdsbounds = (int(lsplits[3]), int(lsplits[4]))
-				exonboundaries[geneid].append(cdsbounds) # for calculating gene boundaries
+				feature_bounds = ( feature_start , feature_end )
+				exonboundaries[geneid].append(feature_bounds) # for calculating gene boundaries
 
-	if len(exonboundaries)==0:
+	if exons_to_genes and len(exonboundaries)==0:
 		if feature_counts.get("CDS",0) > 0:
 			sys.stderr.write("WARNING: NO EXONS FOUND, {} CDS features detected, try to rerun with -c\n".format( feature_counts.get("CDS") ) )
 
@@ -126,12 +133,12 @@ def parse_gtf(gtffile, exons_to_genes, cds_to_genes, excludedict, delimiter, isr
 	if len(genesbyscaffold) > 0: # even if no-genes was set, this should be more than 0 if genes were in one gtf
 		if isref:
 			genecount = len(genesbyscaffold)
-			sys.stderr.write("# Found {} genes  {}\n".format( genecount, time.asctime() ) )
+			sys.stderr.write("# Found {} top-level features (genes)  {}\n".format( genecount, time.asctime() ) )
 		else:
 			# count up number of genes on each scaffold, by length of each value
 			# then convert to list, then sum again
 			genecount = sum( list( map( len,genesbyscaffold.values() ) ) )
-			sys.stderr.write("# Found {} genes  {}\n".format(genecount, time.asctime() ) )
+			sys.stderr.write("# Found {} top-level features (genes)  {}\n".format( genecount, time.asctime() ) )
 		return genesbyscaffold
 	# for exon or CDS mode
 	else: # generate gene boundaries by scaffold
@@ -154,11 +161,12 @@ def parse_tabular_blast(blasttabfile, evaluecutoff, querydelimiter, refdelimiter
 	'''read tabular blast file, return a dict where key is query ID and value is subject ID'''
 	if blasttabfile.rsplit('.',1)[-1]=="gz": # autodetect gzip format
 		opentype = gzip.open
-		sys.stderr.write("# Parsing tabular blast output {} as gzipped  ".format(blasttabfile) + time.asctime() + os.linesep)
+		sys.stderr.write("# Parsing tabular blast output {} as gzipped  {}\n".format(blasttabfile, time.asctime() ) )
 	else: # otherwise assume normal open for fasta format
 		opentype = open
-		sys.stderr.write("# Parsing tabular blast output {}  ".format(blasttabfile) + time.asctime() + os.linesep)
+		sys.stderr.write("# Parsing tabular blast output {}  {}\n".format(blasttabfile, time.asctime() ) )
 	query_to_sub_dict = defaultdict(dict)
+	sub_counts_dict = {} # key is subject ID, value is True
 	query_hits = defaultdict(int) # counter of hits
 	evalueRemovals = 0
 	for line in opentype(blasttabfile, 'rt'):
@@ -182,8 +190,9 @@ def parse_tabular_blast(blasttabfile, evaluecutoff, querydelimiter, refdelimiter
 		# otherwise add the entry
 		bitscore = float(lsplits[11])
 		query_to_sub_dict[queryseq][subjectid] = bitscore
+		sub_counts_dict[subjectid] = True
 		query_hits[queryseq] += 1
-	sys.stderr.write("# Found blast hits for {} query sequences  ".format( len(query_to_sub_dict) ) + time.asctime() + os.linesep)
+	sys.stderr.write("# Found blast hits for {} query sequences and {} subjects  {}\n".format( len(query_to_sub_dict), len(sub_counts_dict), time.asctime() ) )
 	sys.stderr.write("# Removed {} hits by evalue, kept {} hits\n".format( evalueRemovals, sum(query_hits.values()) ) )
 	sys.stderr.write("# Names parsed as {} from {}, and {} from {}\n".format( queryseq,lsplits[0], subjectid,lsplits[1] ) )
 	return query_to_sub_dict
@@ -192,7 +201,7 @@ def randomize_genes(refdict):
 	'''take the gtf dict and randomize the gene names for all genes, return a similar dict of dicts'''
 	genepositions = {} # store gene positions as tuples
 	randomgenelist = []
-	sys.stderr.write("# Randomizing query gene positions  " + time.asctime() + os.linesep)
+	sys.stderr.write("# Randomizing query gene positions  {}\n".format( time.asctime() ) )
 	for scaffold, genedict in refdict.items(): # iterate first to get list of all genes
 		for genename in genedict.keys():
 			randomgenelist.append(genename)
@@ -206,7 +215,7 @@ def randomize_genes(refdict):
 		for genename, bounds in genedict.items():
 			randomgenesbyscaf[scaffold][randomgenelist[genecounter]] = genepositions[genename]
 			genecounter += 1
-	sys.stderr.write("# Randomized {} genes  ".format(genecounter) + time.asctime() + os.linesep)
+	sys.stderr.write("# Randomized {} genes  {}\n".format(genecounter, time.asctime() ) )
 	return randomgenesbyscaf
 
 def synteny_walk(querydict, blastdict, refdict, min_block, max_span, max_distance, is_verbose, wayout, make_gff):
@@ -363,14 +372,14 @@ def synteny_walk(querydict, blastdict, refdict, min_block, max_span, max_distanc
 					if is_verbose:
 						sys.stderr.write("# Too few genes left from {} on scaffold {}, skipping walk\n".format(startingtrans, scaffold) )
 				lastmatch = str(blast_refgene)
-	sys.stderr.write("# Found {} possible split genes  ".format(splitgenes) + time.asctime() + os.linesep)
-	sys.stderr.write("# Most genes on a query scaffold was {}  ".format(max(list(scaffoldgenecounts.keys()))) + time.asctime() + os.linesep)
+	sys.stderr.write("# Found {} possible split genes  {}\n".format(splitgenes, time.asctime() ) )
+	sys.stderr.write("# Most genes on a query scaffold was {}\n".format(max(list(scaffoldgenecounts.keys() ) ) ) )
 	genetotal = sum(x*y for x,y in blocklengths.items())
-	sys.stderr.write("# Found {} total putative synteny blocks for {} genes  ".format(sum(list(blocklengths.values())), genetotal) + time.asctime() + os.linesep)
+	sys.stderr.write("# Found {} total putative synteny blocks for {} genes\n".format(sum(list(blocklengths.values())), genetotal) )
 	if len(blocklengths)==0: # if no blocks are found
 		sys.exit("### NO SYNTENY DETECTED, CHECK GENE ID FORMAT PARAMTERS -Q -D")
-	sys.stderr.write("# Average block is {:.2f}, longest block was {} genes  ".format( 1.0*genetotal/sum(list(blocklengths.values())), max(list(blocklengths.keys())) ) + time.asctime() + os.linesep)
-	sys.stderr.write("# Total block span was {} bases  ".format(basetotal) + time.asctime() + os.linesep)
+	sys.stderr.write("# Average block is {:.2f}, longest block was {} genes\n".format( 1.0*genetotal/sum(list(blocklengths.values())), max(list(blocklengths.keys())) ) )
+	sys.stderr.write("# Total block span was {} bases  {}\n".format(basetotal, time.asctime() ) )
 
 	### MAKE BLOCK HISTOGRAM
 	for k,v in sorted(blocklengths.items(),key=lambda x: x[0]):
@@ -409,14 +418,14 @@ def main(argv, wayout):
 		args.minimum = 2
 
 	if args.exclude:
-		sys.stderr.write("# Reading exclusion list {}  ".format(args.exclude) + time.asctime() + os.linesep)
+		sys.stderr.write("# Reading exclusion list {}  {}\n".format(args.exclude , time.asctime() ) )
 		exclusionDict = {}
 		for term in open(args.exclude,'r').readlines():
 			term = term.strip()
 			if term[0] == ">":
 				term = term[1:]
 			exclusionDict[term] = True
-		sys.stderr.write("# Found {} contigs to exclude  ".format(len(exclusionDict) ) + time.asctime() + os.linesep)
+		sys.stderr.write("# Found {} contigs to exclude  {}\n".format( len(exclusionDict) , time.asctime() ) )
 	else:
 		exclusionDict = None
 
