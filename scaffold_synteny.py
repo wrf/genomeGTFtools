@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 #
 # scaffold_synteny.py created 2019-03-27
+# v1.2 add print all option and to remove gene features 2022-10-27
 
 '''
-scaffold_synteny.py  v1.1 last modified 2022-10-24
+scaffold_synteny.py  v1.2 last modified 2022-10-27
     makes a table of gene matches between two genomes, to detect synteny
     these can be converted into a dotplot of gene matches
 
@@ -81,10 +82,10 @@ def make_seq_length_dict(contigsfile, maxlength, exclusiondict, wayout, isref=Fa
 	sys.stderr.write("# Kept {} contigs, for {} bases, last contig was {}bp long  {}\n".format( len(sorteddict), lengthsum, v, time.asctime() ) )
 	return sorteddict
 
-def parse_gtf(gtffile, excludedict, delimiter, isref=False):
+def parse_gtf(gtffile, excludedict, delimiter, do_ignore_gene, isref=False):
 	'''from a gtf, return a dict of dicts where keys are scaffold names, then gene names, and values are gene info as a tuple of start end and strand direction'''
 	if isref:
-		genesbyscaffold = {} # key is reference gene ID, value is list of scaffold and gene midpoint position
+		genesbyscaffold = {} # key is reference gene ID, value is a 2-item list of scaffold and gene midpoint position
 	else:
 		genesbyscaffold = defaultdict(dict) # scaffolds as key, then gene name, then gene position integer
 
@@ -103,7 +104,7 @@ def parse_gtf(gtffile, excludedict, delimiter, isref=False):
 				continue # skip anything that hits to excludable scaffolds
 			feature = lsplits[2]
 			attributes = lsplits[8]
-			if feature=="transcript" or feature=="mRNA" or feature=="gene":
+			if feature=="transcript" or feature=="mRNA" or (feature=="gene" and do_ignore_gene is False):
 				# regex search expects gff format
 				# should allow a-z , A-Z _ . | + -
 				try:
@@ -196,8 +197,11 @@ def make_self_blast_dict(gene_positions):
 
 def generate_synteny_points(queryScafOffset, dbScafOffset, queryPos, dbPos, blastdict, give_local_positions, do_print_all, wayout):
 	'''combine all datasets and for each gene on the query scaffolds, print tab delimited data to stdout'''
-	printcount = 0
+
+	printed_queries = {} # key is gene ID, value is True
+	printed_targets = {} # key is gene ID, value is True
 	scaffoldtotals = defaultdict(int) # counts of total genes for each scaffold
+
 	sys.stderr.write("# Determining match positions  {}\n".format( time.asctime() ) )
 	for scaffold, genedict in queryPos.items():
 		scaffoldcounts = defaultdict(int) # counts of hits to each reference scaffold
@@ -246,12 +250,23 @@ def generate_synteny_points(queryScafOffset, dbScafOffset, queryPos, dbPos, blas
 				scaffoldcounts[matchscaf] += 1
 
 				# write each match to file
-				printcount += 1
+				printed_queries[gene] = True
+				printed_targets[matchgene] = True
 				wayout.write("g\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format(gene, scaffold, matchgene, matchscaf, overallposition, overallmatchpos, bitscore) )
-	if printcount:
-		sys.stderr.write("# Wrote match positions for {} genes\n".format( printcount ) )
+	if printed_queries:
+		sys.stderr.write("# Wrote match positions for {} genes\n".format( len(printed_queries) ) )
 	else:
 		sys.stderr.write("# WARNING: NO MATCHES FOUND, CHECK -Q AND -D\n")
+	if do_print_all:
+		for db_gene in dbPos.keys():
+			if db_gene not in printed_targets:
+				matchscaf, matchposition = dbPos.get(db_gene, [None, None])
+				matchoffset = dbScafOffset.get(matchscaf, 0)
+				overallmatchpos = matchposition + matchoffset
+				printed_targets[db_gene] = True
+				wayout.write("g\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format("NA", "NA", matchgene, matchscaf, 0, overallmatchpos, 0) )
+	if printed_targets:
+		sys.stderr.write("# Wrote target positions for {} genes\n".format( len(printed_targets) ) )
 
 def randomize_genes_globally(refdict):
 	'''take the query gtf dict and randomize the gene names for all genes on all scaffolds, return a similar dict of dicts'''
@@ -357,6 +372,7 @@ def main(argv, wayout):
 	parser.add_argument('--double-randomize', help="randomize gene positions of db, use with -S", action="store_true")
 	parser.add_argument('--local-positions', help="output points as local positions on each scaffold, not global position", action="store_true")
 	parser.add_argument('--compare-haplotypes', help="compare gene placement between two haplotypes, blast -b is ignored", action="store_true")
+	parser.add_argument('--ignore-gene-features', help="skip gene features, but will still use mRNA and transcript", action="store_true")
 	parser.add_argument('--print-no-match', help="print lines for all queries, including those without blast matches", action="store_true")
 	args = parser.parse_args(argv)
 
@@ -375,7 +391,7 @@ def main(argv, wayout):
 
 	# read query as normal
 	# and assign to query_gene_pos, as a dict of dicts
-	query_gene_pos = parse_gtf(args.query_gff, exclusiondict, args.query_delimiter, False)
+	query_gene_pos = parse_gtf(args.query_gff, exclusiondict, args.query_delimiter, args.ignore_gene_features, False)
 	### IF DOING RANDOMIZATION ###
 	if args.global_randomize:
 		query_gene_pos = randomize_genes_globally(query_gene_pos)
@@ -384,11 +400,11 @@ def main(argv, wayout):
 
 	### IF DOING DOUBLE RANDOMIZE ###
 	if args.double_randomize: # read db first as query format, randomize and generate the dict in the ref format
-		db_gene_pos = parse_gtf(args.db_gff, exclusiondict, args.db_delimiter, False)
+		db_gene_pos = parse_gtf(args.db_gff, exclusiondict, args.db_delimiter, args.ignore_gene_features, False)
 		db_gene_pos = randomize_db_locally(db_gene_pos)
 	# if NOT RANDOMIZING REFERENCE #
 	else: # otherwise read as normal into the ref format
-		db_gene_pos = parse_gtf(args.db_gff, exclusiondict, args.db_delimiter, True)
+		db_gene_pos = parse_gtf(args.db_gff, exclusiondict, args.db_delimiter, args.ignore_gene_features, True)
 
 	# read blast hits
 	if args.compare_haplotypes:
