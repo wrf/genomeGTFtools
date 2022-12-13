@@ -1,13 +1,13 @@
 #!/usr/bin/env Rscript
 # convert tabular annotation format to rectangle blocks
 # or polygon blocks for single CDS genes, like bacteria
-# last modified 2020-05-19
+# last modified 2022-11-26
 
 args = commandArgs(trailingOnly=TRUE)
 
 inputfile = args[1]
 #inputfile = "~/genomes/mnemiopsis_leidyi/ml0011_63k-88k_annot_short.tab"
-#inputfile = "~/genomes/aliivibrio_fisheri/lux_locus_short_annot.tab"
+#inputfile = "~/git/genomeGTFtools/test_data/lux_locus_short_annot.tab"
 outputfile = gsub("([\\w/]+)\\....$","\\1.pdf",inputfile,perl=TRUE)
 
 annottab = read.table(inputfile,header=FALSE,sep="\t",stringsAsFactors=FALSE)
@@ -18,6 +18,11 @@ if (!is.na(seqcount)) {
 	num_tx = as.integer(seqcount)
 }
 
+# mode to draw style of bacterial genomes, meaning polygons in a row
+# meaning like below, all on the same line
+# |||> ||> ||> |||||> <||
+bmode = FALSE
+
 # default is to draw rectangles as exons with an arrow
 # for bacteria, genes are usually entire CDS and are better rendered with polygons
 draw_polygons = FALSE
@@ -27,6 +32,9 @@ axistype = annottab[which(annottab[,2]=="axis"),]
 # for some reason this has to be forced to numeric sometimes
 window_start = as.numeric(axistype[1,3])
 window_end   = as.numeric(axistype[1,4])
+if (axistype[1,5]=="True") {
+  bmode = TRUE
+}
 axis_width = window_end - window_start
 offset_width = axis_width * 0.05
 print(paste("# plotting axis of distance",axis_width,"for up to",num_tx,"genes"))
@@ -76,6 +84,7 @@ if (draw_polygons==TRUE) {
 			used_offset = offset_width
 		}
 		forward_x = c( mrnatypes[yval,4], mrnatypes[yval,4]-used_offset, mrnatypes[yval,3], mrnatypes[yval,3], mrnatypes[yval,4]-used_offset, mrnatypes[yval,4])
+		if (bmode){yval = num_tx/2}
 		forward_y = c( yval, yval-0.3, yval-0.3, yval+0.3, yval+0.3, yval)
 		polygon( forward_x, forward_y, col="#25893a")
 	}
@@ -88,6 +97,7 @@ if (draw_polygons==TRUE) {
 			used_offset = offset_width
 		}
 		reverse_x = c( mrnatypes[yval,3], mrnatypes[yval,3]+used_offset, mrnatypes[yval,4], mrnatypes[yval,4], mrnatypes[yval,3]+used_offset, mrnatypes[yval,3])
+		if (bmode){yval = num_tx/2}
 		reverse_y = c( yval, yval-0.3, yval-0.3, yval+0.3, yval+0.3, yval)
 		polygon( reverse_x, reverse_y, col="#25893a")
 	}
@@ -104,7 +114,8 @@ if (draw_polygons==TRUE) {
 	rect(exontypes[,3], exon_index-0.3, exontypes[,4], exon_index+0.3, col="#25893a")
 }
 # write the names of each transcript
-text(mrnatypes[,3], tx_index, tx_names, pos=2)
+if (bmode) { text(mrnatypes[,3], rep(num_tx/2, length(tx_index)), tx_names, adj=c(1,1), srt=45)
+  } else {text(mrnatypes[,3], tx_index, tx_names, pos=2)}
 # write the scaffold name on the margin
 mtext(axistype[1,1], side=1, at=window_start-(1.5*offset_width), cex=1.8, line=-0.4)
 #
