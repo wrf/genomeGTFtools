@@ -96,7 +96,7 @@ ftest_p_value_mat = matrix( data=ftest_p_value_log, nrow=nscaf_g1, byrow=TRUE )
 raw_p_value_mat = matrix( data=ftest_p_values, nrow=nscaf_g1, byrow=TRUE )
 colnames(raw_p_value_mat) = scaf2_names[sc2_reorder_index]
 # write csv
-output_csv = gsub("([\\w/]+)\\....$","\\1.pvalue.csv",all2Dfile,perl=TRUE)
+output_csv = gsub("([\\w/]+)\\....$","\\1.pvalue.csv",gsub(".gz$","",all2Dfile,perl=TRUE),perl=TRUE)
 print( paste("writing csv to",output_csv) )
 write.csv(raw_p_value_mat, file=output_csv, row.names=scaf1_names[sc1_reorder_index] )
 #
@@ -121,8 +121,6 @@ scale_x_starts = seq(0.5, 0.9-scale_slice_width, scale_slice_width)
 scale_x_endss = seq(0.5+scale_slice_width, 0.9, scale_slice_width)
 
 colorscheme = colorRampPalette(c("#f1eef6","#66a4c2","#4d004b"))(scalebar_range[2])
-
-
 
 
 outputfile = gsub("([\\w/]+)\\....$","\\1.pvalue.pdf",gsub(".gz$","",all2Dfile,perl=TRUE),perl=TRUE)
