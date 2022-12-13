@@ -1,12 +1,15 @@
 # synteny_2d_plot.R
 # make dot plot of synteny between two genomes, based on unidirectional blast hits (i.e. not reciprocal)
 # created by WRF 2019-04-01
-# last modified 2022-10-24
+# last modified 2022-12-13
 
 args = commandArgs(trailingOnly=TRUE)
 
 # read data file from scaffold_synteny.py
 all2Dfile = args[1]
+# in case of .gz input, remove the .gz and rename otherwise
+outputfile = gsub("([\\w/]+)\\....$","\\1.pdf",gsub(".gz$","",all2Dfile,perl=TRUE),perl=TRUE)
+if (all2Dfile==outputfile) { stop("cannot parse input file to generate output file name, add a unique 3-letter suffix") }
 
 # read optional species names
 # should match between query and subject in scaffold_synteny.py, as -f and -F
@@ -56,7 +59,6 @@ longscafs2_names = scafdata2[is_longscafs2,2]
 
 is_points = which(categories=="g")
 pointsdata = all2Ddata[is_points,]
-#head(pointsdata)
 
 # determine which genome is longer, for correct orientation on paper
 # if genome 1 is longer, then swap the positions, axes, and labels
@@ -118,8 +120,8 @@ if ( !is.na(args[4]) ) {
   dotcolor = "#18935188" # default green
 }
 
+
 # make PDF
-outputfile = gsub("([\\w/]+)\\....$","\\1.pdf",all2Dfile,perl=TRUE)
 pdf(file=outputfile, width=8, height=11) # a4 size
 #pdf(file=outputfile, width=16, height=23) # a2 size
 #pdf(file=outputfile, width=32, height=45) # a0 size

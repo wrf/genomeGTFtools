@@ -1,5 +1,6 @@
 # calculation of probabilities of matching genes between scaffolds, as having derived from a random distribution
 # by WRF 2020-06-15
+# last modified 2022-12-13
 
 # analysis is modeled from this explanation from Srivastava 2008
 # "Scaffold_8 has genes belonging to 174 of the 5,487 ancestral gene clusters, while human chromosome segment 10.4
@@ -124,7 +125,7 @@ colorscheme = colorRampPalette(c("#f1eef6","#66a4c2","#4d004b"))(scalebar_range[
 
 
 
-outputfile = gsub("([\\w/]+)\\....$","\\1.pvalue.pdf",all2Dfile,perl=TRUE)
+outputfile = gsub("([\\w/]+)\\....$","\\1.pvalue.pdf",gsub(".gz$","",all2Dfile,perl=TRUE),perl=TRUE)
 print( paste("creating pdf",outputfile) )
 
 main_label = paste("Fisher's exact test P values\n", genome1_arg, "vs", genome2_arg)
