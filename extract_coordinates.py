@@ -2,7 +2,7 @@
 #
 # extract_coordinates.py
 
-'''extract_coordinates.py  last modified 2021-01-24
+'''extract_coordinates.py  last modified 2022-11-26
 
     extract relevant regions from a GFF, to make simple figures
     resembling a view in a genome browser
@@ -109,13 +109,16 @@ def main(argv, wayout):
 	parser.add_argument('-G','--genes-only', action="store_true", help="draw only genes, ignore exon features")
 	parser.add_argument('-p','--prokaryote', action="store_true", help="assume annotation is for a prokaryote, use gene or CDS features, and no exons or mRNA are specified")
 	parser.add_argument('-v','--verbose', action="store_true", help="extra output")
+	parser.add_argument('--make-linear', action="store_true", help="instruct R script to draw genes all on the same line, like for a bacterial operon schematic")
 	args = parser.parse_args(argv)
 
 	sys.stderr.write("# Extracting features on {} from position {} to {}\n".format(args.scaffold, args.begin, args.end) )
 
-	axis_line = "{}\taxis\t{}\t{}\t.\n".format( args.scaffold, args.begin, args.end )
+	# make only one axis line
+	axis_line = "{}\taxis\t{}\t{}\t{}\n".format( args.scaffold, args.begin, args.end, args.make_linear )
 	sys.stdout.write( axis_line )
 
+	# then make the transcripts for each GFF file
 	for gff_file in args.gff_files:
 		extract_features( gff_file, args.scaffold, args.begin, args.end, args.full_only, args.genes_only, args.use_cds, args.prokaryote )
 
