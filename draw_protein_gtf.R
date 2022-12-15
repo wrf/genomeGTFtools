@@ -1,13 +1,13 @@
 #!/usr/bin/env Rscript
 #
 # convert protein GTF format to rectangle blocks for domains
-# last modified 2022-04-28
+# last modified 2022-12-15
 
 args = commandArgs(trailingOnly=TRUE)
 
 inputfile = args[1]
-#inputfile = "~/git/genomeGTFtools/test_data/nidogen_full_prots.clan.gff"
-outputfile = gsub("([\\w/]+).g..$","\\1.pdf",inputfile,perl=TRUE)
+inputfile = "~/git/genomeGTFtools/test_data/nidogen_full_prots.clan.gff"
+outputfile = gsub("([\\w/]+).g..$","\\1.pdf", inputfile, perl=TRUE)
 
 print(paste("Reading domains from", inputfile, ", writing to", outputfile))
 gtftab = read.table(inputfile,header=FALSE,sep="\t")
@@ -42,11 +42,11 @@ motiftypes = gtftab[which(gtftab[,3]=="motif"),]
 
 # domain codes for legend and color coding
 domaincodes = gsub("ID=([\\w\\d]+)\\..*","\\1",PFAMtypes[,9],perl=TRUE)
-domnames = unique(domaincodes)
-numdomains = length(domnames)
-domainindex = match(domaincodes,domnames)
+domaincodes.uniq = unique(domaincodes)
+numdomains = length(domaincodes.uniq)
+domainindex = match(domaincodes,domaincodes.uniq)
 colvec = rainbow(numdomains, s=0.82, alpha=0.8)
-domainids = gsub("ID=([\\w\\d]+)\\.([\\w\\d-]+)\\..+","\\2",PFAMtypes[,9],perl=TRUE)
+domain_names = gsub("ID=([\\w\\d]+)\\.([\\w\\d-]+)\\..+","\\2",PFAMtypes[,9],perl=TRUE)
 
 # use same scalebar and maximum for all pages
 maxend = max(gtftab[,5])
@@ -69,14 +69,21 @@ for (i in 1:length(countgroups)) {
   # just a list of protein IDs, like:
   # "NID2_MOUSE" "NID2_HUMAN" "NID1_HUMAN" "NID1_MOUSE"
   protnames_per_page = rev(as.character(protnames[prots_per_page]))
-  
   # get domain position information
   protindex = match(PFAMtypes[,1],protnames_per_page)
+
+  # due to protindex, NAs are introduced for yupper and ylower  
   yupper = protindex*10 - offs_u
   ylower = protindex*10 - offs_l
+  # domstart and domend are for all domains, incl those on another page
   domstart = PFAMtypes[,4]
   domend = PFAMtypes[,5]
-  
+  # get all protein numbers, and keep only entries from proteins on this page
+  is_domain_on_page = (match(PFAMtypes[,1],protnames) %in% prots_per_page)
+  # domain codes for only those on the current page
+  domaincodes_on_page.uniq = match(unique(domaincodes[is_domain_on_page]),domaincodes.uniq)
+
+  # draw empty plot and axis for each page
   plot(0,0,type='n', xlim=c(0,max(protlenrange)), ylim=c(0,yscale_max),
        frame.plot=FALSE, xlab="", ylab="", axes=FALSE)
   axis(1)
@@ -99,11 +106,11 @@ for (i in 1:length(countgroups)) {
   # draw domains as rectangles
   #axis(1,at=protlenrange)
   rect(domstart, ylower, domend, yupper, col=colvec[domainindex])
-  #text(domstart, protindex*10-1, domainids, pos=4, offset=0)
+  #text(domstart, protindex*10-1, domain_names, pos=4, offset=0)
   text(c(0),match(protnames_per_page,protnames_per_page)*10 - (offs_u-2), 
        protnames_per_page, pos=4, offset=0)
-  legend(0, yscale_max, legend=domainids[match(domnames,domaincodes)],
-         col=colvec, pch=15, x.intersp=0.5, ncol=4, bty='o')
+  legend(0, yscale_max, legend=domain_names[match(domaincodes.uniq,domaincodes)][domaincodes_on_page.uniq],
+         col=colvec[domaincodes_on_page.uniq], pch=15, x.intersp=0.5, ncol=4, bty='o')
   
   # draw modified residues as downward pointing triangles
   residueindex = match(residuetypes[,1],protnames_per_page)
@@ -116,7 +123,6 @@ for (i in 1:length(countgroups)) {
 }
 dev.off()
 #
-
 
 
 #
