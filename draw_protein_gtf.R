@@ -6,7 +6,7 @@
 args = commandArgs(trailingOnly=TRUE)
 
 inputfile = args[1]
-inputfile = "~/git/genomeGTFtools/test_data/nidogen_full_prots.clan.gff"
+#inputfile = "~/git/genomeGTFtools/test_data/nidogen_full_prots.clan.gff"
 outputfile = gsub("([\\w/]+).g..$","\\1.pdf", inputfile, perl=TRUE)
 
 print(paste("Reading domains from", inputfile, ", writing to", outputfile))
@@ -87,6 +87,7 @@ for (i in 1:length(countgroups)) {
   plot(0,0,type='n', xlim=c(0,max(protlenrange)), ylim=c(0,yscale_max),
        frame.plot=FALSE, xlab="", ylab="", axes=FALSE)
   axis(1)
+  #axis(1,at=protlenrange)
   
   # make black lines for length of the protein
   # this works even if no protein types are given, instead just does not draw lines
@@ -104,11 +105,13 @@ for (i in 1:length(countgroups)) {
   rect(sigstart, siglower, sigend, sigupper, col="#000000")
   
   # draw domains as rectangles
-  #axis(1,at=protlenrange)
   rect(domstart, ylower, domend, yupper, col=colvec[domainindex])
-  #text(domstart, protindex*10-1, domain_names, pos=4, offset=0)
+
+  # print protein names above protein
   text(c(0),match(protnames_per_page,protnames_per_page)*10 - (offs_u-2), 
        protnames_per_page, pos=4, offset=0)
+
+  # subset legend and color scheme to only include those on current page
   legend(0, yscale_max, legend=domain_names[match(domaincodes.uniq,domaincodes)][domaincodes_on_page.uniq],
          col=colvec[domaincodes_on_page.uniq], pch=15, x.intersp=0.5, ncol=4, bty='o')
   
