@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 # convert tabular annotation format to rectangle blocks
 # or polygon blocks for single CDS genes, like bacteria
-# last modified 2022-11-26
+# last modified 2022-12-21
 
 args = commandArgs(trailingOnly=TRUE)
 
@@ -78,11 +78,7 @@ if (draw_polygons==TRUE) {
 	# draw forward polygons
 	for (yval in tx_index[is_forward]) {
 		genelen = mrnatypes[yval,4]-mrnatypes[yval,3]
-		if (genelen < offset_width) {
-			used_offset = genelen
-		} else {
-			used_offset = offset_width
-		}
+		used_offset = ifelse(genelen < offset_width, genelen, offset_width)
 		forward_x = c( mrnatypes[yval,4], mrnatypes[yval,4]-used_offset, mrnatypes[yval,3], mrnatypes[yval,3], mrnatypes[yval,4]-used_offset, mrnatypes[yval,4])
 		if (bmode){yval = num_tx/2}
 		forward_y = c( yval, yval-0.3, yval-0.3, yval+0.3, yval+0.3, yval)
@@ -91,11 +87,7 @@ if (draw_polygons==TRUE) {
 	# draw reverse polygons
 	for (yval in tx_index[is_reverse]) {
 		genelen = mrnatypes[yval,4]-mrnatypes[yval,3]
-		if (genelen < offset_width) {
-			used_offset = genelen
-		} else {
-			used_offset = offset_width
-		}
+		used_offset = ifelse(genelen < offset_width, genelen, offset_width)
 		reverse_x = c( mrnatypes[yval,3], mrnatypes[yval,3]+used_offset, mrnatypes[yval,4], mrnatypes[yval,4], mrnatypes[yval,3]+used_offset, mrnatypes[yval,3])
 		if (bmode){yval = num_tx/2}
 		reverse_y = c( yval, yval-0.3, yval-0.3, yval+0.3, yval+0.3, yval)

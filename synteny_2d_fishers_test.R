@@ -1,6 +1,6 @@
 # calculation of probabilities of matching genes between scaffolds, as having derived from a random distribution
 # by WRF 2020-06-15
-# last modified 2022-12-13
+# last modified 2022-12-27
 
 # analysis is modeled from this explanation from Srivastava 2008
 # "Scaffold_8 has genes belonging to 174 of the 5,487 ancestral gene clusters, while human chromosome segment 10.4
@@ -58,6 +58,8 @@ longestscaf2 = max(scafdata2[,6])
 is_longscafs2 =  which(as.numeric(scafdata2[,5]) > 0.0001)
 is_points = which(categories=="g")
 pointsdata = all2Ddata[is_points,]
+if (sum(is.na(pointsdata[,3])) > 0 | sum(is.na(pointsdata[,5])) > 0){
+  print("WARNING: NAs DETECTED IN POINTS, OUTPUT MAY NOT WORK")}
 scaffold_data = data.frame( sc1 = pointsdata[,3], sc2 = pointsdata[,5])
 
 match_freq_table = table(scaffold_data)
@@ -100,7 +102,6 @@ output_csv = gsub("([\\w/]+)\\....$","\\1.pvalue.csv",gsub(".gz$","",all2Dfile,p
 print( paste("writing csv to",output_csv) )
 write.csv(raw_p_value_mat, file=output_csv, row.names=scaf1_names[sc1_reorder_index] )
 #
-
 
 
 # count blocks that are significant against the randomized dataset
