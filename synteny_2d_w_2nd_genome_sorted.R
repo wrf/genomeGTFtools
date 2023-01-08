@@ -1,7 +1,7 @@
 # synteny_2d_plot.R
 # make dot plot of synteny between two genomes, based on unidirectional blast hits (i.e. not reciprocal)
 # created by WRF 2019-04-01
-# last modified 2022-12-14
+# last modified 2023-01-08
 
 args = commandArgs(trailingOnly=TRUE)
 
@@ -43,6 +43,7 @@ scafdata1 = all2Ddata[is_scaf1,]
 is_longscafs1 = which(as.numeric(scafdata1[,5]) > 0.0009)
 longscafs1 = c(0, scafdata1[,6][is_longscafs1] )
 longscafs1_names = scafdata1[is_longscafs1,2]
+if (!("l" %in% unique(scafdata1[,8]))){ print("WARNING: format not detected as --local-positions , output may not work") }
 
 is_scaf2 = which(categories=="s2")
 scafdata2 = all2Ddata[is_scaf2,]
@@ -57,17 +58,21 @@ is_both_longscaf = !is.na(match(pointsdata[,3], longscafs1_names)) & !is.na(matc
 pointsdata_long = pointsdata[is_both_longscaf,]
 
 scaffold_match_data = data.frame( sc1 = pointsdata_long[,3], sc2 = pointsdata_long[,5] )
-match_freq_table = table(scaffold_match_data)
+match_freq_table = table(scaffold_match_data, dnn=list(c(longscafs1_names),c(longscafs2_names)) )
 
+# key is scaf2 name, value is index of scaf1, auto sorted alphabetically
 scaffold_best_match = apply(match_freq_table, 2, which.max)
 #scaffold_best_match
+# de-alphabetize the scaffold names, so put them back into the original order for scaf1
+scaffold_best_match.disalpha = match(rownames(match_freq_table),longscafs1_names)[scaffold_best_match]
+
 # moves alphabetic to length order
 sc2_alpha_to_by_length = match( names(scaffold_best_match) , scafdata2[is_longscafs2,2] )
 
 # moves length to alphabetic
 sc2_by_length_to_alpha = match( scafdata2[is_longscafs2,2] , names(scaffold_best_match) )
 
-sc2_sorted_index = sort(scaffold_best_match[sc2_by_length_to_alpha], index.return = TRUE)
+sc2_sorted_index = sort(scaffold_best_match.disalpha[sc2_by_length_to_alpha], index.return = TRUE)
 scafdata2_reorder = scafdata2_long[sc2_sorted_index$ix,]
 sc2_reorder_index = match( scafdata2_reorder[,2], names(sc2_sorted_index$x) )
 
@@ -142,7 +147,6 @@ pdf(file=outputfile, width=8, height=11) # a4 size
 par( mar=c(4.5,4.5,1,1) )
 
 plot(genome_x, genome_y, pch=16, 
-     xlim = c(0,60000000), ylim = c(0,80000000),
      col=dotcolor, cex=0.5, cex.lab=1.4, 
      main="", xlab=xlab, ylab=ylab, 
      axes=FALSE )
