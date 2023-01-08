@@ -2,9 +2,10 @@
 #
 # scaffold_synteny.py created 2019-03-27
 # v1.2 add print all option and to remove gene features 2022-10-27
+# v1.3 print used options in the scaffold table 2023-01-08
 
 '''
-scaffold_synteny.py  v1.2 last modified 2022-10-27
+scaffold_synteny.py  v1.3 last modified 2023-01-08
     makes a table of gene matches between two genomes, to detect synteny
     these can be converted into a dotplot of gene matches
 
@@ -21,7 +22,7 @@ scaffold_synteny.py -b monbr1_vs_srosetta_blastp.tab -q Monbr1_augustus_v1_no_co
       in the same output file
     first type is scaffold information, for both genomes, as:
   genome (either 1 or 2)  scaffold-name  number  length
-    fraction of total assembly  cumulative sum  cumulative fraction  blank
+    fraction of total assembly  cumulative sum  cumulative fraction  mode
 
 s1  contig_001_length_2062630  1  2062630  0.023656  2062630  0.023656  -
 
@@ -47,7 +48,7 @@ import random
 from collections import defaultdict
 from Bio import SeqIO
 
-def make_seq_length_dict(contigsfile, maxlength, exclusiondict, wayout, isref=False):
+def make_seq_length_dict(contigsfile, maxlength, exclusiondict, option_mode, wayout, isref=False):
 	'''read fasta file, and return dict where key is scaffold name and value is length, also print the length of each scaffold to stdout'''
 	lengthdict = {}
 	if contigsfile.rsplit('.',1)[-1]=="gz": # autodetect gzip format
@@ -76,7 +77,7 @@ def make_seq_length_dict(contigsfile, maxlength, exclusiondict, wayout, isref=Fa
 		scaffoldcounter += 1
 		sorteddict[k] = lengthsum
 		lengthsum += v
-		wayout.write("{}\t{}\t{}\t{}\t{:.6f}\t{}\t{:.6f}\t-\n".format(scafkey, k, scaffoldcounter, v, v*1.0/totalgenomesize, lengthsum, lengthsum*1.0/totalgenomesize) )
+		wayout.write("{}\t{}\t{}\t{}\t{:.6f}\t{}\t{:.6f}\t{}\n".format(scafkey, k, scaffoldcounter, v, v*1.0/totalgenomesize, lengthsum, lengthsum*1.0/totalgenomesize, option_mode ) )
 		if lengthsum >= maxlength_MB: # keep adding scaffolds until length limit is hit or exceeded
 			break
 	sys.stderr.write("# Kept {} contigs, for {} bases, last contig was {}bp long  {}\n".format( len(sorteddict), lengthsum, v, time.asctime() ) )
@@ -203,14 +204,13 @@ def generate_synteny_points(queryScafOffset, dbScafOffset, queryPos, dbPos, blas
 	scaffoldtotals = defaultdict(int) # counts of total genes for each scaffold
 
 	sys.stderr.write("# Determining match positions  {}\n".format( time.asctime() ) )
-	for scaffold, genedict in queryPos.items():
+	# force sorted order based on the scaffold order from the fasta file
+	for scaffold, queryoffset in sorted(queryScafOffset.items(), key=lambda x: x[1]):
+		genedict = queryPos.get(scaffold,{}) # if no genes, then skip scaffold at next for loop
 		scaffoldcounts = defaultdict(int) # counts of hits to each reference scaffold
 		for gene, localposition in genedict.items():
 			scaffoldtotals[scaffold] += 1
-			# check offset for query scaffolds
-			queryoffset = queryScafOffset.get(scaffold,None)
-			if queryoffset is None: # if none, then match is not on one of the kept query scaffolds
-				continue
+
 			if give_local_positions: # if using local positions, ignore all ofsets and use only localposition
 				overallposition = localposition
 			else: # using global positions
@@ -385,9 +385,24 @@ def main(argv, wayout):
 
 	exclusiondict = make_exclude_dict(args.exclude) if args.exclude else {}
 
+	# get option mode string
+	option_mode = "" # should be in ["r", "s", "sd", "l", "n", "ln", "-"]
+	if args.global_randomize:
+		option_mode += "r"
+	elif args.scaffold_randomize:
+		option_mode += "s"
+		if args.double_randomize:
+			option_mode += "d"
+	if args.local_positions:
+		option_mode += "l"
+	if args.print_no_match:
+		option_mode += "n"
+	if not option_mode: # if empty string, set to hyphen
+		option_mode = "-"
+
 	# read both sets of scaffolds
-	query_scaf_lengths = make_seq_length_dict(args.query_fasta, args.query_genome_len, exclusiondict, wayout, False)
-	db_scaf_lengths = make_seq_length_dict(args.db_fasta, args.db_genome_len, exclusiondict, wayout, True)
+	query_scaf_lengths = make_seq_length_dict(args.query_fasta, args.query_genome_len, exclusiondict, option_mode, wayout, False)
+	db_scaf_lengths = make_seq_length_dict(args.db_fasta, args.db_genome_len, exclusiondict, option_mode, wayout, True)
 
 	# read query as normal
 	# and assign to query_gene_pos, as a dict of dicts
@@ -412,7 +427,6 @@ def main(argv, wayout):
 	else:
 		blastdict = parse_tabular_blast(args.blast, args.evalue, args.blast_query_delimiter, args.blast_db_delimiter, args.maximum_hits, args.group_size_maximum)
 	
-
 	# write output
 	generate_synteny_points( query_scaf_lengths, db_scaf_lengths, query_gene_pos, db_gene_pos, blastdict, args.local_positions, args.print_no_match, wayout)
 
