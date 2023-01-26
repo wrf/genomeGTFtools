@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 # v1.0 created 2016-05-16
+# python3 update 2019-09-26
+# v1.2 allow gzip 2023-01-25
 
-'''rename_gtf_contigs.py    last modified 2019-09-26
+'''rename_gtf_contigs.py    last modified 2023-01-25
 
     rename scaffolds/contigs in a GTF/GFF based on a conversion vector
 
@@ -22,6 +24,7 @@ number_contigs_by_length.py -c conversions.txt contigs.fasta > renamed_contigs.f
 import sys
 import os
 import time
+import gzip
 import argparse
 
 def make_conversion_dict(conversionfile, do_reverse):
@@ -39,14 +42,14 @@ def make_conversion_dict(conversionfile, do_reverse):
 	return conversiondict
 
 def make_exclude_dict(excludefile):
-	sys.stderr.write("# Reading exclusion list {}  ".format(excludefile) + time.asctime() + os.linesep)
+	sys.stderr.write("# Reading exclusion list {}  {}\n".format(excludefile, time.asctime() ) )
 	exclusion_dict = {}
 	for term in open(excludefile,'r'):
 		term = term.rstrip()
 		if term[0] == ">":
 			term = term[1:]
 		exclusion_dict[term] = True
-	sys.stderr.write("# Found {} contigs to exclude  ".format(len(exclusion_dict) ) + time.asctime() + os.linesep)
+	sys.stderr.write("# Found {} contigs to exclude  {}\n".format(len(exclusion_dict) , time.asctime() ) )
 	return exclusion_dict
 
 def main(argv, wayout):
@@ -55,7 +58,7 @@ def main(argv, wayout):
 	parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description=__doc__)
 	parser.add_argument('-c','--conversion', help="text file of naming conversions", required=True)
 	parser.add_argument('-E','--exclude', help="file of list of bad contigs")
-	parser.add_argument('-g','--gtf', help="gtf or gff format file", required=True)
+	parser.add_argument('-g','--gtf', help="input file in gtf or gff format, can be .gz", required=True)
 	parser.add_argument('-n','--nomatch', action="store_true", help="exclude features with no conversion")
 	parser.add_argument('-R','--reversed', action="store_true", help="conversion vector is in reversed order, as newname--oldname")
 	args = parser.parse_args(argv)
@@ -67,12 +70,18 @@ def main(argv, wayout):
 	linecounter = 0
 	conversions = 0
 	noconvertfeatures = 0
-	sys.stderr.write("# Reading features from {}  ".format(args.gtf) + time.asctime() + os.linesep)
-	for line in open(args.gtf,'r'):
+
+	if args.gtf.rsplit('.',1)[-1]=="gz": # autodetect gzip format
+		opentype = gzip.open
+		sys.stderr.write("# Parsing features from {} as gzipped  {}\n".format(args.gtf, time.asctime() ) )
+	else: # otherwise assume normal open for fasta format
+		opentype = open
+		sys.stderr.write("# Parsing features from {}  {}\n".format(args.gtf, time.asctime() ) )
+	for line in opentype(args.gtf,'rt'):
 		line = line.strip()
 		if line: # remove empty lines
 			if line[0]=="#": # write out any comment lines with no change
-				wayout.write(line + os.linesep)
+				print( line, file=wayout )
 			else:
 				linecounter += 1
 				lsplits = line.split("\t")
@@ -90,7 +99,7 @@ def main(argv, wayout):
 				else:
 					conversions += 1
 					lsplits[0] = newscaffold
-				wayout.write("\t".join(lsplits) + os.linesep)
+				print( "\t".join(lsplits), file=wayout )
 	sys.stderr.write("# Counted {} lines  ".format(linecounter) + time.asctime() + os.linesep)
 	sys.stderr.write("# Converted {} lines and could not change {}\n".format(conversions, noconvertfeatures) )
 
