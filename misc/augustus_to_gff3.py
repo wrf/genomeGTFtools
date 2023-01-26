@@ -2,9 +2,10 @@
 #
 # 2020-09-03 previous version
 # 2022-05-02 fix for old format without tags for transcript features
+# 2023-01-26 remove Geneious formatting
 
 '''
-  augustus_to_gff3.py  last modified  2022-05-02
+  augustus_to_gff3.py  last modified 2023-01-26
   generate true GFF3 from augustus output
   involves creating mRNA features from transcript
   and exon from CDS
@@ -27,14 +28,21 @@ else:
 		exon_from_CDS = False
 	else:
 		exon_from_CDS = True
+	do_verbose = False
+	featurecounts = {}
 
 	for line in open(sys.argv[1],'r'):
 		line = line.strip()
 		if line and line[0] != "#":
 			lsplits = line.split("\t")
 			feature = lsplits[2]
+			featurecounts[feature] = featurecounts.get(feature, 0) + 1
 			attributes = lsplits[8]
+			attributes = attributes.replace("GFF Attribute=","")
+			if attributes.find("codon_start") > -1: # codon info is already present in phase column, so remove it
+				attributes = attributes.split(";",1)[1]
 
+			# begin steps for features
 			if feature=="gene": # attributes should be single item
 				newattrs = "ID={0};Name={0}".format(attributes)
 			elif feature=="transcript": # changed to ID and Name
@@ -66,3 +74,7 @@ else:
 				sys.stdout.write("{}\n".format( "\t".join(exonsplits) ) )
 
 			sys.stdout.write("{}\n".format( "\t".join(lsplits) ) )
+
+	if do_verbose:
+		for k, v in featurecounts.items():
+			sys.stderr.write("# {}\t{}\n".format(k,v))
