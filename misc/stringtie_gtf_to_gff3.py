@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-'''stringtie_gtf_to_gff3.py  last modified 2021-12-19
+'''stringtie_gtf_to_gff3.py  last modified 2023-01-27
 
 convert stringtie GTF to standard GFF (ID-Parent format)
 stringtie_gtf_to_gff3.py stringtie.gtf > stringtie.gff3
@@ -39,13 +39,16 @@ def main(argv, wayout):
 				lsplits[2] = args.transcript
 				transcriptid = attrd.get("transcript_id").replace('"','')
 				# if using StringTie with FPKM etc, then add transfer those as well
-				fpkm = attrd.get("FPKM","NA").replace('"','')
-				tpm = attrd.get("TPM","NA").replace('"','')
-				coverage = attrd.get("cov","NA").replace('"','')
-				if fpkm=="NA" or tpm=="NA" or coverage=="NA": # otherwise just use ID and name
-					newattrs = "ID={0};Name={0}".format(transcriptid)
-				else:
-					newattrs = "ID={0};Name={0};cov={1};FPKM={2};TPM={3}".format(transcriptid, coverage, fpkm, tpm )
+				fpkm = attrd.get("FPKM",None)
+				tpm = attrd.get("TPM",None)
+				coverage = attrd.get("cov",None)
+				newattrs = "ID={0};Name={0};".format(transcriptid)
+				if coverage is not None:
+					newattrs += "cov={};".format(coverage.replace('"','') )
+				if fpkm is not None:
+					newattrs += "FPKM={};".format(fpkm.replace('"','') )
+				if tpm is not None:
+					newattrs += "TPM={};".format(tpm.replace('"','') )
 			elif feature=="exon": # change to ID and Parent
 				transcriptid = attrd.get("transcript_id").replace('"','')
 				exonnum = attrd.get("exon_number","").replace('"','')
