@@ -2,8 +2,9 @@
 # v1.0 created 2016-05-16
 # python3 update 2019-09-26
 # v1.2 allow gzip 2023-01-25
+# v1.3 allow skipping of comment lines 2023-04-05
 
-'''rename_gtf_contigs.py    last modified 2023-01-25
+'''rename_gtf_contigs.py    last modified 2023-04-05
 
     rename scaffolds/contigs in a GTF/GFF based on a conversion vector
 
@@ -16,6 +17,7 @@ oldnamecontig123    newnamecontig001
 
     contigs not included in vector are kept as is unless -n is used
     a note is added to the attributes "Rename=false" for removal by grep
+    this assumes GFF format - NOT GTF
 
     using conversion vector list from:
 number_contigs_by_length.py -c conversions.txt contigs.fasta > renamed_contigs.fasta
@@ -60,6 +62,7 @@ def main(argv, wayout):
 	parser.add_argument('-E','--exclude', help="file of list of bad contigs")
 	parser.add_argument('-g','--gtf', help="input file in gtf or gff format, can be .gz", required=True)
 	parser.add_argument('-n','--nomatch', action="store_true", help="exclude features with no conversion")
+	parser.add_argument('--omit-comments', action="store_true", help="remove any commented lines #")
 	parser.add_argument('-R','--reversed', action="store_true", help="conversion vector is in reversed order, as newname--oldname")
 	args = parser.parse_args(argv)
 
@@ -71,6 +74,11 @@ def main(argv, wayout):
 	conversions = 0
 	noconvertfeatures = 0
 
+	if args.nomatch:
+		sys.stderr.write("# REMOVING scaffolds without matches: {}\n".format(args.nomatch) )
+	if args.omit_comments:
+		sys.stderr.write("# REMOVING all comment lines: {}\n".format(args.omit_comments) )
+
 	if args.gtf.rsplit('.',1)[-1]=="gz": # autodetect gzip format
 		opentype = gzip.open
 		sys.stderr.write("# Parsing features from {} as gzipped  {}\n".format(args.gtf, time.asctime() ) )
@@ -81,7 +89,10 @@ def main(argv, wayout):
 		line = line.strip()
 		if line: # remove empty lines
 			if line[0]=="#": # write out any comment lines with no change
-				print( line, file=wayout )
+				if args.omit_comments:
+					continue
+				else:
+					print( line, file=wayout )
 			else:
 				linecounter += 1
 				lsplits = line.split("\t")
