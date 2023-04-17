@@ -3,9 +3,10 @@
 # scaffold_synteny.py created 2019-03-27
 # v1.2 add print all option and to remove gene features 2022-10-27
 # v1.3 print used options in the scaffold table 2023-01-08
+# v1.4 add some auto processing for GenBank format genomes 2023-04-17
 
 '''
-scaffold_synteny.py  v1.3 last modified 2023-01-08
+scaffold_synteny.py  v1.4 last modified 2023-04-17
     makes a table of gene matches between two genomes, to detect synteny
     these can be converted into a dotplot of gene matches
 
@@ -83,8 +84,10 @@ def make_seq_length_dict(contigsfile, maxlength, exclusiondict, option_mode, way
 	sys.stderr.write("# Kept {} contigs, for {} bases, last contig was {}bp long  {}\n".format( len(sorteddict), lengthsum, v, time.asctime() ) )
 	return sorteddict
 
-def parse_gtf(gtffile, excludedict, delimiter, do_ignore_gene, isref=False):
+def parse_gtf(gtffile, excludedict, delimiter, do_ignore_gene, isref=False, is_verbose=False):
 	'''from a gtf, return a dict of dicts where keys are scaffold names, then gene names, and values are gene info as a tuple of start end and strand direction'''
+	prot_to_gene_dict = {} # stores protein to gene IDs, in case of unique numbering e.g. GenBank IDs
+
 	if isref:
 		genesbyscaffold = {} # key is reference gene ID, value is a 2-item list of scaffold and gene midpoint position
 	else:
@@ -105,13 +108,14 @@ def parse_gtf(gtffile, excludedict, delimiter, do_ignore_gene, isref=False):
 				continue # skip anything that hits to excludable scaffolds
 			feature = lsplits[2]
 			attributes = lsplits[8]
+			attrd = dict([(field.strip().split("=",1)) for field in attributes.split(";") if field.count("=")])
 			if feature=="transcript" or feature=="mRNA" or (feature=="gene" and do_ignore_gene is False):
 				# regex search expects gff format
 				# should allow a-z , A-Z _ . | + -
-				try:
-					raw_geneid = re.search('ID=([\w\.\|\+\-]+)', attributes).group(1)
-				except AttributeError:
-					print( "ERROR: cannot extract ID= for {}".format(attributes, line) , file=sys.stderr )
+				raw_geneid = attrd.get("ID",None)
+				#raw_geneid = re.search('ID=([\w\.\|\+\-]+)', attributes).group(1)
+				if raw_geneid is None:
+					print( "ERROR: cannot extract ID= for {}\n{}".format(attributes, line) , file=sys.stderr )
 				# if a delimiter is given for either query or db, then split
 				if delimiter:
 					geneid = geneid.rsplit(delimiter,1)[0]
@@ -124,12 +128,22 @@ def parse_gtf(gtffile, excludedict, delimiter, do_ignore_gene, isref=False):
 					genesbyscaffold[geneid] = [scaffold,genemidpoint]
 				else:
 					genesbyscaffold[scaffold][geneid] = genemidpoint
+			elif feature=="CDS": # for GenBank, Parent=rna-XM_029783594.1  protein_id=XP_029639454.1
+				raw_mrna_id = attrd.get("Parent",None)
+				raw_prot_id = attrd.get("protein_id",None)
+				if isref: # refs are indexed in reverse, from blast hit to gene ID
+					prot_to_gene_dict[raw_prot_id] = raw_mrna_id
+				else: # indexed by GFF to find protein of the query
+					prot_to_gene_dict[raw_mrna_id] = raw_prot_id
+				if is_verbose:
+					print("## key {}  value {}  last tx {}".format(raw_mrna_id, raw_prot_id, raw_geneid), file=sys.stderr)
 
 	if len(genesbyscaffold) > 0:
 		genetotal = sum( list( map( len, genesbyscaffold.values() ) ) )
 		sys.stderr.write("# Found {} genes  {}\n".format( genetotal, time.asctime() ) )
 		sys.stderr.write("# GFF names parsed as {} from {}\n".format( geneid, raw_geneid ) )
-		return genesbyscaffold
+		sys.stderr.write("# {} RNA to protein IDs parsed as {} from {}\n".format( len(prot_to_gene_dict), raw_mrna_id, raw_prot_id ) )
+		return genesbyscaffold, prot_to_gene_dict
 	else:
 		sys.stderr.write("# WARNING: NO GENES FOUND\n")
 
@@ -196,8 +210,10 @@ def make_self_blast_dict(gene_positions):
 	sys.stderr.write("# Using {} genes for positions\n".format( len(artificial_hit_dict ) ) )
 	return artificial_hit_dict
 
-def generate_synteny_points(queryScafOffset, dbScafOffset, queryPos, dbPos, blastdict, give_local_positions, do_print_all, wayout):
+def generate_synteny_points(queryScafOffset, dbScafOffset, queryPos, dbPos, blastdict, prot_to_gene_dict, give_local_positions, do_print_all, is_genbank, wayout):
 	'''combine all datasets and for each gene on the query scaffolds, print tab delimited data to stdout'''
+
+	is_verbose = False
 
 	printed_queries = {} # key is gene ID, value is True
 	printed_targets = {} # key is gene ID, value is True
@@ -216,8 +232,18 @@ def generate_synteny_points(queryScafOffset, dbScafOffset, queryPos, dbPos, blas
 			else: # using global positions
 				overallposition = localposition + queryoffset
 
+			# if using GenBank GFFs and proteins directly, then convert from mRNA position ID to blasted protein
+			# this only works if the IDs are unique accession numbers
+			# i.e. if both are AUGUSTUS IDs like g1.t1 then the two genomes will interfere with each other
+			if is_genbank:
+				blast_qgene = prot_to_gene_dict.get(gene, None)
+			else:
+				blast_qgene = gene
+			if is_verbose:
+				print("## gene {}  blast {}  scaffold {}".format(gene, blast_qgene, scaffold), file=sys.stderr)
 			# then get matches for that gene
-			blasthits = blastdict.get(gene, None)
+			# blast_qgene should be the fasta protein header, or protein_id from a GFF
+			blasthits = blastdict.get(blast_qgene, None)
 			if blasthits is None: 
 				if do_print_all: # make fake entry for non-matches
 					blasthits = { "NA": 0 }
@@ -226,7 +252,11 @@ def generate_synteny_points(queryScafOffset, dbScafOffset, queryPos, dbPos, blas
 
 			# iterate through dict of matches
 			for matchgene, bitscore in sorted(blasthits.items(), key=lambda x: x[1], reverse=True):
-				matchscaf, matchposition = dbPos.get(matchgene, [None, None])
+				if is_genbank: # if using 2 GenBank genomes, process the same for the match
+					blast_matchgene = prot_to_gene_dict.get(matchgene, None)
+				else:
+					blast_matchgene = matchgene
+				matchscaf, matchposition = dbPos.get(blast_matchgene, [None, None])
 				if matchscaf is None: # would mean blast hit is not in the GFF
 					if do_print_all: # fix to NA and 0 for printing anyway
 						matchscaf = "NA"
@@ -351,9 +381,9 @@ def main(argv, wayout):
 	if not len(argv):
 		argv.append("-h")
 	parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description=__doc__)
-	parser.add_argument('-b','--blast', help="tabular blast output")
-	parser.add_argument('-f','--query-fasta', help="fasta file of query scaffolds", required=True)
-	parser.add_argument('-F','--db-fasta', help="fasta file of reference scaffolds", required=True)
+	parser.add_argument('-b','--blast', help="tabular blast or diamond output format 6, can be .gz")
+	parser.add_argument('-f','--query-fasta', help="fasta file of query scaffolds, can be .gz", required=True)
+	parser.add_argument('-F','--db-fasta', help="fasta file of reference scaffolds, can be .gz", required=True)
 	parser.add_argument('-q','--query-gff', help="GFF file of query genes", required=True)
 	parser.add_argument('-d','--db-gff', help="GFF file of reference genes", required=True)
 	parser.add_argument('-Q','--query-delimiter', help="gene transcript separator for query [.]")
@@ -373,6 +403,7 @@ def main(argv, wayout):
 	parser.add_argument('--local-positions', help="output points as local positions on each scaffold, not global position", action="store_true")
 	parser.add_argument('--compare-haplotypes', help="compare gene placement between two haplotypes, blast -b is ignored", action="store_true")
 	parser.add_argument('--ignore-gene-features', help="skip gene features, but will still use mRNA and transcript", action="store_true")
+	parser.add_argument('--genbank-gff', help="use presets when proteins and GFF files are from GenBank", action="store_true")
 	parser.add_argument('--print-no-match', help="print lines for all queries, including those without blast matches", action="store_true")
 	args = parser.parse_args(argv)
 
@@ -404,9 +435,11 @@ def main(argv, wayout):
 	query_scaf_lengths = make_seq_length_dict(args.query_fasta, args.query_genome_len, exclusiondict, option_mode, wayout, False)
 	db_scaf_lengths = make_seq_length_dict(args.db_fasta, args.db_genome_len, exclusiondict, option_mode, wayout, True)
 
+	prot_to_tx_dict = {}
 	# read query as normal
 	# and assign to query_gene_pos, as a dict of dicts
-	query_gene_pos = parse_gtf(args.query_gff, exclusiondict, args.query_delimiter, args.ignore_gene_features, False)
+	query_gene_pos, q_p2tx_d_raw = parse_gtf(args.query_gff, exclusiondict, args.query_delimiter, args.ignore_gene_features, False)
+	prot_to_tx_dict.update(q_p2tx_d_raw)
 	### IF DOING RANDOMIZATION ###
 	if args.global_randomize:
 		query_gene_pos = randomize_genes_globally(query_gene_pos)
@@ -415,11 +448,12 @@ def main(argv, wayout):
 
 	### IF DOING DOUBLE RANDOMIZE ###
 	if args.double_randomize: # read db first as query format, randomize and generate the dict in the ref format
-		db_gene_pos = parse_gtf(args.db_gff, exclusiondict, args.db_delimiter, args.ignore_gene_features, False)
+		db_gene_pos, d_p2tx_d_raw = parse_gtf(args.db_gff, exclusiondict, args.db_delimiter, args.ignore_gene_features, False)
 		db_gene_pos = randomize_db_locally(db_gene_pos)
 	# if NOT RANDOMIZING REFERENCE #
 	else: # otherwise read as normal into the ref format
-		db_gene_pos = parse_gtf(args.db_gff, exclusiondict, args.db_delimiter, args.ignore_gene_features, True)
+		db_gene_pos, d_p2tx_d_raw = parse_gtf(args.db_gff, exclusiondict, args.db_delimiter, args.ignore_gene_features, True)
+	prot_to_tx_dict.update(d_p2tx_d_raw)
 
 	# read blast hits
 	if args.compare_haplotypes:
@@ -428,7 +462,7 @@ def main(argv, wayout):
 		blastdict = parse_tabular_blast(args.blast, args.evalue, args.blast_query_delimiter, args.blast_db_delimiter, args.maximum_hits, args.group_size_maximum)
 	
 	# write output
-	generate_synteny_points( query_scaf_lengths, db_scaf_lengths, query_gene_pos, db_gene_pos, blastdict, args.local_positions, args.print_no_match, wayout)
+	generate_synteny_points( query_scaf_lengths, db_scaf_lengths, query_gene_pos, db_gene_pos, blastdict, prot_to_tx_dict, args.local_positions, args.print_no_match, args.genbank_gff, wayout)
 
 if __name__ == "__main__":
 	main(sys.argv[1:],sys.stdout)
