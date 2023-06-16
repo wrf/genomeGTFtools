@@ -185,11 +185,11 @@ def parse_tabular_blast(blasttabfile, evaluecutoff, querydelimiter, refdelimiter
 			large_group_removals_qu[queryseq] = True
 			continue
 		hit_counter = 0 # reset for each query, to take no more than maxhits
-		for subseq, bits in sorted(subdict.items(), key=lambda x: x[1], reverse=True):
-			if subjectcounter.get(subseq, 0) >= group_removal_max:
+		for subseq, bits in sorted(subdict.items(), key=lambda x: x[1], reverse=True): # sort by bitscore
+			if subjectcounter.get(subseq, 0) >= group_removal_max: # flag for removal of group
 				large_group_removals_sb[subseq] = True
 				continue
-			if hit_counter >= maxhits:
+			if hit_counter >= maxhits: # meaning already took enough matches
 				continue
 			filtered_hit_dict[queryseq][subseq] = bits
 			hit_counter += 1 # should never get above maxhits
@@ -396,7 +396,7 @@ def main(argv, wayout):
 	parser.add_argument('-l','--query-genome-len', type=int, default=100, help="length of query scaffolds, in Mbp [100]")
 	parser.add_argument('-L','--db-genome-len', type=int, default=100, help="length of reference scaffolds, in Mbp [100]")
 	parser.add_argument('-M','--maximum-hits', metavar="N", type=int, default=1, help="keep maximum of N hits per query [1]")
-	parser.add_argument('-G','--group-size-maximum', metavar="N", type=int, default=250, help="remove queries with more than N hits [250]")
+	parser.add_argument('-G','--group-size-maximum', metavar="N", type=int, default=250, help="remove queries with more than N hits, e.g. transposons [250]")
 	parser.add_argument('-R','--global-randomize', help="globally randomize gene positions of query GFF, cannot use with -S", action="store_true")
 	parser.add_argument('-S','--scaffold-randomize', help="randomize gene positions of query GFF within each scaffold, cannot use with -R", action="store_true")
 	parser.add_argument('--double-randomize', help="randomize gene positions of db, use with -S", action="store_true")
