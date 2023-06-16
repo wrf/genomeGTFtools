@@ -3,6 +3,12 @@
 # created by WRF 2019-04-01
 # last modified 2022-12-13
 
+# command line arguments:
+# Rscript synteny_2d_plot.R tabular_file.tab Label-1 Label-2 HUE
+# example:
+# Rscript synteny_2d_plot.R synteny.tab Genus-species1 Genus-species2 128
+# Species-1 and Species-2 are text strings to be used as labels for the plot
+# HUE is a value between 1-255 to change the hue
 args = commandArgs(trailingOnly=TRUE)
 
 # read data file from scaffold_synteny.py
@@ -73,6 +79,8 @@ if (longestscaf1 > longestscaf2) {
 	nscafs_y = length(longscafs1)
 	xlab = genome2_lab
 	ylab = genome1_lab
+	short_names1 = gsub("scaffolds_", "", longscafs2_names)
+	short_names2 = gsub("scaffolds_", "", longscafs1_names)
 } else {
 	genome_x = pointsdata[,6]
 	genome_y = pointsdata[,7]
@@ -84,6 +92,8 @@ if (longestscaf1 > longestscaf2) {
 	nscafs_y = length(longscafs2)
 	xlab = genome1_lab
 	ylab = genome2_lab
+	short_names1 = gsub("Scaffolds_", "", longscafs1_names)
+	short_names2 = gsub("scaffolds_", "", longscafs2_names)
 }
 
 xmax_mb = round(xmax / 1000000)
@@ -128,7 +138,9 @@ pdf(file=outputfile, width=8, height=11) # a4 size
 
 par( mar=c(4.5,4.5,1,1) )
 
-plot(genome_x, genome_y, pch=16, col=dotcolor, cex=pointsize, main=all2Dfile, xlab=xlab, ylab=ylab, axes=FALSE, cex.lab=1.4)
+plot(genome_x, genome_y, pch=16, col=dotcolor, cex=pointsize, 
+     main=all2Dfile, xlab=xlab, ylab=ylab, 
+     axes=FALSE, cex.lab=1.4)
 
 tickpoints = pretty(c(0,xmax_mb))
 axis(1, at=tickpoints*1000000, labels=tickpoints, cex.axis=1.3)
@@ -141,10 +153,6 @@ axis(2, at=tickpoints*1000000, labels=tickpoints, cex.axis=1.3, line=0.5)
 barpos_y = rep(c( xmax*-0.01, xmax*-0.02),round(nscafs_y)/2)
 segments( barpos_y[1:(nscafs_y-1)], longscafs_y[1:(nscafs_y-1)], barpos_y[0:(nscafs_y-1)], longscafs_y[2:nscafs_y], lwd=3)
 segments( 0, longscafs_y, longscafs_x[nscafs_x], longscafs_y, lwd=0.1, col="#777777")
-
-# make shortened names
-# short_names1 = gsub("scaffold_", "", longscafs1_names)
-# short_names2 = gsub("scaffold_", "", longscafs2_names)
 
 # display numbers beside axis scaffold segments
 # this controls bars along the left side, so actually Y axis
