@@ -74,6 +74,18 @@ def attributes_to_dict(attributes):
 					sys.stderr.write("WARNING: UNKNOWN ATTRIBUTE: {}\n".format(attr) )
 	return attrd
 
+def make_exclude_dict(excludefile):
+	'''read file of list of contigs, and return a dict where keys are contig names to exclude'''
+	sys.stderr.write("# Reading exclusion list {}  {}\n".format(excludefile, time.asctime() ) )
+	exclusion_dict = {}
+	for term in open(excludefile,'r'):
+		term = term.strip()
+		if term[0] == ">":
+			term = term[1:]
+		exclusion_dict[term] = True
+	sys.stderr.write("# Found {} contigs to exclude  {}\n".format( len(exclusion_dict), time.asctime() ) )
+	return exclusion_dict
+
 def parse_gtf(gtffile, exons_to_genes, cds_to_genes, excludedict, delimiter, is_genbank, isref=False):
 	'''from a gtf, return a dict of dicts where keys are scaffold names, then gene names, and values are gene info as a tuple of start end and strand direction'''
 	if gtffile.rsplit('.',1)[-1]=="gz": # autodetect gzip format
@@ -492,17 +504,7 @@ def main(argv, wayout):
 		sys.stderr.write("SETTING MINIMUM COLINEARITY TO 2\n")
 		args.minimum = 2
 
-	if args.exclude:
-		sys.stderr.write("# Reading exclusion list {}  {}\n".format(args.exclude , time.asctime() ) )
-		exclusionDict = {}
-		for term in open(args.exclude,'r').readlines():
-			term = term.strip()
-			if term[0] == ">":
-				term = term[1:]
-			exclusionDict[term] = True
-		sys.stderr.write("# Found {} contigs to exclude  {}\n".format( len(exclusionDict) , time.asctime() ) )
-	else:
-		exclusionDict = None
+	exclusiondict = make_exclude_dict(args.exclude) if args.exclude else {}
 
 	# note user settings
 	if args.cds_only:
@@ -511,12 +513,12 @@ def main(argv, wayout):
 		args.cds_only = True
 	### SETUP DICTIONARIES ###
 	if args.switch_query:
-		querydict = parse_gtf(args.db_gtf, args.no_genes, args.cds_only, exclusionDict, args.db_delimiter, args.genbank_gff, isref=False)
-		refdict = parse_gtf(args.query_gtf, args.no_genes, args.cds_only, exclusionDict, args.query_delimiter, args.genbank_gff, isref=True)
+		querydict = parse_gtf(args.db_gtf, args.no_genes, args.cds_only, exclusiondict, args.db_delimiter, args.genbank_gff, isref=False)
+		refdict = parse_gtf(args.query_gtf, args.no_genes, args.cds_only, exclusiondict, args.query_delimiter, args.genbank_gff, isref=True)
 		blastdict = parse_tabular_blast(args.blast, args.evalue, args.blast_query_delimiter, args.blast_db_delimiter, args.switch_query, args.group_size_maximum)
 	else:
-		querydict = parse_gtf(args.query_gtf, args.no_genes, args.cds_only, exclusionDict, args.query_delimiter, args.genbank_gff, isref=False )
-		refdict = parse_gtf(args.db_gtf, args.no_genes, args.cds_only, exclusionDict, args.db_delimiter, args.genbank_gff, isref=True)
+		querydict = parse_gtf(args.query_gtf, args.no_genes, args.cds_only, exclusiondict, args.query_delimiter, args.genbank_gff, isref=False )
+		refdict = parse_gtf(args.db_gtf, args.no_genes, args.cds_only, exclusiondict, args.db_delimiter, args.genbank_gff, isref=True)
 		blastdict = parse_tabular_blast(args.blast, args.evalue, args.blast_query_delimiter, args.blast_db_delimiter, args.switch_query, args.group_size_maximum )
 
 	### IF DOING RANDOMIZATION ###

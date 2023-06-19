@@ -49,6 +49,19 @@ import random
 from collections import defaultdict
 from Bio import SeqIO
 
+
+def make_exclude_dict(excludefile):
+	'''read file of list of contigs, and return a dict where keys are contig names to exclude'''
+	sys.stderr.write("# Reading exclusion list {}  {}\n".format(excludefile, time.asctime() ) )
+	exclusion_dict = {}
+	for term in open(excludefile,'r'):
+		term = term.strip()
+		if term[0] == ">":
+			term = term[1:]
+		exclusion_dict[term] = True
+	sys.stderr.write("# Found {} contigs to exclude  {}\n".format( len(exclusion_dict), time.asctime() ) )
+	return exclusion_dict
+
 def make_seq_length_dict(contigsfile, maxlength, exclusiondict, option_mode, wayout, isref=False):
 	'''read fasta file, and return dict where key is scaffold name and value is length, also print the length of each scaffold to stdout'''
 	lengthdict = {}
@@ -364,18 +377,6 @@ def randomize_db_locally(refdict):
 			total_genes += 1
 	sys.stderr.write("# Randomized {} genes on {} scaffolds  {}\n".format(total_genes, scaffoldcount, time.asctime() ) )
 	return randomgenesbyscaf
-
-def make_exclude_dict(excludefile):
-	'''read file of list of contigs, and return a dict where keys are contig names to exclude'''
-	sys.stderr.write("# Reading exclusion list {}  {}\n".format(excludefile, time.asctime() ) )
-	exclusion_dict = {}
-	for term in open(excludefile,'r'):
-		term = term.strip()
-		if term[0] == ">":
-			term = term[1:]
-		exclusion_dict[term] = True
-	sys.stderr.write("# Found {} contigs to exclude  {}\n".format( len(exclusion_dict), time.asctime() ) )
-	return exclusion_dict
 
 def main(argv, wayout):
 	if not len(argv):
