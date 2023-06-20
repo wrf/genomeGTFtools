@@ -309,26 +309,33 @@ def synteny_walk(querydict, blastdict, refdict, min_block, max_span, max_distanc
 	querypos = (0,1) # position of first gene on query scaffold
 	subjectpos = (0,1) # position of first gene on ref scaffold
 
+	# for each scaffold
+	# iterate through the ordered list of transcripts
 	sys.stderr.write("# searching for colinear blocks of at least {} genes, with up to {} intervening genes\n".format( min_block, max_span ) )
 	for scaffold, transdict in sorted(querydict.items(), key=lambda x: x[0]):
 		orderedtranslist = sorted(transdict.items(), key=lambda x: x[1].start) # sort by start position
 		genesonscaff = len(orderedtranslist) # keeping track of number of genes by scaffold, for scale
 		scaffoldgenecounts[genesonscaff] += 1
+		accounted_query_genes = [] # list of genes already in synteny blocks on this contig
+		accounted_subject_genes = dict() # dict of subject genes already in synteny blocks
 		if is_verbose:
-			sys.stderr.write("#1 Scanning scaffold {0} with {1} genes\n".format(scaffold, genesonscaff) )
+			sys.stderr.write("#1 Scanning query scaffold {0} with {1} genes\n".format(scaffold, genesonscaff) )
 		if genesonscaff < min_block: # not enough genes, thus no synteny would be found
 			if is_verbose:
 				sys.stderr.write("#1 Only {1} genes on scaffold {0}, skipping scaffold\n".format(scaffold, genesonscaff) )
 			continue
-		accounted_query_genes = [] # list of genes already in synteny blocks on this contig
+		# for each transcript
+		# if there are blast matches, more than one, perform a synteny walk for each match
+		# this will only keep ones that match the same scaffold at other steps
+		# this can be multiple hits on the same contig
+		# that is, assuming that a tandem duplication of multiple genes can be found
+		# such that genes X Y and Z can blast to A B and C, but also downstream to A' B' and C'
 		for i, querygene_tuple in enumerate(orderedtranslist):
-			walksteps = max_span # genes until drop, walk starts new for each transcript
-			accounted_matches = [] # list of genes already in synteny blocks on this contig
 			# starting from each transcript
 			querygene = querygene_tuple[0]
 			startingtrans = querygene
 			if is_verbose:
-				print("## gene {}  blast {}  scaffold {}".format(querygene, startingtrans, scaffold), file=sys.stderr)
+				print("## gene {}  prot {}  scaffold {}".format(querygene, startingtrans, scaffold ), file=sys.stderr)
 			querypos = (querygene_tuple[1].start, querygene_tuple[1].end)
 			# get the blast matches of the query
 			blastrefmatch_dict = blastdict.get(startingtrans,None) 
@@ -338,20 +345,23 @@ def synteny_walk(querydict, blastdict, refdict, min_block, max_span, max_distanc
 				continue
 			# otherwise start iterating through all blast hits of that gene
 			for blast_refgene, bitscore1 in sorted(blastrefmatch_dict.items(), key=lambda x: x[1], reverse=True):
+				walksteps = max_span # genes until drop, walk starts new for each transcript
 				if blast_refgene==lastmatch: # unique test to see if blast hit matches previous
+					if is_verbose:
+						sys.stderr.write("#2 Gene {} matches last gene {}, maybe split  s{}\n".format(startingtrans, lastmatch, walksteps) )
 					splitgenes += 1
 				# if gene is already in a synteny block, ignore it
 				# due to multiple hits within the same protein, e.g. multidomain proteins
 				if startingtrans in accounted_query_genes:
 					if is_verbose:
-						sys.stderr.write("#2 Gene {} already has match on {}, skipping\n".format(startingtrans, scaffold) )
+						sys.stderr.write("#2 Gene {} already in block on {}, skipping  s{}\n".format(startingtrans, scaffold, walksteps) )
 					continue
 				# renew synteny list for each query gene
 				syntenylist = [ (startingtrans,blast_refgene) ]
 
 				if i < genesonscaff - 1: # this allows for 2 genes left
 					if is_verbose:
-						sys.stderr.write("#3 Starting walk from gene {} on scaffold {} against {}\n".format(startingtrans, scaffold, blast_refgene) )
+						sys.stderr.write("#3 Starting walk from gene {} on scaffold {} against {}  s{}\n".format(startingtrans, scaffold, blast_refgene, walksteps) )
 					# get scaffold and position of matched gene
 					refscaffold = refdict[blast_refgene].scaffold
 					subjectpos = (refdict[blast_refgene].start, refdict[blast_refgene].end)
@@ -362,16 +372,16 @@ def synteny_walk(querydict, blastdict, refdict, min_block, max_span, max_distanc
 							dist_to_next_query = next_gene_info.start-querypos[1]
 							if dist_to_next_query > max_distance: # next gene is too far
 								if is_verbose:
-									sys.stderr.write("#4 Next gene {} bases away from {}, stopping walk\n".format(dist_to_next_query, next_gene) )
+									sys.stderr.write("#4 Next query gene {} bp away from {}, stopping walk\n".format(dist_to_next_query, next_gene) )
 								break # end gene block
 							# update query positions
 							querypos = (next_gene_info.start, next_gene_info.end)
 							next_match_dict = blastdict.get(next_gene,None)
 							# if no blast match, then skip to next walk step, and decrement
 							if next_match_dict==None:
-								if is_verbose:
-									sys.stderr.write("#4 No blast matches for {}, skipping gene\n".format(next_gene) )
 								walksteps -= 1
+								if is_verbose:
+									sys.stderr.write("#4 No blast matches for {}, skipping gene  s{}\n".format(next_gene, walksteps) )
 								continue
 							# otherwise iterate through matches, finding one within range
 							for next_match, bitscoreN in sorted(next_match_dict.items(), key=lambda x: x[1], reverse=True):
@@ -392,7 +402,7 @@ def synteny_walk(querydict, blastdict, refdict, min_block, max_span, max_distanc
 											sys.stderr.write("#4 {} match to {} is too far, {}bp, ignoring match\n".format(next_gene, next_match, max([dist_to_next_ref,dist_to_prev_ref]) ) )
 										continue
 									if is_verbose:
-										sys.stderr.write("#5 Match {} found for {} on {}\n".format(next_match, next_gene, scaffold ) )
+										sys.stderr.write("#5 Match {} found for {} on {}  s{}\n".format(next_match, next_gene, scaffold, walksteps ) )
 									walksteps = max_span # if a gene is found, reset steps
 									subjectpos = next_ref_pos
 									accounted_query_genes.append(next_gene)
@@ -401,7 +411,7 @@ def synteny_walk(querydict, blastdict, refdict, min_block, max_span, max_distanc
 								else:
 									if is_verbose:
 										sys.stderr.write("#4 {} matches {} on wrong contig {}, skipping gene\n".format(next_gene, next_match, next_ref_scaf) )
-							else:
+							else: # ends for loop, meaning no match was found on correct contig
 								walksteps -= 1 # then skip to next walk step and decrement
 						else: # if walksteps is 0, then break out of for loop
 							if is_verbose:
@@ -411,7 +421,7 @@ def synteny_walk(querydict, blastdict, refdict, min_block, max_span, max_distanc
 					blocklen = len(syntenylist)
 					if blocklen >= min_block:
 						if is_verbose:
-							sys.stderr.write("# Found block of {0} genes starting from {1} on {2}\n".format(blocklen, startingtrans, scaffold) )
+							sys.stderr.write("# Found block blk-{3} of {0} genes starting from {1} on {2}\n".format(blocklen, startingtrans, scaffold, blocknum) )
 						try:
 							if blocklen > max(blocklengths.keys()):
 								sys.stderr.write("New longest block blk-{} of {} on {}\n".format(blocknum, blocklen, scaffold) )
