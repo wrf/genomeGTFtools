@@ -3,6 +3,11 @@
 # v1.0 2018-07-04 basic barplot with command line input
 # v1.1 2023-06-16 make double plot
 
+# called from command line as:
+# Rscript ~/git/genomeGTFtools/synteny_block_length_plot.R dpulex_v_dmagna.blastp.microsynteny.tab 0.7
+# output PDF should be automatically named
+# additional argument is to specify color between 0 and 1
+
 # block expected in format of 12 column tabular:
 #Avas-scaffold_001	JAKMXF010000055.1	blk-1	Avas.s001.g76.i1	289852	296181	-	LOD99_14495.mRNA.1	174868	179817	-	313.0
 #Avas-scaffold_001	JAKMXF010000055.1	blk-1	Avas.s001.g77.i1	309436	315869	+	LOD99_14496.mRNA.1	179847	182507	-	101.0
@@ -18,8 +23,6 @@ args = commandArgs(trailingOnly=TRUE)
 
 inputfile = args[1]
 #inputfile = "~/git/genomeGTFtools/test_data/acropora_vs_styllophora_microsynteny.tab"
-#inputfile = "~/project/speciation-synteny/datasets/daphnia/dpulex_v_dmagna.blastp.microsynteny.tab"
-inputfile = "~/project/speciation-synteny/datasets/lytechinus/lvar3.0_vs_lpic2.1.blastp.microsynteny.tab"
 outputfile = gsub("([\\w/]+)\\....$","\\1.pdf",gsub(".gz$","",inputfile,perl=TRUE),perl=TRUE)
 if (inputfile==outputfile) { stop("cannot parse input file to generate output file name, add a unique 3-letter suffix") }
 
@@ -93,5 +96,6 @@ genelab = paste(totalgenes, "total genes in blocks", sep=" ")
 text(lencap, mostcommon*0.65, totallab, cex=1.5, pos=2)
 text(lencap, mostcommon*0.50, genelab, cex=1.5, pos=2)
 dev.off()
+
 
 #
