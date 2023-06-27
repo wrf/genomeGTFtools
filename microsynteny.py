@@ -258,13 +258,13 @@ def parse_tabular_blast(blasttabfile, evaluecutoff, querydelimiter, refdelimiter
 		num_hits = len(subdict)
 		if num_hits >= maxhits: # remove proteins with many hits, as large protein families likely lead to spurious synteny
 			large_group_removals_qu[queryseq] = True
-			continue
 		hit_counter = 0 # reset for each query, to take no more than maxhits
 		for subseq, bits in sorted(subdict.items(), key=lambda x: x[1], reverse=True):
 			if sub_counts_dict.get(subseq, 0) >= maxhits:
 				large_group_removals_sb[subseq] = True
-				continue
 			if hit_counter >= maxhits:
+				continue
+			if large_group_removals_qu.get(queryseq,False) or large_group_removals_sb.get(subseq,False):
 				continue
 			filtered_hit_dict[queryseq][subseq] = bits
 			hit_counter += 1 # should never get above maxhits
@@ -309,6 +309,8 @@ def synteny_walk(querydict, blastdict, refdict, min_block, max_span, max_distanc
 	querypos = (0,1) # position of first gene on query scaffold
 	subjectpos = (0,1) # position of first gene on ref scaffold
 
+	is_subject_strict = False
+
 	# for each scaffold
 	# iterate through the ordered list of transcripts
 	sys.stderr.write("# searching for colinear blocks of at least {} genes, with up to {} intervening genes\n".format( min_block, max_span ) )
@@ -317,7 +319,6 @@ def synteny_walk(querydict, blastdict, refdict, min_block, max_span, max_distanc
 		genesonscaff = len(orderedtranslist) # keeping track of number of genes by scaffold, for scale
 		scaffoldgenecounts[genesonscaff] += 1
 		accounted_query_genes = [] # list of genes already in synteny blocks on this contig
-		accounted_subject_genes = dict() # dict of subject genes already in synteny blocks
 		if is_verbose:
 			sys.stderr.write("#1 Scanning query scaffold {0} with {1} genes\n".format(scaffold, genesonscaff) )
 		if genesonscaff < min_block: # not enough genes, thus no synteny would be found
@@ -346,27 +347,34 @@ def synteny_walk(querydict, blastdict, refdict, min_block, max_span, max_distanc
 			# otherwise start iterating through all blast hits of that gene
 			for blast_refgene, bitscore1 in sorted(blastrefmatch_dict.items(), key=lambda x: x[1], reverse=True):
 				walksteps = max_span # genes until drop, walk starts new for each transcript
+				# get scaffold and position of matched gene
+				refscaffold = refdict[blast_refgene].scaffold
+				subjectpos = (refdict[blast_refgene].start, refdict[blast_refgene].end)
 				if blast_refgene==lastmatch: # unique test to see if blast hit matches previous
 					if is_verbose:
 						sys.stderr.write("#2 Gene {} matches last gene {}, maybe split  s{}\n".format(startingtrans, lastmatch, walksteps) )
 					splitgenes += 1
+
 				# if gene is already in a synteny block, ignore it
 				# due to multiple hits within the same protein, e.g. multidomain proteins
 				if startingtrans in accounted_query_genes:
 					if is_verbose:
 						sys.stderr.write("#2 Gene {} already in block on {}, skipping  s{}\n".format(startingtrans, scaffold, walksteps) )
 					continue
+				if blast_refgene in matched_subject_genes:
+					if is_subject_strict: # do not allow double matches to ANY subject
+						if is_verbose:
+							sys.stderr.write("#2 Match {} already in block on {}, skipping  s{}\n".format(blast_refgene, refscaffold, walksteps) )
+						continue
+
 				# renew synteny list for each query gene
 				syntenylist = [ (startingtrans,blast_refgene) ]
 
 				if i < genesonscaff - 1: # this allows for 2 genes left
-					if is_verbose:
-						sys.stderr.write("#3 Starting walk from gene {} on scaffold {} against {}  s{}\n".format(startingtrans, scaffold, blast_refgene, walksteps) )
-					# get scaffold and position of matched gene
-					refscaffold = refdict[blast_refgene].scaffold
-					subjectpos = (refdict[blast_refgene].start, refdict[blast_refgene].end)
 					######################################
 					# begin of gene walk on forward strand
+					if is_verbose:
+						sys.stderr.write("#3 Starting walk from gene {} on scaffold {} against {}  s{}\n".format(startingtrans, scaffold, blast_refgene, walksteps) )
 					for next_gene, next_gene_info in orderedtranslist[i+1:]: # getting next transcript, and next gene
 						if walksteps > 0:
 							dist_to_next_query = next_gene_info.start-querypos[1]
