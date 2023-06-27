@@ -81,13 +81,19 @@ def make_seq_length_dict(contigsfile, maxlength, exclusiondict, option_mode, way
 
 	sorteddict = {} # key is scaffold, value is offset relative to previous scaffolds
 	lengthsum = 0 # cumulative sum of lengths of large scaffolds
+	short_skip_mode = False
+	if maxlength is None: # set max length to 99Gb, and activate short_skip_mode
+		maxlength = 99999
+		short_skip_mode = True 
 	maxlength_MB = 1000000*maxlength
 	sys.stderr.write("# Sorting contigs by length, keeping up to {}Mbp\n".format(maxlength) )
 	# keep the first N scaffolds, where total length is approximately maxlength
 	scaffoldcounter = 0
-	for k,v in sorted(lengthdict.items(), key=lambda x: x[1], reverse=True):
+	for k,v in sorted(lengthdict.items(), key=lambda x: x[1], reverse=True): # take longest first
 		if k in exclusiondict:
 			continue
+		if short_skip_mode and v < 10000: # quit if contigs are 10kb or shorter
+			break
 		scaffoldcounter += 1
 		sorteddict[k] = lengthsum
 		lengthsum += v
@@ -394,8 +400,8 @@ def main(argv, wayout):
 	parser.add_argument('-E','--exclude', help="file of list of bad contigs, from either genome")
 	parser.add_argument('-e','--evalue', type=float, default=1e-4, help="evalue cutoff for post blast filtering [1e-4]")
 	parser.add_argument('-c','--coverage', default=0.8, type=int, help="minimum alignment coverage [0.8]")
-	parser.add_argument('-l','--query-genome-len', type=int, default=100, help="length of query scaffolds, in Mbp [100]")
-	parser.add_argument('-L','--db-genome-len', type=int, default=100, help="length of reference scaffolds, in Mbp [100]")
+	parser.add_argument('-l','--query-genome-len', type=int, help="total length of query scaffolds to keep, ie. chromosome sized, otherwise only takes 10kb or longer")
+	parser.add_argument('-L','--db-genome-len', type=int, help="total length of reference scaffolds")
 	parser.add_argument('-M','--maximum-hits', metavar="N", type=int, default=1, help="keep maximum of N hits per query [1]")
 	parser.add_argument('-G','--group-size-maximum', metavar="N", type=int, default=250, help="remove queries with more than N hits, e.g. transposons [250]")
 	parser.add_argument('-R','--global-randomize', help="globally randomize gene positions of query GFF, cannot use with -S", action="store_true")
