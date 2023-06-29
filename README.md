@@ -263,11 +263,18 @@ As there is not a straightforward way to display features, or generate a figure 
 
 The raw output is shown below. Some feature names are cut off due to the grouping of objects. These can be ungrouped and moved.
 
-![lux_locus_short_annot.png](https://github.com/wrf/genomeGTFtools/blob/master/test_data/lux_locus_short_annot.png)
+![lux locus short annotation](https://github.com/wrf/genomeGTFtools/blob/master/test_data/lux_locus_short_annot.png)
 
 Naturally this requires some work to make it presentable, i.e. flipping the axis, coloring each gene, renaming them from the GFF ID, which did not have meaningful IDs for most of the proteins. Thus, a final version may look more like this, maintaining the color scheme used in [Dunlap 2009](http://linkinghub.elsevier.com/retrieve/pii/B9780123739445000663).
 
-![lux_locus_nice_looking.png](https://github.com/wrf/genomeGTFtools/blob/master/test_data/lux_locus_nice_looking.png)
+![lux locus nice looking with colors](https://github.com/wrf/genomeGTFtools/blob/master/test_data/lux_locus_nice_looking.png)
+
+## draw_genome_annotation
+This was intended to make a printable version of any NCBI prokaryote genome, and have it displayed on one or more pages, with 1Mbp per page. From the downloaded GFF (or `.gz`), the PDF is generated automatically with the `Rscript`.
+
+`Rscript draw_genome_annotation.R GCF_000011805.1_ASM1180v1_genomic.gff`
+
+![page 1 of Aliivibrio fisheri genome map](https://github.com/wrf/genomeGTFtools/blob/master/test_data/GCF_000011805.1_ASM1180v1_genomic.p1.png)
 
 ## repeat2gtf
 From scaffolds or masked contigs, generate a feature for each long repeat of N's or n's (or any other arbitrary letter or pattern). The most obvious application is to make a track for gaps, which is the default behavior. The search is a regular expression, so could be any other simple repeat as well - CACA, CAG (glutamine repeats).
