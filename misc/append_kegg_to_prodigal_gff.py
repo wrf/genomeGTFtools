@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #
 
-'''append_kegg_to_prodigal_gff.py  last modified 2021-01-15
+'''append_kegg_to_prodigal_gff.py  last modified 2023-06-30
     append KEGG annotations from blastKOALA to prodigal gff
     KEGG annotations will include gene name, description, and KEGG category
     and will create a gene feature for each CDS
@@ -96,16 +96,20 @@ else:
 			lsplits = line.split("\t")
 			scaffold = lsplits[0]
 			feature = lsplits[2]
-			attributes = lsplits[8]
+			attributes = lsplits[8].strip()
 			prodigal_geneid = re.search('ID=([\w\d._|-]+);', attributes).group(1)
-			geneid = "{}_{}".format( scaffold, prodigal_geneid.split("_")[1] )
-			parentattrs = "ID={};Name={}".format(geneid, kegg_genes.get(geneid,"None"))
+			geneid = "{}_{}".format( scaffold, prodigal_geneid.split("_")[1] ) # gene ID invented as scaffold_prodigal-number
+			parentattrs = "ID={};Name={};gene_biotype=protein_coding;".format(geneid, kegg_genes.get(geneid,"None"))
+			gene_name = kegg_genes.get(geneid,None)
+			if gene_name is not None:
+				gene_name = gene_name.split(',')[0]
+				parentattrs += "gene={};".format(gene_name)
 			genedesc = kegg_desc.get(geneid,None)
 			if genedesc is not None:
-				parentattrs += ";Description={}".format(genedesc)
+				parentattrs += "Description={};".format(genedesc)
 			geneacc = kegg_cat.get(geneid,None)
 			if geneacc is not None:
-				parentattrs += ";Accession={}".format(geneacc)
+				parentattrs += "Accession={};".format(geneacc)
 			parentline = "{0}\t{1}\tgene\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\n".format( lsplits[0], lsplits[1], lsplits[3], lsplits[4], lsplits[5], lsplits[6], lsplits[7], parentattrs )
 			sys.stdout.write(parentline)
 			cds_attr_list = attributes.split(";")
