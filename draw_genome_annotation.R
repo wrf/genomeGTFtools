@@ -5,48 +5,60 @@
 # meaning like below, all on the same line
 # |||> ||> ||> |||||> <||
 #
-# last modified 2023-06-29
+# last modified 2023-06-30
 
 args = commandArgs(trailingOnly=TRUE)
 
 inputfile = args[1]
 #inputfile = "~/genomes/aliivibrio_fisheri_PROK/GCF_000011805.1_ASM1180v1_genomic.gff"
+#inputfile = "~/genomes/sycon_ciliatum_PORI/scis1.prodigal.w_kegg.gff"
 outputfile = gsub("([\\w/]+)\\....$","\\1.pdf",gsub(".gz$","",inputfile,perl=TRUE),perl=TRUE)
 if (inputfile==outputfile) { stop("cannot parse input file to generate output file name, add a unique 3-letter suffix") }
 
 genome_gff = read.table(inputfile, header=FALSE, sep="\t", quote='', stringsAsFactors=FALSE)
 
+# explicitly use "region" features, if they are given
 chr_regions = genome_gff[genome_gff$V3=="region",]
-n_chrs = nrow(chr_regions)
 chr_names = chr_regions$V1
+# otherwise get from scaffold column
+if (nrow(chr_regions)==0){ chr_names = unique( genome_gff$V1 ) }
+n_chrs = length(chr_names)
 
 feature_counts = table(genome_gff$V3)
-
 # for GenBank format, this will take CDS mRNA tRNA pseudogene, and others
 # for de novo annotations, like with prodigal, only CDS are present
-feature_type = "gene"
+feature_type = as.character( ifelse( !is.na(feature_counts["gene"]) , "gene" , "CDS") )
+
+# default page, mostly for debugging
+p=1;i=1;
 
 offset_width = 500 # bp, minimum gene size to draw polygon, otherwise makes triangle
 offset_height = 1 # relates to polygon height
 
+##############
 # draw the PDF
 pdf(file=outputfile, width=8, height=11.5, paper="a4")
 par(mar=c(1,4,1,5.5))
+
 # for each chromosome
 for (i in 1:n_chrs){
   current_chr = chr_names[i]
-  max_genome_size = chr_regions[i,5]
   cds_features = genome_gff[(genome_gff$V1==current_chr & genome_gff$V3==feature_type),]
+  max_genome_size = chr_regions[i,5]
+  # if there are no region features, take the last feature as max length
+  if (is.na(max_genome_size)){max_genome_size = max(cds_features$V5)}
   n_pages = ceiling(max_genome_size/1000000)
+  
   # for each 1 million bp, make a separate page
   for (p in 1:n_pages){
     # plot 1 million bp per page
     page_offset = (p-1)*1000000
     cds_page_num = ceiling(cds_features$V4/1000000)
     cds_on_page = cds_features[cds_page_num==p,]
+    # get gene names assuming as attribute gene=
     gene_names = gsub("^.*gene=(\\w+);.*$","\\1",cds_on_page$V9)
-    no_gene_name = grep("ID=",gene_names)
-    gene_names[no_gene_name] = NA
+    no_gene_name_index = grep("ID=",gene_names)
+    gene_names[no_gene_name_index] = NA
     
     # adjust numbers of start and end positions depending on page
     cds_starts = cds_on_page$V4 - page_offset
@@ -57,12 +69,16 @@ for (i in 1:n_chrs){
     is_strandless = which(cds_strands==".")
 
     # color rRNA, tRNA, and proteins differently
+    # tx_type works for NCBI GFFs where gene_biotype is given
     tx_type = gsub("^.*gene_biotype=(\\w+);.*$","\\1",cds_on_page$V9)
-    tx_colors = rep("#000000", nrow(cds_on_page) )
+    tx_colors = rep("#eefFee", nrow(cds_on_page) )
     tx_colors[tx_type=="rRNA"] = "#025a8d"
     tx_colors[tx_type=="tRNA"] = "#881a25"
     tx_colors[(tx_type=="protein_coding" & cds_strands=="+")] = "#7b7b7b"
     tx_colors[(tx_type=="protein_coding" & cds_strands=="-")] = "#cecece"
+    # otherwise assume that features are CDS
+    tx_colors[(cds_on_page$V3=="CDS" & cds_strands=="+")] = "#2b693a"
+    tx_colors[(cds_on_page$V3=="CDS" & cds_strands=="-")] = "#6cca87"
 
     # adjustments for position on page
     cds_x_offset = floor((cds_starts)/50000)*50000
@@ -100,9 +116,9 @@ for (i in 1:n_chrs){
     for (g in is_strandless) {
       x_offset = cds_x_offset[g]
       rect(cds_starts[g], cds_y_index[g]-offset_height, 
-           cds_ends[g], cds_y_index[g]+offset_height, col="#25893a")
+           cds_ends[g], cds_y_index[g]+offset_height, col=tx_colors[g] )
     }
-    text(cds_starts-cds_x_offset, cds_y_index-offset_height, gene_names, cex=0.5, adj=c(1,1), srt=45)
+    text(cds_starts-cds_x_offset+offset_width, cds_y_index-offset_height, gene_names, cex=0.5, adj=c(1,1), srt=45)
   }
 }
 dev.off()
