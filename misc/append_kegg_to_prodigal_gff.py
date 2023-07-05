@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #
 
-'''append_kegg_to_prodigal_gff.py  last modified 2023-06-30
+'''append_kegg_to_prodigal_gff.py  last modified 2023-07-05
     append KEGG annotations from blastKOALA to prodigal gff
     KEGG annotations will include gene name, description, and KEGG category
     and will create a gene feature for each CDS
@@ -103,7 +103,7 @@ else:
 			gene_name = kegg_genes.get(geneid,None)
 			if gene_name is not None:
 				gene_name = gene_name.split(',')[0]
-				parentattrs += "gene={};".format(gene_name)
+				parentattrs += "gene={};".format(gene_name.replace('-','')) # for names like RP-L15, MRPL15, rplO
 			genedesc = kegg_desc.get(geneid,None)
 			if genedesc is not None:
 				parentattrs += "Description={};".format(genedesc)

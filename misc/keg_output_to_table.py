@@ -2,7 +2,7 @@
 #
 # keg_output_to_table.py
 
-"""keg_output_to_table.py  last modified 2023-07-04
+"""keg_output_to_table.py  last modified 2023-07-05
 
     convert KO links to tabular format
 
@@ -39,7 +39,7 @@ color_description = """Functional category (used in global pathway maps and geno
 """
 
 import sys
-
+import gzip
 
 if len(sys.argv) < 2:
 	sys.exit( __doc__ )
@@ -47,8 +47,14 @@ else:
 	color_index = { "09101": "#0000ee" , "09102": "#9933cc" , "09103": "#009999" , "09104":"#ff0000" , "09105": "#ff9933" , "09106": "#ff6600" , "09107": "#3399ff" , "09108": "#ff6699" , "09109": "#00cc33" , "09110": "#cc3366" , "09111": "#ccaa99" , "09120": "#ffcccc" , "09130": "#ffff00" , "09140": "#99cc66" , "09150": "#99cc66" , "09160": "#99cc66" , "09181": "#ccffff" , "09182": "#ffcccc" , "09183": "#99cc66" , "09191": "#ccffff" , "09192": "#ffcccc" , "09193": "#99cc66" }
 	linecounter = 0
 	writecounter = 0
-	sys.stderr.write("# reading {}\n".format( sys.argv[1], writecounter ) )
-	for line in open(sys.argv[1],'r'):
+	keg_file = sys.argv[1]
+	if keg_file.rsplit('.',1)[-1]=="gz": # autodetect gzip format
+		_opentype = gzip.open
+		sys.stderr.write("# reading KEGG data from {} as gzipped\n".format( keg_file ) )
+	else: # otherwise assume normal open
+		_opentype = open
+		sys.stderr.write("# reading KEGG data from {}\n".format( keg_file ) )
+	for line in _opentype(keg_file,'rt'):
 		line = line.strip()
 		if line:
 			first_char = line[0]
@@ -63,7 +69,9 @@ else:
 					if first_char=='B':
 						top_level_code = k_code
 						top_level_desc = description
-						color_code = color_index.get(top_level_code)
+						color_code = color_index.get(top_level_code,None)
+						if color_code is None:
+							color_code = color_index.get( top_level_code[0:4]+"0" ,"#888888")
 					elif first_char=='C':
 						pathway_code = k_code
 						pathway_desc = description
@@ -71,7 +79,7 @@ else:
 						outline = "{}\t{}\t{}\t{}\t{}\n".format( top_level_code, color_code, pathway_code, k_code, description )
 						sys.stdout.write( outline )
 						writecounter += 1
-					else: # should never happen
+					else: # meaning A
 						pass
 	sys.stderr.write("# found {} lines, wrote {} KEGG entries\n".format( linecounter, writecounter ) )
 
