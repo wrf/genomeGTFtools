@@ -13,7 +13,7 @@
 #Avas-scaffold_001	JAKMXF010000055.1	blk-1	Avas.s001.g77.i1	309436	315869	+	LOD99_14496.mRNA.1	179847	182507	-	101.0
 #Avas-scaffold_001	JAKMXF010000055.1	blk-1	Avas.s001.g78.i1	316567	319320	+	LOD99_14496.mRNA.1	179847	182507	-	105.0
 
-# columns are:
+# columns from microsynteny.py are:
 block_headers = c("q_scaffold", "s_scaffold", "block_ID", 
                   "q_gene_ID", "q_gene_pos_start", "q_gene_pos_end", "q_gene_strand", 
                   "s_gene_ID", "s_gene_pos_start", "s_gene_pos_end", "s_gene_strand", 
@@ -24,10 +24,11 @@ args = commandArgs(trailingOnly=TRUE)
 inputfile = args[1]
 #inputfile = "~/git/genomeGTFtools/test_data/acropora_vs_styllophora_microsynteny.tab"
 outputfile = gsub("([\\w/]+)\\....$","\\1.pdf",gsub(".gz$","",inputfile,perl=TRUE),perl=TRUE)
+
 if (inputfile==outputfile) { stop("cannot parse input file to generate output file name, add a unique 3-letter suffix") }
 
 print(paste("# Reading block info file", inputfile, ", writing PDF to", outputfile))
-blockdata = read.table(inputfile, col.names = block_headers, sep="\t")
+blockdata = read.table(inputfile, col.names = block_headers, sep="\t", fill = TRUE)
 #head(blockdata)
 
 counttable = table(blockdata[,3])
@@ -56,7 +57,7 @@ if ( !is.na(args[2]) ) {
 }
 
 point_color = rainbow(1, s = 0.8, v = 0.3, start = user_hue, alpha = 0.1)
-bar_color = rainbow(1, s = 0.8, v = 0.7, start = user_hue, alpha = 0.9)
+bar_color = rainbow(1, s = 0.8, v = 0.7, start = user_hue, alpha = 0.8)
 #barcolor = c("#76ee94") # green
 #barcolor = c("#fc8d62") # red/orange
 #barcolor = c("#80b1d3") # blue
@@ -78,24 +79,23 @@ text(min(q_genes_by_block$x), max(q_genes_by_block$x) ,
 text(max(s_genes_by_block$x) , min(s_genes_by_block$x), 
      paste(length(unique(blockdata[,8])),"total subject genes"), pos = 2 )
 
-# make settings for barplot
-longestblock = max(counttable)
-lencap = min(longestblock, 20) # take whichever is smaller, longest block or 20
-counttable[counttable>lencap] = lencap
-counthist = hist(counttable, breaks=seq(2.5,longestblock+0.5,1), 
-                 axes=FALSE, plot=TRUE, xlim=c(3,lencap), 
-                 main=basename(inputfile), 
-                 xlab="Number of genes in block", ylab="Number of blocks", 
-                 cex.lab=1.5, col=bar_color )
-mostcommon = max(counthist$counts)
-axis(1,at=seq(3,lencap,3), labels=seq(3,lencap,3), cex.axis=1.2 )
-axis(2, cex.axis=1.3)
-text(counthist$breaks+0.5, counthist$counts+(0.025*mostcommon), counthist$counts)
+# make settings for scatterplot
+counttable_hist = table(counttable)
+longest_block = max(as.integer(names(counttable_hist)))
+mostcommon = max(counttable_hist)
+block_len_pos = c(2,5,10,20,50,100,200,500,1000)
+block_len_labs = block_len_pos[c(TRUE,block_len_pos<longest_block)]
+plot(names(counttable_hist),counttable_hist, log="xy",
+     xlim = range(block_len_labs),
+     main=basename(inputfile), axes = FALSE, cex.lab=1.4,
+     xlab="Number of genes in block", ylab="Number of blocks",
+     pch=16, col=bar_color, cex=2)
+axis(1, at = block_len_labs, cex.axis=1.3 )
+axis(2, cex.axis=1.3 )
 totallab = paste(totalblk, "total blocks", sep=" ")
 genelab = paste(totalgenes, "total genes in blocks", sep=" ")
-text(lencap, mostcommon*0.65, totallab, cex=1.5, pos=2)
-text(lencap, mostcommon*0.50, genelab, cex=1.5, pos=2)
+text(longest_block, mostcommon*0.65, totallab, cex=1.3, pos=2)
+text(longest_block, mostcommon*0.20, genelab, cex=1.3, pos=2)
 dev.off()
-
 
 #
