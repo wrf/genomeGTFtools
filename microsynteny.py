@@ -3,8 +3,9 @@
 # v1.3 2020-08-18
 # v1.4 2022-10-22 bug fix for exon mode
 # v1.5 2023-06-14 add presets for genbank GFFs and proteins
+# v1.6 2023-07-06 add subject strict option
 
-'''microsynteny.py v1.5 last modified 2023-06-14
+'''microsynteny.py v1.5 last modified 2023-07-06
 
 microsynteny.py -q query.gtf -d ref_species.gtf -b query_vs_ref_blast.tab -E ../bad_contigs -g -D '_' --blast-query-delimiter '.' > query_vs_ref_microsynteny.tab
 
@@ -293,7 +294,7 @@ def randomize_genes(refdict):
 	sys.stderr.write("# Randomized {} genes  {}\n".format(genecounter, time.asctime() ) )
 	return randomgenesbyscaf
 
-def synteny_walk(querydict, blastdict, refdict, min_block, max_span, max_distance, is_verbose, wayout, make_gff):
+def synteny_walk(querydict, blastdict, refdict, min_block, max_span, max_distance, is_subject_strict, is_verbose, wayout, make_gff):
 	'''for each query scaffold, begin with the first gene and follow as far as possible to identify colinear blocks, then print to stdout'''
 	syntenylist = [] # list to keep track of matches, as tuples of (querygene_name, subject_name)
 	blocknum = 1
@@ -309,8 +310,6 @@ def synteny_walk(querydict, blastdict, refdict, min_block, max_span, max_distanc
 	querypos = (0,1) # position of first gene on query scaffold
 	subjectpos = (0,1) # position of first gene on ref scaffold
 
-	is_subject_strict = False
-
 	# for each scaffold
 	# iterate through the ordered list of transcripts
 	sys.stderr.write("# searching for colinear blocks of at least {} genes, with up to {} intervening genes\n".format( min_block, max_span ) )
@@ -319,6 +318,7 @@ def synteny_walk(querydict, blastdict, refdict, min_block, max_span, max_distanc
 		genesonscaff = len(orderedtranslist) # keeping track of number of genes by scaffold, for scale
 		scaffoldgenecounts[genesonscaff] += 1
 		accounted_query_genes = [] # list of genes already in synteny blocks on this contig
+		# accounted_subject_genes is declared later
 		if is_verbose:
 			sys.stderr.write("#1 Scanning query scaffold {0} with {1} genes\n".format(scaffold, genesonscaff) )
 		if genesonscaff < min_block: # not enough genes, thus no synteny would be found
@@ -352,23 +352,30 @@ def synteny_walk(querydict, blastdict, refdict, min_block, max_span, max_distanc
 				subjectpos = (refdict[blast_refgene].start, refdict[blast_refgene].end)
 				if blast_refgene==lastmatch: # unique test to see if blast hit matches previous
 					if is_verbose:
-						sys.stderr.write("#2 Gene {} matches last gene {}, maybe split  s{}\n".format(startingtrans, lastmatch, walksteps) )
+						sys.stderr.write("#2 Gene {} matches last gene {}, maybe long split  s{}\n".format(startingtrans, lastmatch, walksteps) )
 					splitgenes += 1
 
 				# if gene is already in a synteny block, ignore it
 				# due to multiple hits within the same protein, e.g. multidomain proteins
 				if startingtrans in accounted_query_genes:
 					if is_verbose:
-						sys.stderr.write("#2 Gene {} already in block on {}, skipping  s{}\n".format(startingtrans, scaffold, walksteps) )
+						sys.stderr.write("#2 Gene {} already used in block on {}, skipping  s{}\n".format(startingtrans, scaffold, walksteps) )
 					continue
+				if startingtrans in matched_query_genes:
+					if is_subject_strict: # do not allow double matches to ANY subject
+						if is_verbose:
+							sys.stderr.write("#2 Gene {} in another block on {}, skipping  s{}\n".format(startingtrans, scaffold, walksteps) )
+						continue
 				if blast_refgene in matched_subject_genes:
 					if is_subject_strict: # do not allow double matches to ANY subject
 						if is_verbose:
-							sys.stderr.write("#2 Match {} already in block on {}, skipping  s{}\n".format(blast_refgene, refscaffold, walksteps) )
+							sys.stderr.write("#2 Match {} in another block on {}, skipping  s{}\n".format(blast_refgene, refscaffold, walksteps) )
 						continue
 
 				# renew synteny list for each query gene
 				syntenylist = [ (startingtrans,blast_refgene) ]
+				accounted_subject_genes = [blast_refgene]
+				prev_match = blast_refgene
 
 				if i < genesonscaff - 1: # this allows for 2 genes left
 					######################################
@@ -376,55 +383,66 @@ def synteny_walk(querydict, blastdict, refdict, min_block, max_span, max_distanc
 					if is_verbose:
 						sys.stderr.write("#3 Starting walk from gene {} on scaffold {} against {}  s{}\n".format(startingtrans, scaffold, blast_refgene, walksteps) )
 					for next_gene, next_gene_info in orderedtranslist[i+1:]: # getting next transcript, and next gene
-						if walksteps > 0:
-							dist_to_next_query = next_gene_info.start-querypos[1]
-							if dist_to_next_query > max_distance: # next gene is too far
-								if is_verbose:
-									sys.stderr.write("#4 Next query gene {} bp away from {}, stopping walk\n".format(dist_to_next_query, next_gene) )
-								break # end gene block
-							# update query positions
-							querypos = (next_gene_info.start, next_gene_info.end)
-							next_match_dict = blastdict.get(next_gene,None)
-							# if no blast match, then skip to next walk step, and decrement
-							if next_match_dict==None:
-								walksteps -= 1
-								if is_verbose:
-									sys.stderr.write("#4 No blast matches for {}, skipping gene  s{}\n".format(next_gene, walksteps) )
-								continue
-							# otherwise iterate through matches, finding one within range
-							for next_match, bitscoreN in sorted(next_match_dict.items(), key=lambda x: x[1], reverse=True):
-								if next_match==blast_refgene: # if last match is the same as current match
-									accounted_query_genes.append(next_gene)
-									continue # since it is still the same gene, move on but do not penalize
-								else:
-									next_ref_scaf = refdict[next_match].scaffold
-									next_ref_pos = (refdict[next_match].start, refdict[next_match].end)
-								if next_ref_scaf==refscaffold: # scaffolds match
-									# determine distance, strand is not considered
-									# meaning one value should be negative, other should be positive
-									dist_to_next_ref = next_ref_pos[0] - subjectpos[1]
-									dist_to_prev_ref = subjectpos[0] - next_ref_pos[1]
-									# if either are greater than max distance, then gene is too far
-									if dist_to_next_ref > max_distance or dist_to_prev_ref > max_distance:
-										if is_verbose:
-											sys.stderr.write("#4 {} match to {} is too far, {}bp, ignoring match\n".format(next_gene, next_match, max([dist_to_next_ref,dist_to_prev_ref]) ) )
-										continue
-									if is_verbose:
-										sys.stderr.write("#5 Match {} found for {} on {}  s{}\n".format(next_match, next_gene, scaffold, walksteps ) )
-									walksteps = max_span # if a gene is found, reset steps
-									subjectpos = next_ref_pos
-									accounted_query_genes.append(next_gene)
-									syntenylist.append( (next_gene,next_match) )
-									break
-								else:
-									if is_verbose:
-										sys.stderr.write("#4 {} matches {} on wrong contig {}, skipping gene\n".format(next_gene, next_match, next_ref_scaf) )
-							else: # ends for loop, meaning no match was found on correct contig
-								walksteps -= 1 # then skip to next walk step and decrement
-						else: # if walksteps is 0, then break out of for loop
+						if walksteps <= 0: # if walksteps is 0, then break out of for loop
 							if is_verbose:
 								sys.stderr.write("#3 Limit reached at {}, stopping walk for {}\n".format(next_gene, startingtrans) )
 							break # no more searching for genes after walksteps is 0
+						dist_to_next_query = next_gene_info.start-querypos[1]
+						if dist_to_next_query > max_distance: # next gene is too far
+							if is_verbose:
+								sys.stderr.write("#3 Next query gene {} bp away from {}, stopping walk\n".format(dist_to_next_query, next_gene) )
+							break # end gene block
+						# update query positions
+						querypos = (next_gene_info.start, next_gene_info.end)
+						next_match_dict = blastdict.get(next_gene,None)
+						# if no blast match, then skip to next walk step, and decrement
+						if next_match_dict==None:
+							walksteps -= 1
+							if is_verbose:
+								sys.stderr.write("#3 No blast matches for {}, skipping gene  s{}\n".format(next_gene, walksteps) )
+							continue
+						# otherwise iterate through matches, finding one within range
+						for next_match, bitscoreN in sorted(next_match_dict.items(), key=lambda x: x[1], reverse=True):
+							if next_match==prev_match: # if last match is the same as current match, meaning split query
+								splitgenes += 1
+								accounted_query_genes.append(next_gene)
+								if is_verbose:
+									sys.stderr.write("#4 {} match {} in the same block on {}, skipping  s{}\n".format( next_gene, next_match, scaffold, walksteps) )
+								continue # since it is still the same gene, move on but do not penalize
+							else:
+								next_ref_scaf = refdict[next_match].scaffold
+								next_ref_pos = (refdict[next_match].start, refdict[next_match].end)
+							if next_ref_scaf==refscaffold: # scaffolds match
+								if next_match in accounted_subject_genes:
+									if is_subject_strict: # do not allow double matches to ANY subject
+										if is_verbose:
+											sys.stderr.write("#4 {} match {} in the same block on {}, skipping  s{}\n".format( next_gene, next_match, scaffold, walksteps) )
+										continue
+								# determine distance, strand is not considered
+								# meaning one value should be negative, other should be positive
+								dist_to_next_ref = next_ref_pos[0] - subjectpos[1]
+								dist_to_prev_ref = subjectpos[0] - next_ref_pos[1]
+								# if either are greater than max distance, then gene is too far
+								if dist_to_next_ref > max_distance or dist_to_prev_ref > max_distance:
+									if is_verbose:
+										sys.stderr.write("#4 {} match to {} is too far, {}bp, ignoring match\n".format(next_gene, next_match, max([dist_to_next_ref,dist_to_prev_ref]) ) )
+									continue
+								if is_verbose:
+									sys.stderr.write("#5 Match {} found for {} on {}  s{}\n".format(next_match, next_gene, scaffold, walksteps ) )
+								walksteps = max_span # if a gene is found, reset steps
+								subjectpos = next_ref_pos
+								prev_match = next_match
+								accounted_query_genes.append(next_gene)
+								accounted_subject_genes.append(next_match)
+								syntenylist.append( (next_gene,next_match) )
+								break # move to next gene
+							else:
+								if is_verbose:
+									sys.stderr.write("#4 {} matches {} on wrong contig {}, skipping gene\n".format(next_gene, next_match, next_ref_scaf) )
+						else: # ends next_match for loop, meaning no match was found on correct contig
+							walksteps -= 1 # then skip to next walk step and decrement
+
+					# when cannot loop further
 					### WRITE LONGEST MATCH
 					blocklen = len(syntenylist)
 					if blocklen >= min_block:
@@ -512,6 +530,7 @@ def main(argv, wayout):
 	parser.add_argument('--genbank-gff', help="use presets when proteins and GFF files are from GenBank", action="store_true")
 	parser.add_argument('-R','--randomize', help="randomize positions of query GTF", action="store_true")
 	parser.add_argument('-S','--switch-query', help="switch query and subject", action="store_true")
+	parser.add_argument('-T','--strict', help="require strict synteny", action="store_true")
 	parser.add_argument('-v','--verbose', help="verbose output", action="store_true")
 	args = parser.parse_args(argv)
 
@@ -546,7 +565,7 @@ def main(argv, wayout):
 	if args.make_gff:
 		sys.stderr.write("# make GFF output: {}\n".format( args.make_gff ) )
 	### START SYNTENY WALKING ###
-	synteny_walk(querydict, blastdict, refdict, args.minimum, args.span, args.distance, args.verbose, wayout, args.make_gff)
+	synteny_walk(querydict, blastdict, refdict, args.minimum, args.span, args.distance, args.strict, args.verbose, wayout, args.make_gff)
 
 if __name__ == "__main__":
 	main(sys.argv[1:],sys.stdout)
