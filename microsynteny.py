@@ -5,7 +5,7 @@
 # v1.5 2023-06-14 add presets for genbank GFFs and proteins
 # v1.6 2023-07-06 add subject strict option
 
-'''microsynteny.py v1.5 last modified 2023-07-06
+'''microsynteny.py v1.5 last modified 2023-07-18
 
 microsynteny.py -q query.gtf -d ref_species.gtf -b query_vs_ref_blast.tab -E ../bad_contigs -g -D '_' --blast-query-delimiter '.' > query_vs_ref_microsynteny.tab
 
@@ -294,7 +294,7 @@ def randomize_genes(refdict):
 	sys.stderr.write("# Randomized {} genes  {}\n".format(genecounter, time.asctime() ) )
 	return randomgenesbyscaf
 
-def synteny_walk(querydict, blastdict, refdict, min_block, max_span, max_distance, is_subject_strict, is_verbose, wayout, make_gff):
+def synteny_walk(querydict, blastdict, refdict, min_block, max_span, max_distance, is_subject_strict, is_verbose, wayout, make_gff, is_w ):
 	'''for each query scaffold, begin with the first gene and follow as far as possible to identify colinear blocks, then print to stdout'''
 	syntenylist = [] # list to keep track of matches, as tuples of (querygene_name, subject_name)
 	blocknum = 1
@@ -492,19 +492,24 @@ def synteny_walk(querydict, blastdict, refdict, min_block, max_span, max_distanc
 					if is_verbose:
 						sys.stderr.write("# Too few genes left from {} on scaffold {}, skipping walk\n".format(startingtrans, scaffold) )
 				lastmatch = str(blast_refgene)
+	final_block_count = sum(list(blocklengths.values()))
 	sys.stderr.write("# Found {} possible split genes  {}\n".format(splitgenes, time.asctime() ) )
 	sys.stderr.write("# Most genes on a query scaffold was {}\n".format(max(list(scaffoldgenecounts.keys() ) ) ) )
 	genetotal = sum(x*y for x,y in blocklengths.items())
-	sys.stderr.write("# Found {} total putative synteny blocks for {} genes (may include duplicates)\n".format(sum(list(blocklengths.values())), genetotal) )
+	sys.stderr.write("# Found {} total putative synteny blocks for {} genes (may include duplicates)\n".format(final_block_count, genetotal) )
 	sys.stderr.write("# Included {} queries and {} target genes\n".format( len(matched_query_genes), len(matched_subject_genes) ) )
 	if len(blocklengths)==0: # if no blocks are found
 		sys.exit("### NO SYNTENY DETECTED, CHECK GENE ID FORMAT PARAMTERS -Q -D")
-	sys.stderr.write("# Average block is {:.2f}, longest block was {} genes\n".format( 1.0*genetotal/sum(list(blocklengths.values())), max(list(blocklengths.keys())) ) )
+	sys.stderr.write("# Average block is {:.2f}, longest block was {} genes\n".format( 1.0*genetotal/final_block_count, max(list(blocklengths.keys())) ) )
 	sys.stderr.write("# Total block span was {} bases  {}\n".format(basetotal, time.asctime() ) )
 
+	# w mode output
+	if is_w: # summarize on one line
+		sys.stderr.write( "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{:.2f}\t{}\n".format( max_distance, min_block, max_span, final_block_count, sum([len(v) for v in querydict.values()]), len(refdict), len(matched_query_genes), len(matched_subject_genes), 1.0*genetotal/final_block_count, max(list(blocklengths.keys())) ) )
 	### MAKE BLOCK HISTOGRAM
-	for k,v in sorted(blocklengths.items(),key=lambda x: x[0]):
-		sys.stderr.write("{}\t{}\n".format(k, v) )
+	else:
+		for k,v in sorted(blocklengths.items(),key=lambda x: x[0]):
+			sys.stderr.write("{}\t{}\n".format(k, v) )
 	# no return
 
 def main(argv, wayout):
@@ -532,6 +537,7 @@ def main(argv, wayout):
 	parser.add_argument('-S','--switch-query', help="switch query and subject", action="store_true")
 	parser.add_argument('-T','--strict', help="require strict synteny", action="store_true")
 	parser.add_argument('-v','--verbose', help="verbose output", action="store_true")
+	parser.add_argument('-w','--w', action="store_true", help="give summarized output")
 	args = parser.parse_args(argv)
 
 	sys.stderr.write("# Running command:\n{}\n".format( ' '.join(sys.argv) ) )
@@ -565,7 +571,7 @@ def main(argv, wayout):
 	if args.make_gff:
 		sys.stderr.write("# make GFF output: {}\n".format( args.make_gff ) )
 	### START SYNTENY WALKING ###
-	synteny_walk(querydict, blastdict, refdict, args.minimum, args.span, args.distance, args.strict, args.verbose, wayout, args.make_gff)
+	synteny_walk(querydict, blastdict, refdict, args.minimum, args.span, args.distance, args.strict, args.verbose, wayout, args.make_gff, args.w )
 
 if __name__ == "__main__":
 	main(sys.argv[1:],sys.stdout)
