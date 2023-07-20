@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-'''stringtie_gtf_to_gff3.py  last modified 2023-01-27
+'''stringtie_gtf_to_gff3.py  last modified 2023-07-20
 
 convert stringtie GTF to standard GFF (ID-Parent format)
 stringtie_gtf_to_gff3.py stringtie.gtf > stringtie.gff3
@@ -18,8 +18,18 @@ def main(argv, wayout):
 	parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description=__doc__)
 	parser.add_argument('gtf', help="stringtie GTF file")
 	parser.add_argument('--transcript', default="transcript", help="optional name for transcript features, default is transcript")
+	parser.add_argument('-r','--rename-all', action="store_true", help="force renaming of all transcripts in case of doubles")
+	parser.add_argument('-s','--skip-doubles', action="store_true", help="skip any transcript name encountered twice")
 	args = parser.parse_args(argv)
 
+	ITER_LETTERS = "0abcdefghijklmnopqrstuvwxyz" # start index at 1
+
+	if args.rename_all:
+		sys.stderr.write( "# renaming all transcripts with letters: {}\n".format(args.rename_all) )
+	if args.skip_doubles:
+		sys.stderr.write( "# skipping any duplicate names: {}\n".format(args.skip_doubles) )
+
+	tx_name_count_dict = {} # 
 	sys.stderr.write( "# Converting {} to GFF\n".format(args.gtf) )
 	for line in open(args.gtf,'r'):
 		line = line.strip()
@@ -38,6 +48,13 @@ def main(argv, wayout):
 			if feature=="transcript" or feature=="mRNA": # changed to ID and Name
 				lsplits[2] = args.transcript
 				transcriptid = attrd.get("transcript_id").replace('"','')
+				if transcriptid in tx_name_count_dict:
+					if args.skip_doubles:
+						continue
+				tx_name_count_dict[transcriptid] = tx_name_count_dict.get(transcriptid,0) + 1
+				if args.rename_all:
+					transcriptid = transcriptid + ITER_LETTERS[tx_name_count_dict.get(transcriptid,0)]
+
 				# if using StringTie with FPKM etc, then add transfer those as well
 				fpkm = attrd.get("FPKM",None)
 				tpm = attrd.get("TPM",None)
@@ -51,6 +68,8 @@ def main(argv, wayout):
 					newattrs += "TPM={};".format(tpm.replace('"','') )
 			elif feature=="exon": # change to ID and Parent
 				transcriptid = attrd.get("transcript_id").replace('"','')
+				if args.rename_all:
+					transcriptid = transcriptid + ITER_LETTERS[tx_name_count_dict.get(transcriptid,0)]
 				exonnum = attrd.get("exon_number","").replace('"','')
 				if exonnum:
 					newattrs = "ID={0}.exon{1};Parent={0}".format(transcriptid,exonnum)
