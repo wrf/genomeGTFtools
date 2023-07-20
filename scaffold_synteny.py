@@ -6,7 +6,7 @@
 # v1.4 add some auto processing for GenBank format genomes 2023-04-17
 
 '''
-scaffold_synteny.py  v1.4 last modified 2023-04-17
+scaffold_synteny.py  v1.4 last modified 2023-07-19
     makes a table of gene matches between two genomes, to detect synteny
     these can be converted into a dotplot of gene matches
 
@@ -153,7 +153,10 @@ def parse_gtf(gtffile, excludedict, delimiter, do_ignore_gene, isref=False, is_v
 				if isref: # refs are indexed in reverse, from blast hit to gene ID
 					prot_to_gene_dict[raw_prot_id] = raw_mrna_id
 				else: # indexed by GFF to find protein of the query
-					prot_to_gene_dict[raw_mrna_id] = raw_prot_id
+					if raw_prot_id is None: # may be in format where prots and transcripts have the same ID
+						prot_to_gene_dict[raw_mrna_id] = raw_mrna_id
+					else: # meaning normal
+						prot_to_gene_dict[raw_mrna_id] = raw_prot_id
 				if is_verbose:
 					print("## key {}  value {}  last tx {}".format(raw_mrna_id, raw_prot_id, raw_geneid), file=sys.stderr)
 

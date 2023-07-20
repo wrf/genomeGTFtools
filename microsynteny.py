@@ -5,7 +5,7 @@
 # v1.5 2023-06-14 add presets for genbank GFFs and proteins
 # v1.6 2023-07-06 add subject strict option
 
-'''microsynteny.py v1.5 last modified 2023-07-18
+'''microsynteny.py v1.5 last modified 2023-07-19
 
 microsynteny.py -q query.gtf -d ref_species.gtf -b query_vs_ref_blast.tab -E ../bad_contigs -g -D '_' --blast-query-delimiter '.' > query_vs_ref_microsynteny.tab
 
@@ -167,6 +167,8 @@ def parse_gtf(gtffile, exons_to_genes, cds_to_genes, excludedict, delimiter, is_
 			elif (cds_to_genes and feature=="CDS"):
 				if is_genbank: # just use CDS features, that match the protein IDs
 					index_id = attrd.get("protein_id",None)
+					if index_id is None: # something went wrong, maybe mismatch format
+						index_id = attrd.get("Parent",None)
 				else:
 					index_id = attrd.get("Parent",None)
 				nametoscaffold[index_id] = scaffold
