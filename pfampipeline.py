@@ -2,7 +2,7 @@
 #
 # pfampipeline.py
 
-'''pfampipeline.py  last modified 2022-03-16
+'''pfampipeline.py  last modified 2023-08-09
 
     USAGE requires only a fasta file of proteins
 pfampipeline.py proteins.fasta
@@ -93,7 +93,7 @@ def main(argv, wayout):
 		argv.append('-h')
 	parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description=__doc__)
 	parser.add_argument('input', help="fasta format file of proteins, for example, a file of orthologs")
-	parser.add_argument('-c','--clans', default=os.path.expanduser("~/db/Pfam-A.clans.tsv"), help="PFAM clan information tsv")
+	parser.add_argument('-c','--clans', default=os.path.expanduser("~/db/Pfam-A.clans.tsv.gz"), help="PFAM clan information tsv")
 	parser.add_argument('-d','--d-score', type=float, default=0.25, help="D-score cutoff for SignalP")
 	parser.add_argument('-e','--evalue', type=float, default=1e-1, help="evalue cutoff for domain filtering [1e-1]")
 	parser.add_argument('-p','--processors', help="number of CPUs for hmmscan [1]", default="1")

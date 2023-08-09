@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 #
 # pfamgff2clans.py v1.0 created 2016-04-19
+# 2023-08-09 natively allow gzip for clan links
 
 '''
-pfamgff2clans.py  last modified 2020-11-05
+pfamgff2clans.py  last modified 2023-08-09
 
 pfamgff2clans.py -i proteins.pfam.gtf -c Pfam-A.clans.tsv > proteins.clan.gtf
 
@@ -19,6 +20,7 @@ import time
 import argparse
 import re
 import os
+import gzip
 from collections import defaultdict,OrderedDict
 from Bio import SeqIO
 
@@ -27,8 +29,13 @@ def parse_clan_links(clanlinks):
     # The columns are: Pfam accession, clan accession, clan ID, Pfam ID, Pfam description.
 	pfamtoclan = {}
 	pfamannotation = {}
-	sys.stderr.write("# Parsing clan links from {}  {}\n".format(clanlinks, time.asctime() ) )
-	for line in open(clanlinks, 'r').readlines():
+	if clanlinks.rsplit('.',1)[-1]=="gz": # autodetect gzip format
+		_opentype = gzip.open
+		sys.stderr.write("# Parsing clan links from {} as gzipped  {}\n".format(clanlinks, time.asctime() ) )
+	else: # otherwise assume normal open for fasta format
+		_opentype = open
+		sys.stderr.write("# Parsing clan links from {}  {}\n".format(clanlinks, time.asctime() ) )
+	for line in _opentype(clanlinks, 'rt'):
 		line = line.strip()
 		if line:
 			lsplits = line.split("\t")
@@ -125,7 +132,7 @@ def main(argv, wayout):
 		argv.append("-h")
 	parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description=__doc__)
 	parser.add_argument('-i','--input', help="PFAM protein gff")
-	parser.add_argument('-c','--clans', help="PFAM clan information tsv")
+	parser.add_argument('-c','--clans', help="PFAM clan information tsv.gz (or can be unzipped)")
 	parser.add_argument('-o','--overlap', type=float, default=0.67, help="minimum overlap to try and merge [0.67]")
 	parser.add_argument('-p','--program', help="program for 2nd column in output [hmmscan]", default="hmmscan")
 	parser.add_argument('-s','--sequences', help="fasta format file of protein sequences")
