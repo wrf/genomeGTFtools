@@ -2,7 +2,7 @@
 #
 # microsynteny_to_ortho_pairs.py v1 2023-07-31
 
-"""microsynteny_to_ortho_pairs.py  last modified 2023-07-31
+"""microsynteny_to_ortho_pairs.py  last modified 2023-08-01
 
     generate a fasta file for each pair of putative orthologs based on microsynteny.py
 
@@ -83,10 +83,10 @@ def parse_microsynteny( microsyn_file, prot_dict, cluster_dir, do_print_doubles 
 	if do_print_doubles:
 		for k,v in used_query_genes.items():
 			if v > 1:
-				print("q\t{}\t{}".format(k,v) , file=sys.stderr )
+				print("q\t{}\t{}".format(k,v) , file=sys.stdout )
 		for k,v in used_subject_genes.items():
 			if v > 1:
-				print("s\t{}\t{}".format(k,v) , file=sys.stderr )
+				print("s\t{}\t{}".format(k,v) , file=sys.stdout )
 	# no return
 
 def main(argv, wayout):
@@ -96,7 +96,8 @@ def main(argv, wayout):
 	parser.add_argument('-m','--microsynteny', help="microsynteny table, can be .gz")
 	parser.add_argument('-f','--fasta', nargs='*', help="original protein fasta sequences, concatenated or several files, IDs must be unique")
 	parser.add_argument('-o','--output-dir', help="directory of output files [./blockpairs]", default='./blockpairs')
-	parser.add_argument('-P','--print-doubles', help="print names of any sequence ID occurring more than once", action="store_true")
+	parser.add_argument('-n','--no-output', help="only collect data, do not generate pair fasta files", action="store_true")
+	parser.add_argument('-p','--print-doubles', help="print names of any sequence ID occurring more than once", action="store_true")
 	args = parser.parse_args(argv)
 
 	prot_dict = get_protein_dict(args.fasta)
