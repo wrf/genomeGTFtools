@@ -1,7 +1,7 @@
 # synteny_2d_plot.R
 # make dot plot of synteny between two genomes, based on unidirectional blast hits (i.e. not reciprocal)
 # created by WRF 2019-04-01
-# last modified 2022-12-13
+# last modified 2023-06-26
 
 # command line arguments:
 # Rscript synteny_2d_plot.R tabular_file.tab Label-1 Label-2 HUE
@@ -139,7 +139,7 @@ pdf(file=outputfile, width=8, height=11) # a4 size
 par( mar=c(4.5,4.5,1,1) )
 
 plot(genome_x, genome_y, pch=16, col=dotcolor, cex=pointsize, 
-     main=all2Dfile, xlab=xlab, ylab=ylab, 
+     main=basename(all2Dfile), xlab=xlab, ylab=ylab, 
      axes=FALSE, cex.lab=1.4)
 
 tickpoints = pretty(c(0,xmax_mb))

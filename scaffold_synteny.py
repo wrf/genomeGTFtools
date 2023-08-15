@@ -4,9 +4,10 @@
 # v1.2 add print all option and to remove gene features 2022-10-27
 # v1.3 print used options in the scaffold table 2023-01-08
 # v1.4 add some auto processing for GenBank format genomes 2023-04-17
+# v1.41 bugfix for output 2023-08-15
 
 '''
-scaffold_synteny.py  v1.4 last modified 2023-07-28
+scaffold_synteny.py  v1.4 last modified 2023-08-15
     makes a table of gene matches between two genomes, to detect synteny
     these can be converted into a dotplot of gene matches
 
@@ -305,7 +306,7 @@ def generate_synteny_points(queryScafOffset, dbScafOffset, queryPos, dbPos, blas
 				# write each match to file
 				printed_queries[gene] = True
 				printed_targets[matchgene] = True
-				wayout.write("g\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format(gene, scaffold, matchgene, matchscaf, overallposition, overallmatchpos, bitscore) )
+				wayout.write("g\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format(blast_qgene, scaffold, matchgene, matchscaf, overallposition, overallmatchpos, bitscore) )
 	if printed_queries:
 		sys.stderr.write("# Wrote match positions for {} genes\n".format( len(printed_queries) ) )
 	else:
