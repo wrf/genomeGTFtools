@@ -1,17 +1,22 @@
 #! /usr/bin/env python
 #
 # repeat2gtf.py v1 created 2016-02-18
+# v1.1 2023-11-06 allow gzip input 
 #
 # for SOFA terms:
 # https://github.com/The-Sequence-Ontology/SO-Ontologies/blob/master/subsets/SOFA.obo
 
-"""repeat2gtf.py  last modified 2021-12-07
+"""repeat2gtf.py  v1.1 last modified 2023-11-06
     generates a GFF3 format file of repeats, typically Ns as gaps
   the script only searches the FORWARD strand, meaning would need
   to be run twice for non-palindromic sequences (e.g. CACA vs GTGT)
     Requires Bio library (biopython)
 
 repeat2gtf.py scaffolds.fasta > scaffolds_gaps.gff
+
+    for gzip files, use stdin as
+
+gzip -dc scaffolds.fasta.gz | repeat2gtf.py -
 
     for non-gap repeats (anything other than N)
     change -t to direct_repeat
@@ -33,13 +38,14 @@ import argparse
 import time
 import os
 import re
+import gzip
 from Bio import SeqIO
 
 def main(argv, wayout):
 	if not len(argv):
 		argv.append("-h")
 	parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description=__doc__)
-	parser.add_argument('input_file', type = argparse.FileType('rU'), default = '-', help="fasta format file, or stdin as -")
+	parser.add_argument('input_file', type = argparse.FileType('rU'), default = '-', help="fasta format file, can be .gz, or stdin as -")
 	parser.add_argument('-a', '--above', type=int, metavar='N', default=2, help="only print repeats/gaps longer than N, in letters [2]")
 	parser.add_argument('-b', '--below', type=int, metavar='N', default=1000000000, help="only print sequences repeats/gaps shorter than N, in letters")
 	parser.add_argument('--format', metavar='fastq', default='fasta', help="import fastq format sequences")
@@ -69,7 +75,11 @@ def main(argv, wayout):
 		sys.stderr.write("# Parsing repeats of {} from {}  {}\n".format(args.repeat, args.input_file.name, time.asctime() ) )
 
 	# begin iterating through sequences, then search the regular expression
-	for seqrec in SeqIO.parse(args.input_file, args.format):
+	if args.input_file.name.rsplit('.',1)[-1]=="gz":
+		input_handler = gzip.open(args.input_file.name,'rt')
+	else:
+		input_handler = args.input_file
+	for seqrec in SeqIO.parse(input_handler, args.format):
 		seqcount += 1
 		contig = seqrec.id
 		reptracker = {} # key is position, value is list of start, end, length
