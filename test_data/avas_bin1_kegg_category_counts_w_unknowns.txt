@@ -1,0 +1,23 @@
+count	category	color
+924	Unknown	888888
+151	Genetic information processing	ffcccc
+138	Protein families: genetic information	ffcccc
+127	Amino acid metabolism	ff9933
+118	Carbohydrate metabolism	0000ee
+104	Protein families: signaling	99cc66
+75	Environmental information processing	ffff00
+74	Metabolism of cofactors	ff6699
+68	Energy metabolism	9933cc
+61	Nucleotide metabolism	ff0000
+55	Protein families: metabolism	ccffff
+43	Unclassified	ffffff
+32	Cellular processes	99cc66
+28	Glycan metabolism	3399ff
+24	Lipid metabolism	009999
+23	Unclassified: signalling	99cc66
+21	Unclassified: genetic information processing	ffcccc
+21	Unclassified: metabolism	ccffff
+19	Metabolism of other amino acids	ff6600
+11	Metabolism of terpenoids	00cc33
+7	Unclassified: signaling and cellular processes	99cc66
+7	Unclassified: signaling and cellular processes	99cc66
