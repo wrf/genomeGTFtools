@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 #
+# 2025-05-29 bugfix regex problem
 
-'''append_kegg_to_prodigal_gff.py  last modified 2023-07-05
+'''append_kegg_to_prodigal_gff.py  last modified 2025-05-29
     append KEGG annotations from blastKOALA to prodigal gff
     KEGG annotations will include gene name, description, and KEGG category
     and will create a gene feature for each CDS
@@ -97,7 +98,7 @@ else:
 			scaffold = lsplits[0]
 			feature = lsplits[2]
 			attributes = lsplits[8].strip()
-			prodigal_geneid = re.search('ID=([\w\d._|-]+);', attributes).group(1)
+			prodigal_geneid = re.search(r'ID=([\w._|-]+);', attributes).group(1)
 			geneid = "{}_{}".format( scaffold, prodigal_geneid.split("_")[1] ) # gene ID invented as scaffold_prodigal-number
 			parentattrs = "ID={};Name={};gene_biotype=protein_coding;".format(geneid, kegg_genes.get(geneid,"None"))
 			gene_name = kegg_genes.get(geneid,None)
