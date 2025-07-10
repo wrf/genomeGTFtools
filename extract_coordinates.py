@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 #
-# extract_coordinates.py
+# extract_coordinates.py 2022-11-26
+# 2025-07-10 print span at each use
 
-'''extract_coordinates.py  last modified 2022-11-26
+"""extract_coordinates.py  last modified 2025-07-10
 
     extract relevant regions from a GFF, to make simple figures
     resembling a view in a genome browser
@@ -18,7 +19,7 @@ extract_coordinates.py -s ML0011 -b 63000 -e 88000 -g ML2.2.gff3 > ml0011_63k-88
     for bacterial genomes, where each gene is a single CDS, use -p
 
 extract_coordinates.py -g GCF_000011805.1_ASM1180v1_genomic.gff -s NC_006841.2 -b 1041700 -e 1051700 -p > lux_locus_short_annot.tab
-'''
+"""
 
 import sys
 import argparse
@@ -36,6 +37,10 @@ def extract_features(gtffile, target_scaffold, target_start, target_end, keep_on
 	else: # otherwise assume normal open for fasta format
 		opentype = open
 		sys.stderr.write("# Parsing gff from {}\n".format(gtffile) )
+
+	if target_start > target_end: # if start position is less than end, swap them
+		sys.stderr.write("# WARNING: start {} greater than end {} , swapping\n".format(target_start, target_end) )
+		target_start , target_end = target_end , target_start
 
 	linecounter = 0
 	genecounter = 0
@@ -112,7 +117,7 @@ def main(argv, wayout):
 	parser.add_argument('--make-linear', action="store_true", help="instruct R script to draw genes all on the same line, like for a bacterial operon schematic")
 	args = parser.parse_args(argv)
 
-	sys.stderr.write("# Extracting features on {} from position {} to {}\n".format(args.scaffold, args.begin, args.end) )
+	sys.stderr.write("# Extracting features on {} from position {} to {} , {} bp \n".format(args.scaffold, args.begin, args.end, ( args.end - args.begin ) ) )
 
 	# make only one axis line
 	axis_line = "{}\taxis\t{}\t{}\t{}\n".format( args.scaffold, args.begin, args.end, args.make_linear )
