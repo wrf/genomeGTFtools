@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 # convert tabular annotation format to rectangle blocks
 # or polygon blocks for single CDS genes, like bacteria
-# last modified 2022-12-21
+# last modified 2025-07-10 changed xpd to on by default
 
 args = commandArgs(trailingOnly=TRUE)
 
@@ -71,7 +71,7 @@ exon_index = match(exontypes[,1],tx_names)
 # draw the PDF
 pdf(file=outputfile, width=8, height=10)
 plot(0,0, type='n', axes=FALSE, frame.plot=FALSE, ylim=c(0,num_tx), xlim=c(window_start,window_end), xlab="", ylab="")
-par(mar=c(4.5,2,1,1))
+par(mar=c(4.5,2,1,1), xpd=TRUE)
 axis(1, cex.axis=1.4)
 # if drawing genes alone, no exons, then draw them as polygons
 if (draw_polygons==TRUE) {
