@@ -1,12 +1,13 @@
 #! /usr/bin/env python
 #
 # repeat2gtf.py v1 created 2016-02-18
-# v1.1 2023-11-06 allow gzip input 
+# v1.1 2023-11-06 allow gzip input
+# v1.2 2025-11-18 fixed filetype bug
 #
 # for SOFA terms:
 # https://github.com/The-Sequence-Ontology/SO-Ontologies/blob/master/subsets/SOFA.obo
 
-"""repeat2gtf.py  v1.1 last modified 2023-11-06
+"""repeat2gtf.py  v1.2 last modified 2025-11-18
     generates a GFF3 format file of repeats, typically Ns as gaps
   the script only searches the FORWARD strand, meaning would need
   to be run twice for non-palindromic sequences (e.g. CACA vs GTGT)
@@ -14,7 +15,11 @@
 
 repeat2gtf.py scaffolds.fasta > scaffolds_gaps.gff
 
-    for gzip files, use stdin as
+    for gzip files:
+
+repeat2gtf.py scaffolds.fna.gz > scaffolds_gaps.gff
+
+    or use stdin as:
 
 gzip -dc scaffolds.fasta.gz | repeat2gtf.py -
 
@@ -45,7 +50,7 @@ def main(argv, wayout):
 	if not len(argv):
 		argv.append("-h")
 	parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description=__doc__)
-	parser.add_argument('input_file', type = argparse.FileType('rU'), default = '-', help="fasta format file, can be .gz, or stdin as -")
+	parser.add_argument('input_file', type = argparse.FileType('r'), default = '-', help="fasta format file, can be .gz, or stdin as -")
 	parser.add_argument('-a', '--above', type=int, metavar='N', default=2, help="only print repeats/gaps longer than N, in letters [2]")
 	parser.add_argument('-b', '--below', type=int, metavar='N', default=1000000000, help="only print sequences repeats/gaps shorter than N, in letters")
 	parser.add_argument('--format', metavar='fastq', default='fasta', help="import fastq format sequences")
