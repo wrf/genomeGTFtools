@@ -38,10 +38,6 @@ def extract_features(gtffile, target_scaffold, target_start, target_end, keep_on
 		opentype = open
 		sys.stderr.write("# Parsing gff from {}\n".format(gtffile) )
 
-	if target_start > target_end: # if start position is less than end, swap them
-		sys.stderr.write("# WARNING: start {} greater than end {} , swapping\n".format(target_start, target_end) )
-		target_start , target_end = target_end , target_start
-
 	linecounter = 0
 	genecounter = 0
 	scaffold_tracker = {} # key is scaffold, value is True
@@ -116,6 +112,10 @@ def main(argv, wayout):
 	parser.add_argument('-v','--verbose', action="store_true", help="extra output")
 	parser.add_argument('--make-linear', action="store_true", help="instruct R script to draw genes all on the same line, like for a bacterial operon schematic")
 	args = parser.parse_args(argv)
+
+	if args.begin > args.end: # if start position is less than end, swap them
+		sys.stderr.write("# WARNING: start {} greater than end {} , swapping\n".format(args.begin, args.end) )
+		args.begin , args.end = args.end , args.begin
 
 	sys.stderr.write("# Extracting features on {} from position {} to {} , {} bp \n".format(args.scaffold, args.begin, args.end, ( args.end - args.begin ) ) )
 
