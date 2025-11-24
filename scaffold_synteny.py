@@ -5,9 +5,10 @@
 # v1.3 print used options in the scaffold table 2023-01-08
 # v1.4 add some auto processing for GenBank format genomes 2023-04-17
 # v1.41 bugfix for output 2023-08-15
+# v1.42 bugfix for mixed inputs 2025-11-19
 
 '''
-scaffold_synteny.py  v1.4 last modified 2023-08-15
+scaffold_synteny.py  v1.4 last modified 2025-11-19
     makes a table of gene matches between two genomes, to detect synteny
     these can be converted into a dotplot of gene matches
 
@@ -136,9 +137,9 @@ def parse_gtf(gtffile, excludedict, delimiter, do_ignore_gene, isref=False, is_v
 				#raw_geneid = re.search('ID=([\w\.\|\+\-]+)', attributes).group(1)
 				if raw_geneid is None:
 					print( "ERROR: cannot extract ID= for {}\n{}".format(attributes, line) , file=sys.stderr )
-				# if a delimiter is given for either query or db, then split
-				if delimiter:
-					geneid = geneid.rsplit(delimiter,1)[0]
+				# if a delimiter is given for either query or db, then split the end and take the first piece
+				if delimiter: # either args.query_delimiter or args.db_delimiter
+					geneid = raw_geneid.rsplit(delimiter,1)[0]
 				else:
 					geneid = raw_geneid
 
@@ -234,6 +235,8 @@ def make_self_blast_dict(gene_positions):
 	sys.stderr.write("# Using {} genes for positions\n".format( len(artificial_hit_dict ) ) )
 	return artificial_hit_dict
 
+
+
 def generate_synteny_points(queryScafOffset, dbScafOffset, queryPos, dbPos, blastdict, prot_to_gene_dict, give_local_positions, do_print_all, is_genbank, wayout):
 	'''combine all datasets and for each gene on the query scaffolds, print tab delimited data to stdout'''
 
@@ -259,8 +262,8 @@ def generate_synteny_points(queryScafOffset, dbScafOffset, queryPos, dbPos, blas
 			# if using GenBank GFFs and proteins directly, then convert from mRNA position ID to blasted protein
 			# this only works if the IDs are unique accession numbers
 			# i.e. if both are AUGUSTUS IDs like g1.t1 then the two genomes will interfere with each other
-			if is_genbank:
-				blast_qgene = prot_to_gene_dict.get(gene, None)
+			if is_genbank: # for GenBank, use the CDS protein_id, otherwise try the gene name as given
+				blast_qgene = prot_to_gene_dict.get(gene, gene)
 			else:
 				blast_qgene = gene
 			if is_verbose:
@@ -415,7 +418,7 @@ def main(argv, wayout):
 	parser.add_argument('--local-positions', help="output points as local positions on each scaffold, not global position", action="store_true")
 	parser.add_argument('--compare-haplotypes', help="compare gene placement between two haplotypes, blast -b is ignored", action="store_true")
 	parser.add_argument('--ignore-gene-features', help="skip gene features, but will still use mRNA and transcript", action="store_true")
-	parser.add_argument('--genbank-gff', help="use presets when proteins and GFF files are from GenBank", action="store_true")
+	parser.add_argument('--genbank-gff', help="use presets when both proteins and GFF files are from GenBank", action="store_true")
 	parser.add_argument('--print-no-match', help="print lines for all queries, including those without blast matches", action="store_true")
 	args = parser.parse_args(argv)
 
