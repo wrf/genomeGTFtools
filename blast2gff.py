@@ -3,16 +3,18 @@
 # v1.0 2014-10-22
 # v1.1 added option to remove weak blast hits, fixed integer bug 2014-10-28
 # v1.2 reverted to previous version after name change 2015-05-13
-# v1.3 parsing for IDs with comma separated items
+# v1.3 parsing for IDs with comma separated items 2022-07-08
+# v1.31 doc updates 2025-11-30
 #
 # blast2gff.py convert blast output to gff format for genome annotation
 # translated from blast2gff.pl and parseblast.pl
 #
 # and using information from:
 # https://www.sanger.ac.uk/resources/software/gff/spec.html
-# http://www.sequenceontology.org/gff3.shtml
+# https://github.com/The-Sequence-Ontology/Specifications/blob/master/gff3.md
 
-'''blast2gff.py last modified 2022-07-08
+"""
+blast2gff.py last modified 2025-11-30
 
 blast2gff.py -b tblastn_output.tab > output.gff3
 
@@ -28,7 +30,7 @@ tblastn -query refprots.fa -db target_genome.fa -outfmt 6 > tblastn_output.tab
     though this depends on the bitscore and so the relatedness of the species
 
     to generate hints for AUGUSTUS, use -A, also change type as -t CDSpart
-'''
+"""
 
 #
 import sys
@@ -130,8 +132,10 @@ def main(argv, wayout):
 		#attributes = "ID={}".format(qseqid)
 		if args.augustus:
 			attributes = "source=P;ID={0}.{1}-{2}".format(qseqid, qstart, qend)
-		elif args.locus:
-			attributes = "ID={0}_{1}_{2};Target={3} {4} {5}".format(sseqid, sstart, send, qseqid, qstart, qend)
+		elif args.locus: # appears as ID=NC_087084.1_866136_866178;Target=leader_31770 2 44
+		# could add
+		# ;Identity={6};Mismatch={7}
+			attributes = "ID={0}_{1}_{2};Target={3} {4} {5}".format(sseqid, sstart, send, qseqid, qstart, qend )
 		elif args.parse_properties:
 			attributes = ";".join( ["ID={0}.{1}{2}".format(qseqid, args.type, hitDictCounter[qseqid]) , "Target={0} {1} {2}".format(qseqid, qstart, qend)] + extra_attributes )
 		else:
@@ -139,7 +143,8 @@ def main(argv, wayout):
 
 		# if verbose, display the current attributes format for debugging
 		if args.verbose and linecounter == 1:
-			sys.stderr.write( "{}\n".format(attributes) )
+			sys.stderr.write( "Attributes parsed as:\n".format(attributes) )
+			sys.stderr.write( "{}\n\n".format(attributes) )
 
 		# convert strings of start and end to integers for calculations
 		isend = int(send)
