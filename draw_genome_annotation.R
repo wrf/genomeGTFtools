@@ -5,7 +5,7 @@
 # meaning like below, all on the same line
 # |||> ||> ||> |||||> <||
 #
-# last modified 2023-07-05
+# last modified 2025-12-02
 
 args = commandArgs(trailingOnly=TRUE)
 
@@ -16,12 +16,41 @@ if (inputfile==outputfile) { stop("cannot parse input file to generate output fi
 
 genome_gff = read.table(inputfile, header=FALSE, sep="\t", quote='', stringsAsFactors=FALSE)
 
+##########
+use_kegg_index = !is.na(args[2]) # can type anything
+kegg_index_file = "~/git/genomeGTFtools/test_data/ko00001.tab.gz"
+if (use_kegg_index){
+  if (file.exists(kegg_index_file)){
+    print(paste("# using KEGG index for coloring",kegg_index_file))
+    kegg_index_table = read.table(kegg_index_file, header=FALSE, sep="\t", stringsAsFactors = FALSE, quote = "", comment.char = "")
+  } else {
+    print(paste("# cannot find KEGG index file",kegg_index_file),", skipping")
+    use_kegg_index = FALSE
+  }
+} else {
+  print(paste("# using base gray color scheme","(otherwise enable KEGG coloring with -c after the filename)"))
+}
+
+# this file generated with another script:
+# keg_output_to_table.py ko00001.keg.gz | gzip > ko00001.tab.gz
+
+# colors from https://www.genome.jp/kegg/kegg1c.html
+kegg_cats = c("Carbohydrate", "Energy", "Lipid", "Nucleotide", "Amino acid", "Other AA",
+              "Glycan", "Cofactors", "Terpenoid/PKS", "Secondary", "Xenobiotic",
+              "DNA/RNA", "Environment", "Cellular", "Other")
+kegg_colors = c("#0000ee", "#9933cc", "#009999", "#ff0000", "#ff9933", "#ff6600", 
+                "#3399ff", "#ff6699", "#00cc33", "#cc3366", "#ccaa99", "#ffcccc",
+                "#ffff00", "#99cc66", "#888888")
+##########
+
+
 # explicitly use "region" features, if they are given
 chr_regions = genome_gff[genome_gff$V3=="region",]
 chr_names = chr_regions$V1
 # otherwise get from scaffold column
 if (nrow(chr_regions)==0){ chr_names = unique( genome_gff$V1 ) }
 n_chrs = length(chr_names)
+print(paste("# detected",n_chrs,"chromosomes in",inputfile))
 
 feature_counts = table(genome_gff$V3)
 # for GenBank format, this will take CDS mRNA tRNA pseudogene, and others
@@ -33,20 +62,6 @@ p=1;i=1;
 
 offset_width = 500 # bp, minimum gene size to draw polygon, otherwise makes triangle
 offset_height = 1 # relates to polygon height
-
-use_kegg_index = !is.na(args[2]) # can type anything
-# this file generated with another script:
-# keg_output_to_table.py ko00001.keg.gz | gzip > ko00001.tab.gz
-if (use_kegg_index){
-  kegg_index_table = read.table("~/git/genomeGTFtools/test_data/ko00001.tab.gz", header=FALSE, sep="\t", stringsAsFactors = FALSE, quote = "", comment.char = "")
-}
-# colors from https://www.genome.jp/kegg/kegg1c.html
-kegg_cats = c("Carbohydrate", "Energy", "Lipid", "Nucleotide", "Amino acid", "Other AA",
-              "Glycan", "Cofactors", "Terpenoid/PKS", "Secondary", "Xenobiotic",
-              "DNA/RNA", "Environment", "Cellular", "Other")
-kegg_colors = c("#0000ee", "#9933cc", "#009999", "#ff0000", "#ff9933", "#ff6600", 
-                "#3399ff", "#ff6699", "#00cc33", "#cc3366", "#ccaa99", "#ffcccc",
-                "#ffff00", "#99cc66", "#888888")
 
 ##############
 # draw the PDF
