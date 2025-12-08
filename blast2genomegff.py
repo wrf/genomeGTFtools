@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 
 # blast2genomegff.py v1.0 2016-05-16
-#
+# v1.2 2025-12-08 fixed re search and clearer error reporting
 # and using information from:
 # http://www.sequenceontology.org/gff3.shtml
 
 # for SOFA terms:
 # https://github.com/The-Sequence-Ontology/SO-Ontologies/blob/master/subsets/SOFA.obo
 
-'''blast2genomegff.py  last modified 2022-10-22
+'''blast2genomegff.py v1.2  last modified 2025-12-08
     convert blast output to gff format for genome annotation
     blastx of a transcriptome (genome guided or de novo) against a protein DB:
 
@@ -93,6 +93,7 @@ def gtf_to_intervals(gtffile, keepcds, skipexons, transdecoder, nogenemode, gene
 	transcounter = 0 # counter for transcript or mRNA
 	exoncounter = 0 # counter for exon or CDS
 	ignoredfeatures = 0 # all other features that get ignored
+	feature_counter = defaultdict(int) # implicitly only to count junk
 
 	allowed_features = ["gene", "mRNA", "transcript", "exon", "CDS"]
 
@@ -115,7 +116,7 @@ def gtf_to_intervals(gtffile, keepcds, skipexons, transdecoder, nogenemode, gene
 		if line: # ignore empty lines
 			if line[0]=="#": # count comment lines, just in case
 				commentlines += 1
-			else:
+			else: # all remaining lines are features, since blank and comments are ignored
 				linecounter += 1
 				lsplits = line.split("\t")
 				if len(lsplits) < 9:
@@ -125,21 +126,22 @@ def gtf_to_intervals(gtffile, keepcds, skipexons, transdecoder, nogenemode, gene
 				strand = lsplits[6]
 				attributes = lsplits[8]
 
+				feature_counter[feature] += 1
 				if feature not in allowed_features: # any other features may cause problems later
 					ignoredfeatures += 1
 					continue
 
 				if attributes.find("ID")>-1: # indicates gff3 format
-					geneid = re.search('ID=([\w.|-]+)', attributes).group(1)
+					geneid = re.search(r'ID=([\w.|-]+)', attributes).group(1)
 				elif attributes.find("gene_id")>-1: # indicates gtf format
-					geneid = re.search('transcript_id "([\w.|-]+)";', attributes).group(1)
+					geneid = re.search(r'transcript_id "([\w.|-]+)";', attributes).group(1)
 				else:
 					geneid = None
 
 				if attributes.find("Parent")>-1: # gff3 format but no ID
-					toplevel_ID = re.search('Parent=([\w.|-]+)', attributes).group(1)
+					toplevel_ID = re.search(r'Parent=([\w.|-]+)', attributes).group(1)
 				elif attributes.find("gene_id")>-1: # indicates gtf format
-					toplevel_ID = re.search('gene_id "([\w.|-]+)";', attributes).group(1)
+					toplevel_ID = re.search(r'gene_id "([\w.|-]+)";', attributes).group(1)
 				else:
 					toplevel_ID = None
 
@@ -174,12 +176,14 @@ def gtf_to_intervals(gtffile, keepcds, skipexons, transdecoder, nogenemode, gene
 	sys.stderr.write("# Counted {} lines and {} comments  {}\n".format(linecounter, commentlines, time.asctime() ) )
 	if ignoredfeatures:
 		sys.stderr.write("# Ignored {} other features in the GFF\n".format(ignoredfeatures) )
+		if ignoredfeatures==linecounter: # meaning all lines contained ignored features
+			sys.stderr.write("WARNING: NO usable features (i.e. mRNA, exon, CDS) in GFF, must reformat GFF\nContained only:\n{}\n".format('\n'.join(["{}\t{}".format(k,v) for k,v in feature_counter.items() ])) )
 	if transcounter:
 		sys.stderr.write("# Counted {} exons for {} inferred transcripts\n".format(exoncounter, transcounter) )
 	else: # no mRNA or transcript features were given, count was 0
 		transcounter = len(gene_to_scaffold_dict)
 		sys.stderr.write("# Counted {} exons for {} inferred transcripts\n".format(exoncounter, transcounter) )
-	if exoncounter==0:
+	if exoncounter==0: # meaning either no exon features, or no usable CDS features
 		sys.stderr.write("WARNING: NO suitable exons counted, check options -x or -G\n" )
 	return geneintervals, gene_to_strand_dict, gene_to_scaffold_dict
 
@@ -534,7 +538,10 @@ def main(argv, wayout):
 	geneintervals, gene_to_strand_dict, gene_to_scaffold_dict =  gtf_to_intervals(args.genes, args.cds_exons, args.skip_exons, args.transdecoder, args.no_genes, args.gff_delimiter)
 
 	# read the blast output
-	parse_tabular_blast(args.blast, args.coverage_cutoff, args.evalue_cutoff, args.score_cutoff, args.max_targets, args.program, args.type, args.percent_target, args.blast_delimiter, args.swissprot, protlendb, descdict, args.add_accession, geneintervals, gene_to_strand_dict, gene_to_scaffold_dict)
+	if len(gene_to_scaffold_dict) > 0:
+		parse_tabular_blast(args.blast, args.coverage_cutoff, args.evalue_cutoff, args.score_cutoff, args.max_targets, args.program, args.type, args.percent_target, args.blast_delimiter, args.swissprot, protlendb, descdict, args.add_accession, geneintervals, gene_to_strand_dict, gene_to_scaffold_dict)
+	else:
+		sys.exit("ERROR: cannot use -g GFF file  {} , exiting".format(args.genes) )
 
 if __name__ == "__main__":
 	main(sys.argv[1:],sys.stdout)
