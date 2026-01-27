@@ -509,7 +509,7 @@ def main(argv, wayout):
 	parser.add_argument('-b','--blast', help="tabular blast results file, can be .gz")
 	parser.add_argument('-d','--database', help="db (reference/subject) proteins in fasta format")
 	parser.add_argument('-g','--genes', help="query genes or proteins in gff format, can be .gz")
-	parser.add_argument('-p','--program', help="blast program for 2nd column in output [BLASTX]", default="BLASTX")
+	parser.add_argument('-p','--program', help="blast program for 2nd column in output [blastx]", default="blastx")
 	parser.add_argument('-t','--type', help="gff type or method [protein_match]", default="protein_match")
 	parser.add_argument('-D','--blast-delimiter', help="optional delimiter for query protein names in blast table, cuts off end split")
 	parser.add_argument('-F','--gff-delimiter', help="optional delimiter for GFF gene IDs, cuts off end split")
@@ -522,11 +522,15 @@ def main(argv, wayout):
 	parser.add_argument('-S','--swissprot', action="store_true", help="subject db sequences have swissprot headers in blast table")
 	parser.add_argument('--add-description', action="store_true", help="if using swissprot, make GFF attribute of description from the protein description")
 	parser.add_argument('--add-accession', action="store_true", help="if using swissprot, include accession in attribute, for downstream linking")
-	parser.add_argument('-T','--transdecoder', action="store_true", help="use presets for TransDecoder genome gff")
+	parser.add_argument('-T','--transdecoder', action="store_true", help="use text-presets for TransDecoder genome gff")
 	parser.add_argument('-x','--cds-exons', action="store_true", help="use CDS features as exons")
 	parser.add_argument('-K','--skip-exons', action="store_true", help="skip exon features if exon and CDS are in the same file")
 	parser.add_argument('-v','--verbose', action="store_true", help="extra output")
 	args = parser.parse_args(argv)
+
+	# warning for using blastp and not using CDS mode
+	if args.program == "blastp" and args.cds_exons is False:
+		sys.stderr.write("\nWARNING: program BLASTP being used, but not option -x and -K , make sure that EXONS are exactly at the boundaries of the PROTEINS, otherwise program may generate output with INCORRECT boundaries\n\n" )
 
 	# read database, make a length dict, and possibly also a description dict
 	if args.database is not None and os.path.exists(args.database):
