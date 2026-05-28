@@ -5,8 +5,13 @@
 
 args = commandArgs(trailingOnly=TRUE)
 
+# run as:
+# Rscript synteny_2d_w_2nd_genome_sorted.R synteny.l.tab Species-name-1 Species-name-2 000
+# Rscript synteny_2d_w_2nd_genome_sorted.R Tmi_AUG_V4b17_vs_TwiV4_AUG.blastp.synteny.l.tab Tethya-minuta Tethya-wilhelma 160
+
 # read data file from scaffold_synteny.py AND MUST HAVE USED OPTION --local-positions
 all2Dfile = args[1]
+#all2Dfile = "~/git/2tethya/Tmi_V4b17_hintsutr_vs_TwiV4_AUG.blastp.synteny.tab"
 # in case of .gz input, remove the .gz and rename otherwise
 outputfile = gsub("([\\w/]+)\\....$","\\1.pdf",gsub(".gz","",all2Dfile),perl=TRUE)
 if (all2Dfile==outputfile) { stop("cannot parse input file to generate output file name, add a unique 3-letter suffix") }
@@ -43,7 +48,6 @@ scafdata1 = all2Ddata[is_scaf1,]
 is_longscafs1 = which(as.numeric(scafdata1[,5]) > 0.0009)
 longscafs1 = c(0, scafdata1[,6][is_longscafs1] )
 longscafs1_names = scafdata1[is_longscafs1,2]
-if (!("l" %in% unique(scafdata1[,8]))){ print("WARNING: format not detected as --local-positions , output may not work") }
 
 is_scaf2 = which(categories=="s2")
 scafdata2 = all2Ddata[is_scaf2,]
@@ -59,6 +63,10 @@ pointsdata_long = pointsdata[is_both_longscaf,]
 
 scaffold_match_data = data.frame( sc1 = pointsdata_long[,3], sc2 = pointsdata_long[,5] )
 match_freq_table = table(scaffold_match_data, dnn=list(c(longscafs1_names),c(longscafs2_names)) )
+
+if (!("l" %in% unique(scafdata1[,8]))){ 
+  print("WARNING: format not detected as --local-positions , output may not work")
+}
 
 # key is scaf2 name, value is index of scaf1, auto sorted alphabetically
 scaffold_best_match = apply(match_freq_table, 2, which.max)
