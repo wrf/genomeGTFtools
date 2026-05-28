@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 
-'''
+'''collate_features.py  last modified 2017
+
 collate_features.py parent_features.gff child_features.gff > combined.gff
 
+collate_features.py Hhon_BRAKER1_genes.gff3 Hhon_BRAKER1_cds_w_parent.gff > Hhon_BRAKER1_gene_cds_collated.gff
 '''
 
 import sys

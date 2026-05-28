@@ -1,12 +1,17 @@
 #!/usr/bin/env python
 #
 # alignmentpos2gff.py v1.0 created 2017-09-19
+# minor python3 update 2026-05-28
 #
 # Sequence Ontology terms from:
 # https://github.com/The-Sequence-Ontology/SO-Ontologies/blob/master/subsets/SOFA.obo
 
 '''
-alignmentpos2gff.py  last modified 2017-09-19
+alignmentpos2gff.py  last modified 2026-05-28
+
+    this is intended to make alignment motifs into a feature for GFFs,
+    such as to highlight all cysteine residues in a protein,
+    which is then plotted with another script
 
     EXAMPLE USAGE:
 alignmentpos2gff.py -a all_prots.aln -s 100,150 > all_prots.sites.gff
@@ -47,7 +52,7 @@ def main(argv, wayout):
 			if residueatpos in args.filter: # by default this will ignore any gaps
 				# Q16665	UniProtKB	Modified residue	564	564	.	.	.	Note=4-hydroxyproline
 				outline = "{0}\talignment\tmodified residue\t{1}\t{1}\t1\t.\t.\tNote={2}".format(seqrec.id, nogappos, residueatpos)
-				print >> wayout, outline
+				print(outline, file=wayout)
 
 if __name__ == "__main__":
 	main(sys.argv[1:],sys.stdout)
