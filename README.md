@@ -25,6 +25,7 @@ Many of these tools were used in [our analysis of the genome of the sponge *Teth
 * [blast2genomegff.py](https://github.com/wrf/genomeGTFtools#blast2genomegff) make features of blast hits against transcripts, showing the span of target proteins and include the splicing
 * [microsynteny.py](https://github.com/wrf/genomeGTFtools#microsynteny) using two GFF files of two different genomes and blast hits, determine blocks of conserved gene order
 * [extract_coordinates.py](https://github.com/wrf/genomeGTFtools#extract_coordinates) extract gene or exon information to draw diagrams that look like a genome browser
+* [draw_genome_annotation.R](https://github.com/wrf/genomeGTFtools/tree/master#draw_genome_annotation) make a PDF of a whole NCBI bacterial genome annotation, optinally colored and labeled with KEGG annotations
 
 ## number_contigs_by_length
 By convention, the longest chromosomes are numbered first. This naturally applies to scaffolds as well. Contigs/scaffolds can be renumbered and reordered with [number_contigs_by_length.py](https://github.com/wrf/genomeGTFtools/blob/master/number_contigs_by_length.py) script. Use the option `-c` to specify an additional output file of the conversion vector, that can be used to rename the scaffold column in any GFF file with the [rename_gtf_contigs.py](https://github.com/wrf/genomeGTFtools/blob/master/rename_gtf_contigs.py) script.
@@ -101,7 +102,15 @@ To view exon structure from a GFF file on a 3D protein structure, see instructio
 ![human_nidogen1_colored_by_exons.png](https://github.com/wrf/pdbcolor/blob/master/examples/human_nidogen1_colored_by_exons.png)
 
 ## blast2gff
-This was a strategy to convert blast hits into gene models. The direction of the blast hit and the grouping of blast hits in the same region is most indicative of a gene (though possibly pseudogenes as well). In general, blasting all human proteins against the target genome can find many proteins even in distantly related organisms. Repeated domains or very common domains (like ATP binding for kinases) will show up all over the place, so limiting the `-max_target_seqs` is advisable.
+This was a strategy to convert blast hits into gene models, but nowadays are are better tools for that. Currently, this is still in use for other motifs or nucleotide elements that are easy to annotate with `blastn`, and then convert directly to a feature track.
+
+For instance, using [ultra-conserved elements](https://en.wikipedia.org/wiki/Ultraconserved_element) from [Quattrini 2017](https://doi.org/10.1111/1755-0998.12736) on anthozoan phylogeny with UCEs. I had blasted the UCEs against *Nematostella*, and then converted to a track. In this case, the vast majority of the UCEs -87%- actually were very conserved exons.
+
+`blastn -query Quattrini_anthozoa_baits_V1.fas -db Nvec200.fasta -outfmt 6 -max_target_seqs 1 > Quattrini_anthozoa_baits_V1.vs_Nvec200.tab`
+
+`blast2gff.py -b blastn -t UCE -b Quattrini_anthozoa_baits_V1.vs_Nvec200.tab -U > Quattrini_anthozoa_baits_V1.vs_Nvec200.gff`
+
+In the original version, I had intended to use proteins aligned against the genome (with `tblastn`). The direction of the blast hit and the grouping of blast hits in the same region is most indicative of a gene (though possibly pseudogenes as well). In general, blasting all human proteins against the target genome can find many proteins even in distantly related organisms. Repeated domains or very common domains (like ATP binding for kinases) will show up all over the place, so limiting the `-max_target_seqs` is advisable.
 
 1) Blast a protein set against the genome, and make use of the multithreading power of blast.
 
@@ -276,12 +285,16 @@ This was intended to make a printable version of any NCBI prokaryote genome, and
 
 ![page 1 of Aliivibrio fisheri genome map](https://github.com/wrf/genomeGTFtools/blob/master/test_data/GCF_000011805.1_ASM1180v1_genomic.p1.png)
 
+For genomes that are *not* from NCBI, such as assembled symbionts or MAGs, I typically annotated these with a combination of [prodigal](https://github.com/hyattpd/Prodigal) for the protein/CDS prediction as a GFF, and then [BlastKOALA](https://www.kegg.jp/blastkoala/) to annotate the proteins with KEGG. The output of that, ``, is used as the input for [append_kegg_to_prodigal_gff.py](https://github.com/wrf/genomeGTFtools/blob/master/misc/append_kegg_to_prodigal_gff.py). The output of that script (as a KEGG-annotated GFF) is used as the input for `draw_genome_annotation.R`.
+
+This also makes use of file `ko00001.tab.gz` in the [test_data](https://github.com/wrf/genomeGTFtools/tree/master/test_data) folder, generated from the [KEGG database](https://www.kegg.jp/kegg/). This file includes the accessions for the KEGG categories, which then code for the various colors given by the [KEGG website](https://www.genome.jp/kegg/kegg1c.html) for the functional categories. The legend is automatically added to the bottom of each page.
+
 ## repeat2gtf
-From scaffolds or masked contigs, generate a feature for each long repeat of N's or n's (or any other arbitrary letter or pattern). The most obvious application is to make a track for gaps, which is the default behavior. The search is a regular expression, so could be any other simple repeat as well - CACA, CAG (glutamine repeats).
+From scaffolds or masked contigs, generate a feature for each long repeat of N's or n's (or any other arbitrary letter or pattern). The most obvious application is to make a track for N-gaps introduced during assembly, which is the default behavior. The search is a regular expression, so could be any other simple repeat as well - CACA, CAG (glutamine repeats).
 
   `repeat2gtf.py scaffolds.fasta > scaffolds_gaps.gtf`
 
-In jbrowse, I typically change a few options in the style to make this more visually useful. The color is set to black, the height is reduced to narrow bars, and the label is the score, which is the length of the gap.
+In jbrowse, I typically change a few options in the style to make this more visually useful. The color is set to black, the height is reduced to narrow bars, and the label is the GFF _score_ column, which is the length of the gap.
 
 ```
          "style" : {
@@ -292,13 +305,5 @@ In jbrowse, I typically change a few options in the style to make this more visu
          },
 ```
 
-## pal2gtf
-Convert palindromic repeats from the [EMBOSS program palindrome](http://emboss.sourceforge.net/apps/release/6.6/emboss/apps/palindrome.html) into GTF features. This was meant for mitochondrial genomes, but could potentially be whole nuclear genomes.
 
-## DEPRICATED: blast2genewise
-**To get gene models from blast hits, the best strategy may be to use** `blast2gff.py` **with the option** `-A` **to convert the blast hits to** [AUGUSTUS hints](http://augustus.gobics.de/binaries/README.TXT) (which are in a GFF-like format). This is then specified in the [AUGUSTUS](http://bioinf.uni-greifswald.de/augustus/) run as: `--hintsfile=geneset_vs_scaffolds.gff`
-
-  `blast2gff.py -t CDSpart -b geneset_vs_scaffolds.tab -A > geneset_vs_scaffolds.gff`
-
-The original idea was intended to take advantage of the speed of blasting. Blast hits are then parsed to give a single command to [Genewise](http://dendrome.ucdavis.edu/resources/tooldocs/wise2/doc_wise2.html), and the gff output is collected into a single file and reformatted for modern genome browsers. This is very similar to the strategy used by the [BUSCO pipeline](https://gitlab.com/ezlab/busco), which takes blast hits and runs AUGUSTUS on the scaffold that was hit. As AUGUSTUS can use HMM-like profiles to find specific proteins that are conserved, perhaps with more complex domain structures, this might be developed further.
 
