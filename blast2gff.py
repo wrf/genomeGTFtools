@@ -84,18 +84,18 @@ def write_line(outlist, wayout):
 def main(argv, wayout):
 	if not len(argv):
 		argv.append("-h")
-
 	parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description=__doc__)
 	parser.add_argument('-b','--blast', help="blast results file")
 	parser.add_argument('-p','--program', help="blast program for 2nd column in output [TBLASTN]", default="TBLASTN")
 	parser.add_argument('-t','--type', help="gff type or method [match_part]", default="match_part")
+	parser.add_argument('-d','--delimiter-replace', help="delimiter for '|' replacement, ", default="")
 	parser.add_argument('-e','--evalue-cutoff', type=float, help="evalue cutoff [1]", default=1.0)
 	parser.add_argument('-s','--score-cutoff', type=float, help="bitscore/length cutoff for filtering [0.1], use with -f", default=0.1)
 	parser.add_argument('-l','--length-cutoff', type=int, help="minimum match length cutoff for filtering [1]", default=1)
 	parser.add_argument('-A','--augustus', action="store_true", help="print source information for AUGUSTUS hints")
 	parser.add_argument('-F','--filter', action="store_true", help="filter low quality matches, set value with -s")
 	parser.add_argument('-S','--swissprot', action="store_true", help="query sequences have swissprot headers")
-	parser.add_argument('-L','--locus', action="store_true", help="IDs will be named by the locus, as scaffold_start_end")
+	parser.add_argument('-L','--locus', action="store_true", help="IDs will be named by the locus, as scaffold_start_end instead of Target as query start end")
 	parser.add_argument('-U','--parse-properties', action="store_true", help="parse additional attributes from the seq ID separated by ,")
 	parser.add_argument('-v','--verbose', action="store_true", help="extra output")
 	args = parser.parse_args(argv)
@@ -125,7 +125,7 @@ def main(argv, wayout):
 			extra_attributes = [ "{}={}".format( *attr.split(":") ) for attr in qseqid.split(",")[1:] ]
 			qseqid = qseqid.split(",")[0]
 		else:
-			qseqid = qseqid.replace("|","")
+			qseqid = qseqid.replace("|" , args.delimiter_replace )
 		hitDictCounter[qseqid] += 1
 		# currently 'attributes' is only query id
 		# ID only appears to not work for visualization, as the gene should be the blast query
